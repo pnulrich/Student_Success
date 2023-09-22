@@ -43,6 +43,7 @@ def major_retention(student_df, major_code, years, ftfy = True):
             ]
         print(working_df)
 
+
     # Compute the new column
     working_df['SDSTUMAIN_MATRIC_TERM'] = pd.to_datetime(working_df['SDSTUMAIN_MATRIC_TERM'], format='%Y%m')
     working_df['Grad_term'] = pd.to_datetime(working_df['Grad_term'], format='%Y%m')
