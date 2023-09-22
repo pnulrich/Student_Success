@@ -1,0 +1,148 @@
+# Python script to de-identify data sets by scrambling ID's and droppping unnceccesary columns. Generates a CSV for analysis.
+# Python pandas is much more efficient than R and accomplishes scrambling ID's perhaps 100X faster.
+import tkinter.filedialog
+
+import pandas as pd
+from datetime import datetime
+from tkinter import filedialog as fd
+import tkinter as tk
+
+
+#collate rows from CSV files of user-selected math courses and drop unnecessary columns
+def collate_math_grades(course_number_mapping):
+    # Prompt the user to select CSV files
+    root = tk.Tk()
+    root.withdraw()
+    file_paths = fd.askopenfilenames(filetypes=[('CSV Files', '*.csv')])
+
+    # Create an empty DataFrame to store the combined data
+    combined_df = pd.DataFrame()
+
+    # Read and concatenate the CSV files
+    for file_path in file_paths:
+        df = pd.read_csv(file_path)
+        combined_df = pd.concat([combined_df, df], ignore_index=True)
+
+    # Select the desired columns
+    selected_columns = ['Reg_Term', 'Course_Dept', 'Instr_Name', 'Reg_Crn', 'Reg_Crse_Title', 'ID', 'Final_GRDE',
+                        'StuMajr_Code1']
+    combined_df = combined_df[selected_columns]
+    combined_df.rename({"ID": "Student_ID"}, axis="columns", inplace=True)
+
+    # Create a new column based on the dictionary mapping 'Reg_Crse_Title' to 'Course_Number'
+    #if course_number_mapping:
+    combined_df['Course_Number'] = combined_df['Reg_Crse_Title'].map(course_number_mapping)
+    print(combined_df['Course_Number'])
+
+    return combined_df
+
+
+#Joins demographics reports with graduation records in a single dataframe
+def demographics_grad_combine():
+    demographics_data_filename = fd.askopenfilename(title = 'CV Enrollment Academic Program 1 and 2 DB S440270') # show an "Open" dialog box and return the path to the selected file
+    print(demographics_data_filename)
+    demographics_data = pd.read_csv(demographics_data_filename)
+    demographics_data.rename({"PantherID": "StudentID"}, axis="columns", inplace=True)
+
+    demographics_data = demographics_data[
+        [
+            "SDSTUDEMOG_TERM",
+            "StudentID",
+            "SDSTUDEMOG_BIRTHDATE",
+            "SDSTUDEMOG_ETHNICITY_CODE",
+            "SDSTUDEMOG_RACE",
+            "SDSTUDEMOG_SEX",
+            "SDSTUDEMOG_COUNTY_ORIGIN_MATIC",
+            "SDSTUDEMOG_STATE_ORIGIN_MATRIC",
+            "SDSTUDEMOG_ADDRESS_LINE_1",
+            "SDSTUDEMOG_ADDRESS_LINE_2",
+            "SDSTUDEMOG_CITY",
+            "SDSTUDEMOG_STATE",
+            "SDSTUDEMOG_ZIPCODE",
+            "SDSTUDEMOG_FINANCIAL_AID_IND",
+            "SDSTUMAIN_MATRIC_TERM",
+            "SDSTUMAIN_TERM",
+            "SDSTUMAIN_MAJOR",
+            "SDSTUMAIN_MAJOR2",
+            "SDSTUMAIN_HOURS_ENROLLED",
+            "SDSTUMAIN_HOURS_EARNED",
+            "SDSTUMAIN_HOURS_ATTEMPTED",
+            "SDSTUMAIN_HOURS_TOTAL",
+            "SDSTUMAIN_TRANSFER_HOURS",
+            "SDSTUMAIN_TRANSFER_GPA",
+            "SDSTUGPA_HOURS_ATTPT_INST",
+            "SDSTUGPA_HOURS_EARNED_INST",
+            "SDSTUGPA_GPA_INST",
+        ]
+    ]
+
+    scrambleDict = {
+                "1": "M",
+                "2": "Y",
+                "3": "R",
+                "4": "A",
+                "5": "T",
+                "6": "S",
+                "7": "O",
+                "8": "U",
+                "9": "P",
+                "0": "X",
+            }
+
+    # Scramble IDs. Store code dictionary on different computer than datasets
+    demographics_data["StudentID"] = (
+        demographics_data["StudentID"]
+        .astype(str)
+        .replace(scrambleDict,
+            regex=True,
+        )
+    )
+
+    # Keep only year of birth
+    demographics_data.rename(
+        {"SDSTUDEMOG_BIRTHDATE": "BirthYear"}, axis="columns", inplace=True
+    )
+    demographics_data["BirthYear"] = demographics_data["BirthYear"].str[-4:]
+
+    # Eliminate any rows where Term and StudentID are both duplicated
+    len(demographics_data)
+    demographics_data = demographics_data[
+        ~demographics_data.duplicated(subset=["SDSTUDEMOG_TERM", "StudentID"], keep="first")
+    ]
+    len(demographics_data)
+    # print(demographics_data.head())
+
+    # Load graduates data file
+    graduates_data_filename = fd.askopenfilename(title = 'Graduation Purge Report S761102')
+    graduates_data = pd.read_csv(graduates_data_filename)
+    graduates_data.rename({"Csv_id": "StudentID"}, axis="columns", inplace=True)
+
+    # Scramble IDs. Store code dictionary on different computer than datasets
+    graduates_data["StudentID"] = (
+        graduates_data["StudentID"]
+        .astype(str)
+        .replace(scrambleDict,
+            regex=True,
+        )
+    )
+    graduates_data = graduates_data[
+        graduates_data.columns[~graduates_data.columns.isin(["Student_name", "Pidm"])]
+    ]
+    len(graduates_data)
+    graduates_data = graduates_data[
+        ~graduates_data.duplicated(subset=["StudentID", "Grad_term"], keep="first")
+    ]
+    len(graduates_data)
+
+
+    # Join datasets based on student ID number
+    # yields 1060505 rows x 38 columns; this differs from R process in utilityFunctions.r. My R function yields 1089475 rows.
+    demographics_data_combined = demographics_data.merge(
+        graduates_data, on="StudentID", how="left"
+    )
+
+    # save combined data set into user defined folder with filename suffix as YYYYMMDD format
+    new_csv_path = fd.askdirectory(title = "Select folder to save CSV") + "/S440270_GraduationPurge_Combined_" + datetime.today().strftime('%Y%m%d') + ".csv"
+    demographics_data_combined.to_csv(new_csv_path, encoding="utf-8", index=False)
+
+    print("Data exported to " + new_csv_path)
