@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 from tkinter import filedialog as fd
 import tkinter as tk
+import datetime
 
 #Determine the number of students who were retained in a major since the semester of matriculation
 #major_code : 'BIO', 'CHM', etc
@@ -575,3 +576,115 @@ def course_performance(course_list, major_code_list, years, demographics_df):
     )
 
     return filtered_testresults
+
+#2023-10-18 (PNU) combines math grades with demographics and returns these as a dataframe
+def combine_course_grades_with_demographics():
+    root = tk.Tk()
+    root.withdraw()
+    file_path = fd.askopenfilename(
+        filetypes=[('Select the CSV file containing the grades you want to analyze', '*.csv')])
+    print(file_path)
+    math_grades_df = pd.read_csv(file_path)
+
+    demographics_df = pd.read_csv(
+        r"C:\Research\Research Projects\GSU\HHMI_IE3\Analyses\Pilot_CalcCLS\Data_Compiled_Reference\S440270_GraduationPurge_Combined_20230622.csv")
+
+    # Filter the demographics_df where 'SDSTUMAIN_MATRIC_TERM' == 'SDSTUDEMOG_TERM' and exclude the demographics_df rows for certificate data
+    filtered_demographics_df = demographics_df[
+        (demographics_df['SDSTUMAIN_MATRIC_TERM'] == demographics_df['SDSTUDEMOG_TERM']) & (
+                    demographics_df['Degree'] != 'CER0')]
+    # Convert 'grad_date' to datetime
+    filtered_demographics_df['Grad_date'] = pd.to_datetime(filtered_demographics_df['Grad_date'], format='%m/%d/%Y')
+
+    # Find duplicate grad_dates
+    duplicate_dates = filtered_demographics_df[
+        filtered_demographics_df.duplicated(subset=['StudentID', 'Grad_date'], keep=False)]
+
+    # Drop rows where 'Grad_date' is NaN or NaT for ease of review
+    duplicate_dates = duplicate_dates.dropna(subset=['Grad_date'])
+
+    # Sort the DataFrame for better visualization
+    duplicate_dates.sort_values(by=['StudentID', 'Grad_date'], inplace=True)
+
+    # Print rows where 'grad_date' is equivalent; the vast majority of these represent situations where the first matriculation semester degree == '000'. When a student declares major,
+    # this triggers another matriculation semester event associated with the newly declared major (e.g., 'CHM'). With my dataset, this occurs for 261 students and 538 demographics rows
+   #print(duplicate_dates)
+
+    # Sort by 'grad_date' and 'StudentID'
+    filtered_demographics_df = filtered_demographics_df.sort_values(by=['StudentID', 'Grad_date'])
+
+    # Drop duplicate StudentID rows, keeping the first (i.e., the one with the earliest grad_date)
+    filtered_demographics_df = filtered_demographics_df.drop_duplicates(subset='StudentID', keep='first')
+
+    # Merge the math_grades_df with the filtered demographics_df based on the StudentID
+    merged_df = math_grades_df.merge(filtered_demographics_df, left_on='Student_ID', right_on='StudentID', how='left')
+
+    # Select only the columns you are interested in
+    final_columns = [
+        'Reg_Term', 'Course_Dept', 'Instr_Name', 'Reg_Crn', 'Reg_Crse_Title',
+        'Student_ID', 'Final_GRDE', 'StuMajr_Code1', 'SDSTUDEMOG_SEX', 'Major', 'Grad_year'
+    ]
+    final_df = merged_df[final_columns]
+    # Count the occurrences of each Student_ID in both DataFrames
+    math_grades_counts = math_grades_df['Student_ID'].value_counts()
+    final_df_counts = final_df['Student_ID'].value_counts()
+
+    # Find the Student_IDs that occur more times in final_df than in math_grades_df
+    common_student_ids = math_grades_counts.index.intersection(final_df_counts.index)
+    duplicated_student_ids = [student_id for student_id in common_student_ids if
+                              final_df_counts[student_id] > math_grades_counts[student_id]]
+
+    #print("Duplicated Student_IDs:", duplicated_student_ids)
+
+    columns_to_keep = ['Reg_Crse_Title', 'Instr_Name', 'Reg_Term', 'Student_ID', 'Final_GRDE', 'StuMajr_Code1',
+                       'SDSTUDEMOG_TERM', 'SDSTUDEMOG_SEX', 'Major', 'Grad_term']
+    merged_df_clean = merged_df[columns_to_keep]
+    merged_df_clean = merged_df_clean.sort_values(by=['Student_ID', 'Reg_Term'])
+    merged_df_clean = institutionaldata.utilityfunctions.letter_grade_simplify(merged_df_clean)
+    first_attempts = merged_df_clean.drop_duplicates(subset=['Student_ID', 'Reg_Crse_Title'], keep='first')
+    #print("# of first attempts: ", len(first_attempts))  # 31033
+    first_attempts_DFW = first_attempts[first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]  # 7579
+    remaining_attempts = merged_df_clean.drop(first_attempts.index)
+    second_attempts = remaining_attempts[remaining_attempts['Student_ID'].isin(first_attempts_DFW['Student_ID'])]
+    second_attempts = second_attempts.drop_duplicates(subset=['Student_ID', 'Reg_Crse_Title'], keep='first')  # 3515
+    combined_attempts = pd.concat([first_attempts, second_attempts])
+
+    return combined_attempts
+
+#2023-10-18 (PNU): uses data from combine_course_grades_with_demographics() to determine proportions of students who passed course
+#on first attempt by major
+#course_name : string, name of course of interest (e.g., "CALC FOR THE LIFE SCIENCES I")
+#df : dataframe containing grades and demographics
+#major: string, code for major (e.g., "BIO")
+def course_attempts(course_name, df, major):
+    # the following steps were worked out with ChatGPT4 as a way to avoid loss of students who switched their major after first attempt
+    # whether or not this should be done is something to address in our research question. Are we interested in the downstream attempts to take the same course if they left the major?
+    # Step 1: Get first attempts for all students for the course
+    course_df_all_attempts = df[df['Reg_Crse_Title'] == course_name]
+    course_df_all_attempts = course_df_all_attempts.sort_values(by=['Student_ID', 'Reg_Term'])
+    course_df_first_attempts_all = course_df_all_attempts.drop_duplicates(subset=['Student_ID'], keep='first')
+
+    # Step 2: Identify students with desired major in first attempt
+    desired_major_students = course_df_first_attempts_all[course_df_first_attempts_all['StuMajr_Code1'] == major]['Student_ID'].unique()
+
+    # Step 3: Filter all attempts for these students
+    course_df = course_df_all_attempts[course_df_all_attempts['Student_ID'].isin(desired_major_students)]
+    course_df_first_attempts = course_df.drop_duplicates(subset=['Student_ID'], keep='first')
+
+    print(f"Results for {course_name}({len(course_df_first_attempts)} students):")
+    print(f"Proportion passing on first attempt: {len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]) / len(course_df_first_attempts)} ({len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])])} students)")
+    print(f"Proportion DFW on first attempt: {len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]) / len(course_df_first_attempts)} ({len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])])} students)")
+    print(f"Proportion W on first attempt: {len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['W'])]) / len(course_df_first_attempts)} ({len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['W'])])} students)")
+
+    course_df_repeat_students = course_df[course_df.duplicated(subset=['Student_ID'], keep=False)]
+    course_df_second_attempts = course_df_repeat_students[
+    course_df_repeat_students.duplicated(subset=['Student_ID'], keep='first')]
+
+    # Find students who changed their major in the second attempt
+    changed_major_second_attempt = course_df_second_attempts[course_df_second_attempts['StuMajr_Code1'] != major]['Student_ID'].nunique()
+
+    print(f"\nNumber of repeat students: {len(course_df_repeat_students['Student_ID'].unique())}")
+    print(f"Proportion passing on second attempt: {len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]) / len(course_df_second_attempts)} ({len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])])} students)")
+    print(f"Proportion DFW on second attempt: {len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]) / len(course_df_second_attempts)}  ({len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])])} students)")
+    print(f"\nNumber of students in the second attempt who changed major from {major}: {changed_major_second_attempt}")
+    print("---------------------------")
