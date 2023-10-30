@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime
 from tkinter import filedialog as fd
 import tkinter as tk
+import institutionaldata.utilityfunctions as utilityfunctions
 
 
 #collate rows from CSV files of user-selected math courses and drop unnecessary columns
@@ -38,16 +39,22 @@ def collate_math_grades(course_number_mapping):
 
 
 #Joins demographics reports with graduation records in a single dataframe
-def demographics_grad_combine():
+def demographics_grad_combine(cipher = None):
+    if (cipher == None):
+        print("You must provide a cipher value to use this function in order to obscure student IDs.")
+        return
+
     demographics_data_filename = fd.askopenfilename(title = 'CV Enrollment Academic Program 1 and 2 DB S440270') # show an "Open" dialog box and return the path to the selected file
     print(demographics_data_filename)
     demographics_data = pd.read_csv(demographics_data_filename)
-    demographics_data.rename({"PantherID": "StudentID"}, axis="columns", inplace=True)
+    demographics_data.rename({"PantherID": "Student_ID"}, axis="columns", inplace=True)
+
+    print(list(demographics_data))
 
     demographics_data = demographics_data[
         [
             "SDSTUDEMOG_TERM",
-            "StudentID",
+            "Student_ID",
             "SDSTUDEMOG_BIRTHDATE",
             "SDSTUDEMOG_ETHNICITY_CODE",
             "SDSTUDEMOG_RACE",
@@ -76,27 +83,8 @@ def demographics_grad_combine():
         ]
     ]
 
-    scrambleDict = {
-                "1": "M",
-                "2": "Y",
-                "3": "R",
-                "4": "A",
-                "5": "T",
-                "6": "S",
-                "7": "O",
-                "8": "U",
-                "9": "P",
-                "0": "X",
-            }
-
-    # Scramble IDs. Store code dictionary on different computer than datasets
-    demographics_data["StudentID"] = (
-        demographics_data["StudentID"]
-        .astype(str)
-        .replace(scrambleDict,
-            regex=True,
-        )
-    )
+    #use secret cipher to obscure identifer
+    demographics_data = utilityfunctions.scramble_ID(demographics_data, cipher)
 
     # Keep only year of birth
     demographics_data.rename(
@@ -104,10 +92,10 @@ def demographics_grad_combine():
     )
     demographics_data["BirthYear"] = demographics_data["BirthYear"].str[-4:]
 
-    # Eliminate any rows where Term and StudentID are both duplicated
+    # Eliminate any rows where Term and Student_ID are both duplicated
     len(demographics_data)
     demographics_data = demographics_data[
-        ~demographics_data.duplicated(subset=["SDSTUDEMOG_TERM", "StudentID"], keep="first")
+        ~demographics_data.duplicated(subset=["SDSTUDEMOG_TERM", "Student_ID"], keep="first")
     ]
     len(demographics_data)
     # print(demographics_data.head())
@@ -115,22 +103,16 @@ def demographics_grad_combine():
     # Load graduates data file
     graduates_data_filename = fd.askopenfilename(title = 'Graduation Purge Report S761102')
     graduates_data = pd.read_csv(graduates_data_filename)
-    graduates_data.rename({"Csv_id": "StudentID"}, axis="columns", inplace=True)
+    graduates_data.rename({"Csv_id": "Student_ID"}, axis="columns", inplace=True)
 
-    # Scramble IDs. Store code dictionary on different computer than datasets
-    graduates_data["StudentID"] = (
-        graduates_data["StudentID"]
-        .astype(str)
-        .replace(scrambleDict,
-            regex=True,
-        )
-    )
+    # use secret cipher to obscure identifer
+    graduates_data = utilityfunctions.scramble_ID(graduates_data, cipher)
     graduates_data = graduates_data[
         graduates_data.columns[~graduates_data.columns.isin(["Student_name", "Pidm"])]
     ]
     len(graduates_data)
     graduates_data = graduates_data[
-        ~graduates_data.duplicated(subset=["StudentID", "Grad_term"], keep="first")
+        ~graduates_data.duplicated(subset=["Student_ID", "Grad_term"], keep="first")
     ]
     len(graduates_data)
 
@@ -138,7 +120,7 @@ def demographics_grad_combine():
     # Join datasets based on student ID number
     # yields 1060505 rows x 38 columns; this differs from R process in utilityFunctions.r. My R function yields 1089475 rows.
     demographics_data_combined = demographics_data.merge(
-        graduates_data, on="StudentID", how="left"
+        graduates_data, on="Student_ID", how="left"
     )
 
     # save combined data set into user defined folder with filename suffix as YYYYMMDD format
