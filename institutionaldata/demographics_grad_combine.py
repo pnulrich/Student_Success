@@ -47,7 +47,7 @@ def demographics_grad_combine(cipher = None):
     demographics_data_filename = fd.askopenfilename(title = 'CV Enrollment Academic Program 1 and 2 DB S440270') # show an "Open" dialog box and return the path to the selected file
     print(demographics_data_filename)
     demographics_data = pd.read_csv(demographics_data_filename)
-    demographics_data.rename({"PantherID": "Student_ID"}, axis="columns", inplace=True)
+    demographics_data.rename({"PantherID": "Student_ID"}, axis="columns", inplace=True) #using Student_ID as standard
 
     print(list(demographics_data))
 
@@ -115,7 +115,6 @@ def demographics_grad_combine(cipher = None):
         ~graduates_data.duplicated(subset=["Student_ID", "Grad_term"], keep="first")
     ]
     len(graduates_data)
-
 
     # Join datasets based on student ID number
     # yields 1060505 rows x 38 columns; this differs from R process in utilityFunctions.r. My R function yields 1089475 rows.
