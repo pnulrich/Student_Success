@@ -10,7 +10,7 @@ import institutionaldata.utilityfunctions as utilityfunctions
 
 
 #collate rows from CSV files of user-selected math courses and drop unnecessary columns
-def collate_math_grades(course_number_mapping):
+def collate_math_grades(course_number_mapping = False):
     # Prompt the user to select CSV files
     root = tk.Tk()
     root.withdraw()
@@ -31,9 +31,9 @@ def collate_math_grades(course_number_mapping):
     combined_df.rename({"ID": "Student_ID"}, axis="columns", inplace=True)
 
     # Create a new column based on the dictionary mapping 'Reg_Crse_Title' to 'Course_Number'
-    #if course_number_mapping:
-    combined_df['Course_Number'] = combined_df['Reg_Crse_Title'].map(course_number_mapping)
-    print(combined_df['Course_Number'])
+    if course_number_mapping:
+        combined_df['Course_Number'] = combined_df['Reg_Crse_Title'].map(course_number_mapping)
+        print(combined_df['Course_Number'])
 
     return combined_df
 
@@ -83,6 +83,8 @@ def demographics_grad_combine(cipher = None):
         ]
     ]
 
+    #demographics_data['SDSTUMAIN_MATRIC_TERM'] = demographics_data['SDSTUMAIN_MATRIC_TERM'].astype('int64')
+
     #use secret cipher to obscure identifer
     demographics_data = utilityfunctions.scramble_ID(demographics_data, cipher)
 
@@ -116,14 +118,22 @@ def demographics_grad_combine(cipher = None):
     ]
     len(graduates_data)
 
+
     # Join datasets based on student ID number
     # yields 1060505 rows x 38 columns; this differs from R process in utilityFunctions.r. My R function yields 1089475 rows.
     demographics_data_combined = demographics_data.merge(
         graduates_data, on="Student_ID", how="left"
     )
 
+    demographics_data_combined['Grad_year'] = demographics_data_combined['Grad_year'].fillna(-1)
+    demographics_data_combined['Grad_year'] = demographics_data_combined['Grad_year'].astype('int64')
+    demographics_data_combined['Grad_term'] = demographics_data_combined['Grad_term'].fillna(-1)
+    demographics_data_combined['Grad_term'] = demographics_data_combined['Grad_term'].astype('int64')
+    demographics_data_combined['SDSTUMAIN_MATRIC_TERM'] = demographics_data_combined['SDSTUMAIN_MATRIC_TERM'].fillna(-1)
+    demographics_data_combined['SDSTUMAIN_MATRIC_TERM'] = demographics_data_combined['SDSTUMAIN_MATRIC_TERM'].astype('int64')
+
     # save combined data set into user defined folder with filename suffix as YYYYMMDD format
     new_csv_path = fd.askdirectory(title = "Select folder to save CSV") + "/S440270_GraduationPurge_Combined_" + datetime.today().strftime('%Y%m%d') + ".csv"
     demographics_data_combined.to_csv(new_csv_path, encoding="utf-8", index=False)
-
+    #demographics_data_combined["BirthYear"] = demographics_data_combined["BirthYear"].astype('int64')
     print("Data exported to " + new_csv_path)

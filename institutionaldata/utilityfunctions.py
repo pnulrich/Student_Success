@@ -10,10 +10,11 @@ import re
 def scramble_ID(working_df, cipher):
     if len(cipher) != 10: #if student IDs at your institution have different # of characters, then adjust accordingly
         print("The cipher must have 10 characters!")
+        return None
     else:
         # Create a dictionary where keys are  string representations of indices
         # and values are the corresponding characters
-        scrambleDict = {str(i + 1): char for i, char in enumerate(cipher)}
+        scrambleDict = {str(i): char for i, char in enumerate(cipher)}
 
     # Scramble IDs. Store code dictionary on different computer than datasets
     working_df["Student_ID"] = (
@@ -24,6 +25,26 @@ def scramble_ID(working_df, cipher):
         )
     )
     return working_df
+
+#[Utility function] accepts a single, scrambled Student_ID and unscrambles it (given the appropriate cipher string)
+#Student_ID : string of characters representing the Student_ID to be unscrambled
+#cipher : a string of characters length of Student_ID; DON'T FORGET THIS AND DO NOT POST PUBLICALLY
+def unscramble_ID(Student_ID, cipher):
+    if len(cipher) != 10: #if student IDs at your institution have different # of characters, then adjust accordingly
+        print("The cipher must have 10 characters!")
+        return None
+    else:
+        # Create a dictionary where keys are  string representations of indices
+        # and values are the corresponding characters
+        scrambleDict = {str(i): char for i, char in enumerate(cipher)}
+
+    # Scramble IDs. Store code dictionary on different computer than datasets
+    unscrambleDict = {char: str(i) for i, char in enumerate(cipher)}
+
+    # Unscramble IDs
+    original_id = ''.join([unscrambleDict[char] for char in Student_ID])
+
+    return original_id
 
 #[Utility function]  adjust grad_term to give the ending month from a beginning of a grad_term 2023-07-12
 def adjust_grad_term(row):
@@ -180,24 +201,40 @@ def load_grades():
     grades_df = pd.read_csv(csv_filename)
     return grades_df
 
-#Utility function: accepts demographic dataframe and returns list of all student ID's who are or are not ftfy; defaults to True
-def ftfy(df, ftfy = 1):
-    # return all of the student id's who matriculated with 0 transfer credits
-    if (ftfy == 1):
-        ftfy_df = df[
-                (df['SDSTUMAIN_MATRIC_TERM'] == df['SDSTUDEMOG_TERM']) &
-                (df['SDSTUMAIN_TRANSFER_HOURS'].isna() | (df['SDSTUMAIN_TRANSFER_HOURS'] == 0))
-                ]
-        return list(ftfy_df['StudentID'].unique())
+#[Utility function] accepts demographic dataframe and returns dataframe for first semester demographics
+#of students based on presence/absence of transfer credits. This is a rough approximation of first time, first year
+#Since SDSTUMAIN_MATRIC_TERM is not always exactly matched to the first term a student takes courses, the dataframe
+#is sorted to find the first demographics term for each student.
+#df: dataframe with demographics data
+#transfer: 0 = get all students (default); 1 = get students with transfer credits; 2 = get students with no transfer credits
+#return_dataframe: Boolean; 1 = return results as entire dataframe; 0 = return results as a list of unique student ID's
+def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
+    # Get the earliest term for each student
+    mask = df.groupby('Student_ID')['SDSTUDEMOG_TERM'].idxmin()
+    earliest_df = df.loc[mask]
 
-    # return all of the student id's who are not FTFY; that is, the returned list of students all had transfer credits
-    elif (ftfy == 0):
-        ftfy_df = df[
-            (df['SDSTUMAIN_MATRIC_TERM'] == df['SDSTUDEMOG_TERM']) &
-            (df['SDSTUMAIN_TRANSFER_HOURS'] >0)
-            ]
-        return list(ftfy_df['StudentID'].unique())
+    # return dataframe containing first semester demographics for all students
+    if (transfer == 0):
+        if return_dataframe == 1:
+            return earliest_df
+        elif return_dataframe == 0:
+            return list(earliest_df['Student_ID'])
 
-    #return all of the student id's. This is an unnecessary step in the function but included to cover the options
-    elif (ftfy == 'All'):
-        return list(df['StudentID'].unique())
+    # return dataframe containing first semester demographics for all students who have transfer credits
+    elif (transfer == 1):
+        initial_demographics_transfer_df = earliest_df[
+            (earliest_df['SDSTUMAIN_TRANSFER_HOURS'] > 0) & (~earliest_df['SDSTUMAIN_TRANSFER_HOURS'].isna())]
+        if return_dataframe == 1:
+            return initial_demographics_transfer_df
+        elif return_dataframe == 0:
+            return list(initial_demographics_transfer_df['Student_ID'])
+
+    # return dataframe containing first semester demographics for all students who have no transfer credits
+    elif (transfer == 2):
+        initial_demographics_transfer_df = earliest_df[
+            (earliest_df['SDSTUMAIN_TRANSFER_HOURS'].isna()) | (earliest_df['SDSTUMAIN_TRANSFER_HOURS'] == 0)]
+
+        if return_dataframe == 1:
+            return initial_demographics_transfer_df
+        elif return_dataframe == 0:
+            return list(initial_demographics_transfer_df['Student_ID'])
