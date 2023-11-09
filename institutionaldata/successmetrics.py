@@ -251,8 +251,6 @@ def num_math_courses(demographics_df, major_code, years, math_grades_df = None, 
     print(tabulate(results_df, headers='keys', tablefmt='psql'))
     return avg_num_courses_per_major_code_student, std_dev_num_courses_per_major_code_student, results_df
 
-#def num_math_courses(demographics_df, major_code, years, math_grades_df = None, ftfy = True, grade_options = None):
-
 #Calculate the amount of time between matriculation and taking a math course for the FIRST time
 #course: course title as string
 #years: year in YYYY format (e.g. 2024)
@@ -1158,6 +1156,6 @@ def track_major_change(initial_df, demographics_df, range_first_term_start = 200
     # Identify students who don't have a third-year entry
     missing_third_year = result_df['SDSTUMAIN_MAJOR_3rdYear'].isna()
     missing_count = missing_third_year.sum()
-    print(f"{missing_count} students don't have a corresponding demographic entry for the fall of their third year.")
+    print(f"{missing_count} students don't have a corresponding demographic entry for Fall of their third year.")
 
-    return result_df[['SDSTUDEMOG_TERM', 'Student_ID', 'SDSTUMAIN_MAJOR', 'SDSTUGPA_GPA_INST', 'SDSTUMAIN_MATRIC_TERM', 'SDSTUMAIN_MAJOR_3rdYear', 'Grad_year', 'Grad_term']]
+    return result_df[['SDSTUDEMOG_TERM', 'Student_ID', 'SDSTUMAIN_MAJOR', 'SDSTUGPA_GPA_INST', 'SDSTUMAIN_MATRIC_TERM', 'SDSTUMAIN_MAJOR_3rdYear', 'Grad_year', 'Grad_term', 'Degree']]

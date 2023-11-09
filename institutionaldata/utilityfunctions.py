@@ -7,7 +7,7 @@ import re
 #[Utility function] permit simple ciphering of Student_ID numbers
 #working_df : dataframe where Student_ID is the column to be ciphered
 #cipher : a string of characters length of Student_ID; DON'T FORGET THIS AND DO NOT POST PUBLICALLY
-def scramble_ID(working_df, cipher):
+def scramble_ID(input_data, cipher):
     if len(cipher) != 10: #if student IDs at your institution have different # of characters, then adjust accordingly
         print("The cipher must have 10 characters!")
         return None
@@ -16,15 +16,30 @@ def scramble_ID(working_df, cipher):
         # and values are the corresponding characters
         scrambleDict = {str(i): char for i, char in enumerate(cipher)}
 
-    # Scramble IDs. Store code dictionary on different computer than datasets
-    working_df["Student_ID"] = (
-        working_df["Student_ID"]
-        .astype(str)
-        .replace(scrambleDict,
-            regex=True,
-        )
-    )
-    return working_df
+        # Check if the input is a dataframe
+        if isinstance(input_data, pd.DataFrame):
+            # Ensure the 'Student_ID' column is present
+            if 'Student_ID' not in input_data.columns:
+                print("The dataframe does not have a 'Student_ID' column.")
+                return None
+
+            # Scramble IDs for a dataframe
+            input_data["Student_ID"] = (
+                input_data["Student_ID"]
+                .astype(str)
+                .replace(scrambleDict, regex=True)
+            )
+            return input_data
+
+        # Check if the input is a string (assuming it's a Student_ID)
+        elif isinstance(input_data, str):
+            # Scramble ID for a single Student_ID string
+            scrambled_id = ''.join(scrambleDict.get(char, char) for char in input_data)
+            return scrambled_id
+
+        else:
+            print("Input must be a pandas DataFrame or a string representing a Student_ID.")
+            return None
 
 #[Utility function] accepts a single, scrambled Student_ID and unscrambles it (given the appropriate cipher string)
 #Student_ID : string of characters representing the Student_ID to be unscrambled
@@ -173,20 +188,15 @@ def letter_grade_simplify(dataframe):
         "IF": "F",
         "UF": "F",
         "W*": "W",
-        "-W": "W"
+        "-W": "W",
+        "WM": "W"
+        #WM = military withdrawal
+        #V = audit
+        #N = continuing education grade (Perimeter College, legacy grade?)
+        #@ suffix = dishonesty
+        #% suffix = [don't know]
+        ## suffix = ]don't know]
     }
-
-    #simplified_grades = []
-    #for grade in grades:
-    #    grade = str(grade)
-    #    simplified_grade = re.sub(r'[%\^R#@*+-]', '', grade)
-    #    simplified_grade = grade_mapping.get(simplified_grade, simplified_grade)
-    #    simplified_grades.append(simplified_grade)
-
-    #simplified_grades = [grade_mapping.get(grade, grade) for grade in grades]
-    #simplified_grades = [grade.replace("^R", "") for grade in simplified_grades]
-    #simplified_grade = re.sub(r'[%\^R]', '', simplified_grade)
-    #return pd.Series(simplified_grades)
 
     df_copy = dataframe.copy()
     df_copy['Final_GRDE_Simp'] = df_copy['Final_GRDE'].apply(lambda grade: re.sub(r'[%\^R#@*+-]', '', str(grade)))
@@ -213,14 +223,14 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
     mask = df.groupby('Student_ID')['SDSTUDEMOG_TERM'].idxmin()
     earliest_df = df.loc[mask]
 
-    # return dataframe containing first semester demographics for all students
+    # return dataframe containing first semester demographics for ALL students
     if (transfer == 0):
         if return_dataframe == 1:
             return earliest_df
         elif return_dataframe == 0:
             return list(earliest_df['Student_ID'])
 
-    # return dataframe containing first semester demographics for all students who have transfer credits
+    # return dataframe containing first semester demographics for students who WITH transfer credit
     elif (transfer == 1):
         initial_demographics_transfer_df = earliest_df[
             (earliest_df['SDSTUMAIN_TRANSFER_HOURS'] > 0) & (~earliest_df['SDSTUMAIN_TRANSFER_HOURS'].isna())]
@@ -229,7 +239,7 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
         elif return_dataframe == 0:
             return list(initial_demographics_transfer_df['Student_ID'])
 
-    # return dataframe containing first semester demographics for all students who have no transfer credits
+    # return dataframe containing first semester demographics for students WITHOUT transfer credit
     elif (transfer == 2):
         initial_demographics_transfer_df = earliest_df[
             (earliest_df['SDSTUMAIN_TRANSFER_HOURS'].isna()) | (earliest_df['SDSTUMAIN_TRANSFER_HOURS'] == 0)]
