@@ -11,6 +11,7 @@ import tkinter as tk
 import datetime
 import pydot
 import pygraphviz as pgv
+import statsmodels.api as sm
 
 #Determine the number of students who were retained in a major since the semester of matriculation
 #major_code : 'BIO', 'CHM', etc
@@ -144,7 +145,7 @@ def num_math_courses(demographics_df, major_code, years, math_grades_df = None, 
     #Eliminate duplicate rows of data
     math_grades_df_copy.drop_duplicates(subset=['Student_ID', 'Reg_Crn', 'Reg_Term', 'Final_GRDE'], keep="first",
                                              inplace=True)
-    math_grades_df_copy['Final_GRDE_Simp'] = utilityfunctions.letter_grade_simplify(math_grades_df_copy)['Final_GRDE_Simp']
+    math_grades_df_copy['Final_GRDE_Simp'] = utilityfunctions.letter_grade_simplify(math_grades_df_copy, c_minus_flag= 1)['Final_GRDE_Simp']
 
     #Use the ftfy flag to include or exclude student with transfer credits; default is ftfy = True to exclude
     if ftfy == False:
@@ -336,7 +337,7 @@ def plot_grades(grades_df, letterGrades = False, title = 'Frequency Diagram of G
         grades_df = grades_df[grades_df['Final_GRDE'] != '#NAME?']
 
         #simplify letter grades
-        grades_df['Final_GRDE_Simplified'] = utilityfunctions.letter_grade_simplify(grades_df['Final_GRDE'])
+        grades_df['Final_GRDE_Simplified'] = utilityfunctions.letter_grade_simplify(grades_df['Final_GRDE'], c_minus_flag=1)
 
         #drop rows where the grade bin was not matched to the custom bins above. This occurs rarely, it seems (only 2 students of precalc 2011-2015 matriculants)
         grades_df = grades_df[grades_df['grade_bins'] != -1]
@@ -577,8 +578,9 @@ def course_performance(course_list, major_code_list, years, demographics_df):
 
     return filtered_testresults
 
-#2023-10-18 (PNU) combines math grades with demographics and returns these as a dataframe
-def combine_course_grades_with_demographics():
+#2023-10-18 (PNU) combines math grades with demographics and returns these as a dataframe with data on first and second attempts of courses
+#2023-11-09 (PNU) updated to accept first_semester_demographics_df output from utilityfunctions.demographics_first_semester()
+def combine_course_grades_with_demographics(input_demographics_df):
     root = tk.Tk()
     root.withdraw()
     file_path = fd.askopenfilename(
@@ -586,41 +588,42 @@ def combine_course_grades_with_demographics():
     print(file_path)
     math_grades_df = pd.read_csv(file_path)
 
-    demographics_df = pd.read_csv(
-        r"C:\Research\Research Projects\GSU\HHMI_IE3\Analyses\Pilot_CalcCLS\Data_Compiled_Reference\S440270_GraduationPurge_Combined_20231030.csv")
-
-    # Filter the demographics_df where 'SDSTUMAIN_MATRIC_TERM' == 'SDSTUDEMOG_TERM' and exclude the demographics_df rows for certificate data
-    equivalent_df  = demographics_df[
-        (demographics_df['SDSTUMAIN_MATRIC_TERM'] == demographics_df['SDSTUDEMOG_TERM']) & (
-                    demographics_df['Degree'] != 'CER0')]
-
-    # 2. Filter records where SDSTUMAIN_MATRIC_TERM does not have a corresponding SDSTUDEMOG_TERM
-    non_equivalent_df = demographics_df[
-        (demographics_df['SDSTUMAIN_MATRIC_TERM'] != demographics_df['SDSTUDEMOG_TERM']) &
-        (demographics_df['Degree'] != 'CER0')
-        ]
-
-    # Find the earliest SDSTUDEMOG_TERM for each SDSTUMAIN_MATRIC_TERM in non_equivalent_df
-    earliest_terms = non_equivalent_df.groupby('SDSTUMAIN_MATRIC_TERM')['SDSTUDEMOG_TERM'].min().reset_index()
-
-    # 2. Filter records where SDSTUMAIN_MATRIC_TERM does not have a corresponding SDSTUDEMOG_TERM for each Student_ID
-    non_equivalent_df = demographics_df[
-        (demographics_df['SDSTUMAIN_MATRIC_TERM'] != demographics_df['SDSTUDEMOG_TERM']) &
-        (demographics_df['Degree'] != 'CER0')
-        ]
-
-    # Group by Student_ID and get the earliest SDSTUDEMOG_TERM for each student
-    earliest_terms = non_equivalent_df.groupby('Student_ID')['SDSTUDEMOG_TERM'].min().reset_index()
-
-    # Merge non_equivalent_df with earliest_terms to get the records
-    non_equivalent_df_filtered = pd.merge(non_equivalent_df, earliest_terms, on=['Student_ID', 'SDSTUDEMOG_TERM'])
-
-    # Combine the two dataframes
-    filtered_demographics_df = pd.concat([equivalent_df, non_equivalent_df_filtered], axis=0)
-    print(len(filtered_demographics_df))
+    # demographics_df = pd.read_csv(
+    #     r"C:\Research\Research Projects\GSU\HHMI_IE3\Analyses\Pilot_CalcCLS\Data_Compiled_Reference\S440270_GraduationPurge_Combined_20231030.csv")
+    #
+    # # Filter the demographics_df where 'SDSTUMAIN_MATRIC_TERM' == 'SDSTUDEMOG_TERM' and exclude the demographics_df rows for certificate data
+    # equivalent_df  = demographics_df[
+    #     (demographics_df['SDSTUMAIN_MATRIC_TERM'] == demographics_df['SDSTUDEMOG_TERM']) & (
+    #                 demographics_df['Degree'] != 'CER0')]
+    #
+    # # 2. Filter records where SDSTUMAIN_MATRIC_TERM does not have a corresponding SDSTUDEMOG_TERM
+    # non_equivalent_df = demographics_df[
+    #     (demographics_df['SDSTUMAIN_MATRIC_TERM'] != demographics_df['SDSTUDEMOG_TERM']) &
+    #     (demographics_df['Degree'] != 'CER0')
+    #     ]
+    #
+    # # Find the earliest SDSTUDEMOG_TERM for each SDSTUMAIN_MATRIC_TERM in non_equivalent_df
+    # earliest_terms = non_equivalent_df.groupby('SDSTUMAIN_MATRIC_TERM')['SDSTUDEMOG_TERM'].min().reset_index()
+    #
+    # # 2. Filter records where SDSTUMAIN_MATRIC_TERM does not have a corresponding SDSTUDEMOG_TERM for each Student_ID
+    # non_equivalent_df = demographics_df[
+    #     (demographics_df['SDSTUMAIN_MATRIC_TERM'] != demographics_df['SDSTUDEMOG_TERM']) &
+    #     (demographics_df['Degree'] != 'CER0')
+    #     ]
+    #
+    # # Group by Student_ID and get the earliest SDSTUDEMOG_TERM for each student
+    # earliest_terms = non_equivalent_df.groupby('Student_ID')['SDSTUDEMOG_TERM'].min().reset_index()
+    #
+    # # Merge non_equivalent_df with earliest_terms to get the records
+    # non_equivalent_df_filtered = pd.merge(non_equivalent_df, earliest_terms, on=['Student_ID', 'SDSTUDEMOG_TERM'])
+    #
+    # # Combine the two dataframes
+    # filtered_demographics_df = pd.concat([equivalent_df, non_equivalent_df_filtered], axis=0)
+    # print(len(filtered_demographics_df))
 
     # Convert 'grad_date' to datetime
-    filtered_demographics_df['Grad_date'] = pd.to_datetime(filtered_demographics_df['Grad_date'], format='%m/%d/%Y')
+    #filtered_demographics_df['Grad_date'] = pd.to_datetime(filtered_demographics_df['Grad_date'], format='%m/%d/%Y')
+    input_demographics_df['Grad_date'] = pd.to_datetime(input_demographics_df['Grad_date'], format='%m/%d/%Y')
 
     # Find duplicate grad_dates
     #duplicate_dates = filtered_demographics_df[
@@ -637,13 +640,15 @@ def combine_course_grades_with_demographics():
    #print(duplicate_dates)
 
     # Sort by 'grad_date' and 'Student_ID'
-    filtered_demographics_df = filtered_demographics_df.sort_values(by=['Student_ID', 'Grad_date'])
+    #filtered_demographics_df = filtered_demographics_df.sort_values(by=['Student_ID', 'Grad_date'])
 
     # Drop duplicate Student_ID rows, keeping the first (i.e., the one with the earliest grad_date)
-    filtered_demographics_df = filtered_demographics_df.drop_duplicates(subset='Student_ID', keep='first')
+    #filtered_demographics_df = filtered_demographics_df.drop_duplicates(subset='Student_ID', keep='first')
 
     # Merge the math_grades_df with the filtered demographics_df based on the Student_ID
-    merged_df = math_grades_df.merge(filtered_demographics_df, left_on='Student_ID', right_on='Student_ID', how='left')
+    #merged_df = math_grades_df.merge(filtered_demographics_df, left_on='Student_ID', right_on='Student_ID', how='left')
+    merged_df = math_grades_df.merge(input_demographics_df, left_on='Student_ID', right_on='Student_ID', how='left')
+    #merged_df = institutionaldata.utilityfunctions.letter_grade_simplify(merged_df, c_minus_flag=1)
 
     print(list(merged_df))
     # Select only the columns you are interested in
@@ -667,7 +672,7 @@ def combine_course_grades_with_demographics():
                        'SDSTUDEMOG_TERM', 'SDSTUDEMOG_SEX', 'SDSTUMAIN_MATRIC_TERM', 'Major', 'Grad_term']
     merged_df_clean = merged_df[columns_to_keep]
     merged_df_clean = merged_df_clean.sort_values(by=['Student_ID', 'Reg_Term'])
-    merged_df_clean = institutionaldata.utilityfunctions.letter_grade_simplify(merged_df_clean)
+    merged_df_clean = institutionaldata.utilityfunctions.letter_grade_simplify(merged_df_clean, c_minus_flag=1)
     first_attempts = merged_df_clean.drop_duplicates(subset=['Student_ID', 'Reg_Crse_Title'], keep='first')
     #print("# of first attempts: ", len(first_attempts))  # 31033
     first_attempts_DFW = first_attempts[first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]  # 7579
@@ -1062,7 +1067,7 @@ def calculate_not_taking_next(current_course, next_course, df, major):
 def course_sequence_analysis(course_sequence, df, major, node_pie = False):
     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
 
-    previous_course_node = None
+    previous_pass_node = None
     for index, course_name in enumerate(course_sequence):
         # Analyze the course
         results = analyze_course(course_name, df, major)
@@ -1085,7 +1090,9 @@ def course_sequence_analysis(course_sequence, df, major, node_pie = False):
         graph.add_edge(pydot.Edge(course_node, pass_node, label=f"{results['first_pass_proportion']:.3f} ({results['first_pass_number']})"))
         graph.add_edge(pydot.Edge(course_node, dfw_node, label=f"{results['first_DFW_proportion']:.3f} ({results['first_DFW_number']})"))
         graph.add_edge(pydot.Edge(dfw_node, retake_node, label=f"{results['proportion_DFW_repeat']:.3f}"))
+        graph.add_edge(pydot.Edge(dfw_node, did_not_take_next_node, label=f"{1-results['proportion_DFW_repeat']:.3f}"))
         graph.add_edge(pydot.Edge(retake_node, pass_node, label=f"{results['second_pass_proportion']:.3f} ({results['second_pass_number']})"))
+        graph.add_edge(pydot.Edge(retake_node, did_not_take_next_node,label=f"{1-results['second_pass_proportion']:.3f}"))
 
         # Edge for students who pass but do not take the next course
         if index < len(course_sequence) - 1:
@@ -1101,10 +1108,10 @@ def course_sequence_analysis(course_sequence, df, major, node_pie = False):
             graph.add_node(alternate_entry_node)
             graph.add_edge(pydot.Edge(alternate_entry_node, course_node, label=f"{number_alternate_entry}"))
 
-        if previous_course_node:
-            graph.add_edge(pydot.Edge(previous_course_node, course_node, label="Progress"))
+        if previous_pass_node:
+            graph.add_edge(pydot.Edge(previous_pass_node, course_node, label="Progress"))
 
-        previous_course_node = pass_node
+        previous_pass_node = pass_node
 
     # Set graph attributes
     graph.set("nodesep", "1.0")
@@ -1121,6 +1128,78 @@ def course_sequence_analysis(course_sequence, df, major, node_pie = False):
     img = plt.imread(image_filename)
     ax.imshow(img)
     plt.show()
+
+
+# def course_sequence_analysis(course_sequence, df, major, node_pie=False):
+#     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
+#
+#     previous_pass_node = None
+#     for index, course_name in enumerate(course_sequence):
+#         results = analyze_course(course_name, df, major)
+#
+#         # Create nodes for the course
+#         course_node = pydot.Node(course_name, shape="box")
+#         pass_node = pydot.Node(f"Pass {course_name}", label="Pass")
+#         dfw_node = pydot.Node(f"DFW {course_name}", label="DFW")
+#         retake_node = pydot.Node(f"Retake {course_name}", label="Retake")
+#         did_not_take_next_node = pydot.Node(f"Did Not Take Next {course_name}", label="Did Not Take Next")
+#
+#         # Add nodes to the graph
+#         graph.add_node(course_node)
+#         graph.add_node(pass_node)
+#         graph.add_node(dfw_node)
+#         graph.add_node(retake_node)
+#         graph.add_node(did_not_take_next_node)
+#
+#         # Create edges with labels
+#         graph.add_edge(pydot.Edge(course_node, pass_node,
+#                                   label=f"{results['first_pass_proportion']:.3f} ({results['first_pass_number']})"))
+#         graph.add_edge(pydot.Edge(course_node, dfw_node,
+#                                   label=f"{results['first_DFW_proportion']:.3f} ({results['first_DFW_number']})"))
+#         graph.add_edge(pydot.Edge(dfw_node, retake_node, label=f"{results['proportion_DFW_repeat']:.3f}"))
+#         graph.add_edge(pydot.Edge(retake_node, pass_node,
+#                                   label=f"{results['second_pass_proportion']:.3f} ({results['second_pass_number']})"))
+#
+#         # Connect pass node to not taking next course node
+#         if index < len(course_sequence) - 1:
+#             next_course_name = course_sequence[index + 1]
+#             proportion_not_taking_next, number_not_taking_next = calculate_not_taking_next(course_name,
+#                                                                                            next_course_name, df, major)
+#             graph.add_edge(pydot.Edge(pass_node, did_not_take_next_node,
+#                                       label=f"{proportion_not_taking_next:.3f} ({number_not_taking_next})"))
+#
+#         # Node and edge for students entering from an alternate pathway
+#         if index > 0:
+#             prerequisite_course_name = course_sequence[index - 1]
+#             number_alternate_entry = calculate_alternate_entry(course_name, df, major, prerequisite_course_name)
+#             alternate_entry_node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
+#             graph.add_node(alternate_entry_node)
+#             graph.add_edge(
+#                 pydot.Edge(alternate_entry_node, course_node, label=f"Alternate Entry ({number_alternate_entry})"))
+#
+#         if previous_pass_node:
+#             graph.add_edge(pydot.Edge(previous_pass_node, course_node, label="Progress"))
+#
+#         previous_pass_node = pass_node
+#
+#     # Set graph attributes
+#     graph.set("nodesep", "1.0")
+#
+#     # Save or render the graph
+#     image_filename = "course_sequence_attempts_graph.png"
+#     graph.write_png(image_filename)
+#
+#     # Display the graph
+#     fig = plt.figure(figsize=(10, 10))
+#     fig.suptitle(f"Course Sequence Analysis for {major} Majors", fontsize=16)
+#     ax = fig.add_subplot(111)
+#     ax.axis('off')
+#     img = plt.imread(image_filename)
+#     ax.imshow(img)
+#     plt.show()
+#
+#     return image_filename  # Return the path to the saved image
+
 
 #2023-11-01 (Paul Ulrich/ChatGPT4)
 def track_major_change(initial_df, demographics_df, range_first_term_start = 200501, range_first_term_stop = 203001, matric_term_earliest = 200501, initial_major='BIO'):
@@ -1159,3 +1238,91 @@ def track_major_change(initial_df, demographics_df, range_first_term_start = 200
     print(f"{missing_count} students don't have a corresponding demographic entry for Fall of their third year.")
 
     return result_df[['SDSTUDEMOG_TERM', 'Student_ID', 'SDSTUMAIN_MAJOR', 'SDSTUGPA_GPA_INST', 'SDSTUMAIN_MATRIC_TERM', 'SDSTUMAIN_MAJOR_3rdYear', 'Grad_year', 'Grad_term', 'Degree']]
+
+#2023-11-24 Ulrich with ChatGPT4
+#results identical to earlier analysis using 'BIO' as major
+def glm_major_retention_analysis(df_demographics, df_math_grades, df_hsgpa, major='BIO',
+                                 reference_course='PRECALCULUS'):
+    # Filter df_demographics for the specified major
+    major_demographics_df = df_demographics[df_demographics['SDSTUMAIN_MAJOR'] == major]
+    print("Length of major_demographics_df input = ", len(major_demographics_df), " and number of unique students = ",
+          len(major_demographics_df['Student_ID'].unique()))
+    # Merge with math grades using the earliest math course record for each student
+    mask = df_math_grades.groupby('Student_ID')['Reg_Term'].idxmin()
+    first_math_course_df = df_math_grades.loc[mask]
+    merged_df = major_demographics_df.merge(first_math_course_df, on='Student_ID', how='left')
+    merged_df = merged_df[~(merged_df['SDSTUDEMOG_TERM'] > merged_df['Reg_Term'])]
+
+    print("Length of merged_df after merge with first_math_course_df = ", len(merged_df),
+          " and number of unique students = ",
+          len(merged_df['Student_ID'].unique()))
+    # Merge with high school GPA information
+    merged_df = merged_df.merge(df_hsgpa[['Student_ID', 'HS_AVERAGE']], on='Student_ID', how='left')
+
+    # duplicated_df = merged_df[merged_df[['Student_ID', 'HS_AVERAGE']].duplicated(keep = False)]
+    # print(len(duplicated_df))
+    print("Length of merged_df after merge with df_hsgpa = ", len(merged_df), " and number of unique students = ",
+          len(merged_df['Student_ID'].unique()))
+    # merged_df = merged_df[~merged_df[['Student_ID', 'HS_AVERAGE']].duplicated(keep='first')]
+    merged_df = merged_df[~merged_df.duplicated(subset=['Student_ID', 'HS_AVERAGE'], keep='first')]
+
+    # merged_df = merged_df[~merged_df['HS_AVERAGE_y'].isnull()]
+    print("Length of merged_df after merge with df_hsgpa and removal of duplicates = ", len(merged_df),
+          " and number of unique students = ", len(merged_df['Student_ID'].unique()))
+    print(merged_df[merged_df['Student_ID'].duplicated()])
+
+    # Create flags for major retention by the 3rd year and if the student left
+    merged_df['Major_Retention_3rdYear'] = (
+                merged_df['SDSTUMAIN_MAJOR_3rdYear'] == merged_df['SDSTUMAIN_MAJOR']).astype(int)
+    # print(list(merged_df))
+    merged_df['left_by_3rdYear_flag'] = merged_df['SDSTUMAIN_MAJOR_3rdYear'].isnull().astype(int)
+
+    remained_df = merged_df
+
+    # Calculate the number of months difference
+    remained_df['Months_Difference'] = ((remained_df['Reg_Term'] // 100 - remained_df[
+        'SDSTUDEMOG_TERM'] // 100) * 12) + (remained_df['Reg_Term'] % 100 - remained_df['SDSTUDEMOG_TERM'] % 100)
+    print("Initial remained_df length: ", len(remained_df))
+    #print("Number of unique student IDs: ", len(bio_at_third_year_nontransfer_df['Student_ID'].unique()))
+    # Exclude students who never took one of the math courses
+    remained_df = merged_df[~merged_df['Months_Difference'].isnull()]
+    print("After excluding those who never took a math course ", len(remained_df))
+
+    # Drop rows without high school GPA data or who left by 3rd year
+    remained_df = remained_df.dropna(subset=['HS_AVERAGE'])
+    print("After excluding those who don't have a HS GPA: ", len(remained_df))
+    remained_df = remained_df[remained_df['left_by_3rdYear_flag'] == 0]
+    print("After excluding those who left by 3rd year: ", len(remained_df))
+
+    # Exclude honor courses if they exist in the dataset
+    remained_df = remained_df[~remained_df['Reg_Crse_Title'].str.contains(r'\bhon\b', case=False, na=False)]
+    print("After excluding students in honors sections: ", len(remained_df))
+
+    # Generate dummy variables for course titles excluding the reference course
+    course_title_dummies = pd.get_dummies(remained_df['Reg_Crse_Title'], prefix='Course')
+    course_title_dummies.drop(f'Course_{reference_course}', axis=1, inplace=True)
+
+    # Exclude honor courses if they exist in the dataset
+    # course_title_dummies = course_title_dummies.loc[:, ~course_title_dummies.columns.str.contains(r'(?i)\bhon\b')]
+
+    # Prepare the final DataFrame for GLM
+    X = remained_df[['SDSTUGPA_GPA_INST', 'Months_Difference', 'HS_AVERAGE']].join(course_title_dummies)
+
+    # Convert boolean columns to 'int64' if any
+    X = X.astype({col: 'int64' for col in X.select_dtypes(include=['bool']).columns})
+
+    # Drop the 'Reg_Crse_Title' column if it's still present
+    if 'Reg_Crse_Title' in X.columns:
+        X = X.drop('Reg_Crse_Title', axis=1)
+
+    y = remained_df['Major_Retention_3rdYear']
+
+    # Fit the GLM
+    model = sm.GLM(y, X, family=sm.families.Binomial())
+    results_GLM = model.fit()
+
+    return results_GLM
+# Example usage:
+# Assuming you have the required data in the three dataframes: demographics_df, math_grades_df, hsgpa_df
+# result = glm_major_retention_analysis(demographics_df, math_grades_df, hsgpa_df, major='BIO', reference_course='PRECALCULUS')
+# print(result.summary())

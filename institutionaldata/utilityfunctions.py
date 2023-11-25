@@ -167,36 +167,73 @@ def num_grade_normalized(num_grade, institutional_max):
 
 #Utility function: eliminates +/- distinction and various grade indicators
 # developed 20230718 with assistance by ChatGPT3.5
-def letter_grade_simplify(dataframe):
-    grade_mapping = {
-        "A+": "A",
-        "A-": "A",
-        "B+": "B",
-        "B-": "B",
-        "B*": "B",
-        "C+": "C",
-        "C*": "C",
-        "C-": "C",
-        "D+": "D",
-        "D-": "D",
-        "D*": "D",
-        "FSA": "F",
-        "F*": "F",
-        "F^R": "F",
-        "WF": "F",
-        "IF*": "F",
-        "IF": "F",
-        "UF": "F",
-        "W*": "W",
-        "-W": "W",
-        "WM": "W"
-        #WM = military withdrawal
-        #V = audit
-        #N = continuing education grade (Perimeter College, legacy grade?)
-        #@ suffix = dishonesty
-        #% suffix = [don't know]
-        ## suffix = ]don't know]
-    }
+#c_minus_flag is available if the C- grade typically is not passing (as at GSU)
+#c_minus_flag = 1 --> C- = D
+#c_minus_flag = 0 --> C- = C
+def letter_grade_simplify(dataframe, c_minus_flag = 1):
+    if(c_minus_flag == 0):
+        grade_mapping = {
+            "A+": "A",
+            "A-": "A",
+            "B+": "B",
+            "B-": "B",
+            "B*": "B",
+            "C+": "C",
+            "C*": "C",
+            "C-": "C",
+            "C-%": "C",
+            "D+": "D",
+            "D-": "D",
+            "D*": "D",
+            "FSA": "F",
+            "F*": "F",
+            "F^R": "F",
+            "WF": "F",
+            "IF*": "F",
+            "IF": "F",
+            "UF": "F",
+            "W*": "W",
+            "-W": "W",
+            "WM": "W"
+            #WM = military withdrawal
+            #V = audit
+            #N = continuing education grade (Perimeter College, legacy grade?)
+            #@ suffix = dishonesty
+            #% suffix = [don't know]
+            ## suffix = ]don't know]
+        }
+
+    elif (c_minus_flag == 1):
+        grade_mapping = {
+            "A+": "A",
+            "A-": "A",
+            "B+": "B",
+            "B-": "B",
+            "B*": "B",
+            "C+": "C",
+            "C*": "C",
+            "C-": "D",
+            "C-%": "D",
+            "D+": "D",
+            "D-": "D",
+            "D*": "D",
+            "FSA": "F",
+            "F*": "F",
+            "F^R": "F",
+            "WF": "F",
+            "IF*": "F",
+            "IF": "F",
+            "UF": "F",
+            "W*": "W",
+            "-W": "W",
+            "WM": "W"
+            # WM = military withdrawal
+            # V = audit
+            # N = continuing education grade (Perimeter College, legacy grade?)
+            # @ suffix = dishonesty
+            # % suffix = [don't know]
+            ## suffix = ]don't know]
+        }
 
     df_copy = dataframe.copy()
     df_copy['Final_GRDE_Simp'] = df_copy['Final_GRDE'].apply(lambda grade: re.sub(r'[%\^R#@*+-]', '', str(grade)))
