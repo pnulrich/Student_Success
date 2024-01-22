@@ -4,7 +4,7 @@ from tkinter import filedialog as fd
 import tkinter as tk
 import re
 
-#[Utility function] permit simple ciphering of Student_ID numbers
+#[Utility function] permit simple ciphering of Student_ID numbers; depending on input, returns either a dataframe or a string
 #working_df : dataframe where Student_ID is the column to be ciphered
 #cipher : a string of characters length of Student_ID; DON'T FORGET THIS AND DO NOT POST PUBLICALLY
 def scramble_ID(input_data, cipher):
@@ -18,18 +18,20 @@ def scramble_ID(input_data, cipher):
 
         # Check if the input is a dataframe
         if isinstance(input_data, pd.DataFrame):
+            results_df = input_data.copy()
+
             # Ensure the 'Student_ID' column is present
-            if 'Student_ID' not in input_data.columns:
+            if 'Student_ID' not in results_df.columns:
                 print("The dataframe does not have a 'Student_ID' column.")
                 return None
 
             # Scramble IDs for a dataframe
-            input_data["Student_ID"] = (
-                input_data["Student_ID"]
+            results_df["Student_ID"] = (
+                results_df["Student_ID"]
                 .astype(str)
                 .replace(scrambleDict, regex=True)
             )
-            return input_data
+            return results_df
 
         # Check if the input is a string (assuming it's a Student_ID)
         elif isinstance(input_data, str):
@@ -117,10 +119,18 @@ def increment_semester(semester_input):
 #ported from R utility_functions_v2 using ChatCPT 3.5
 def num_grade_institutional(grade):
     simp = -1
-    grade = grade.replace("^R", "")  # Remove the ^R suffix from the grade; At Georgia State University ^R indicates this grade that was replaced later when a student repeated the course and earned a higher grade
+    #grade = grade.replace("^R", "")  # Remove the ^R suffix from the grade; At Georgia State University ^R indicates this grade that was replaced later when a student repeated the course and earned a higher grade
 
     if grade is None:
         return simp
+    # Code all types of withdrawals as -1
+    if 'W' in grade:
+        return simp
+
+    # Manage situations where the transfer indicator (%), academic renewal indicator (#), dishonesty indicator (@), repeat to replace indicator (^R) and asterisk (*)are present
+    if re.search(r'[#%*@^R]', grade):
+        grade = re.sub(r'[#%*@^R]', '', grade)
+
     if grade == "A+":
         simp = 4.33
     elif grade == "A":
@@ -143,6 +153,16 @@ def num_grade_institutional(grade):
         simp = 1
     elif grade == "F":
         simp = 0
+    elif grade == 'IP': #in progress
+        simp = -2
+    elif grade == 'GP': #grade pending
+        simp = -2
+    elif grade == 'GH': #unknown letter grade designation
+        simp = -2
+    elif grade == 'I': #incomplete
+        simp = -2
+    elif grade == 'nan':  # letter grade designation is listed as 'nan' string in data from our data pull
+        simp = -2
     return simp
 
 # [Utility function] Normalizes numeric grade to 4.00 for cross-institution comparison
