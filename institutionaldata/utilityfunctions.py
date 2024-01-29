@@ -305,3 +305,65 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
             return initial_demographics_transfer_df
         elif return_dataframe == 0:
             return list(initial_demographics_transfer_df['Student_ID'])
+
+
+"""
+Function Name: descriptive_course_stats
+Date: 2024/01/29 Paul Ulrich
+
+Description:
+    This function calculates and tabulates descriptive statistics for a given DataFrame, filtered by various criteria,
+    and returns the absolute numbers of students by major at matriculation for a list of courses.
+
+Parameters:
+    df (DataFrame): The input DataFrame containing course and student data.
+    courses (list of str): A list of course codes to analyze.
+    majors (list of str, optional): Filter by majors (default: None).
+    all_attempts (bool, optional): Set to True to consider all attempts, False to consider only first attempts (default: None).
+    start_semester (int, optional): Filter by first semester code;  YYYYMM format (default: None).
+    end_semester (int, optional): Filter by end semester code; YYYYMM format (default: None).
+
+Returns:
+    DataFrame: A DataFrame containing the absolute numbers of students by major at matriculation for the specified courses.
+
+Example Usage:
+    # Assuming 'math_chem_df' is your DataFrame and 'courses' is a list of course codes
+    courses = ['CHEM1211K', 'CHEM1212K']
+    result = descriptive_course_stats(df=math_chem_df, courses=courses, major='Math', start_semester='202201', end_semester='202205')
+"""
+def descriptive_course_stats(df, courses=None, majors= None, all_attempts=None, start_semester=None, end_semester=None):
+
+    df['COURSE'] = df['COURSE_PREFIX'] + df['COURSE_NUMBER'].astype(str) + df['COURSE_SUFFIX'].fillna("")
+    if courses is None:
+        courses = df['COURSE'].unique()
+
+    results = pd.DataFrame(columns=['COURSE', 'MAJOR', 'Student_Count'])
+
+    if majors:
+        df = df[df['MAJOR'].isin(majors)]
+    if start_semester:
+        df = df[df['TERM'] >= start_semester]
+    if end_semester:
+        df = df[df['TERM'] <= end_semester]
+
+    for course in courses:
+        course_df = df[df['COURSE'] == course]
+
+        # Default behavior is to only look at first attempts for the course
+        if all_attempts is None:
+            earliest_semester = course_df.groupby('Student_ID')['TERM'].min().reset_index()
+            # Merge the original DataFrame with the earliest semester information
+            course_df = course_df.merge(earliest_semester, on=['Student_ID', 'TERM'], how='inner')
+
+        # Tabulate the absolute numbers of students by major at matriculation
+        major_counts = course_df.groupby('MAJOR').size().reset_index(name='Student_Count')
+        major_counts['COURSE'] = course
+        major_counts['Proportion'] = (major_counts['Student_Count'] / major_counts['Student_Count'].sum()).round(2)
+        major_counts = major_counts.sort_values(by='Student_Count', ascending=False)
+        results = pd.concat([results, major_counts])
+
+    return results
+# Example usage:
+# Assuming 'math_chem_df' is your DataFrame and 'courses' is a list of course codes
+# courses = ['CHEM1211K', 'CHEM1212K']
+# print(descriptive_course_stats(df=math_chem_df, courses=courses, majors= ['BIO', 'CHM'], start_semester=202201, end_semester=202205))

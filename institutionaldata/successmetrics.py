@@ -1,5 +1,4 @@
 import pandas as pd
-#import institutionaldata.utilityfunctions
 import numpy as np
 
 import institutionaldata.utilityfunctions
@@ -690,123 +689,7 @@ def combine_course_grades_with_demographics(input_demographics_df):
 
     return combined_attempts
 
-#2023-10-18 (PNU): uses data from combine_course_grades_with_demographics() to determine proportions of students who passed course
-#on first attempt by major
-#course_name : string, name of course of interest (e.g., "CALC FOR THE LIFE SCIENCES I")
-#df : dataframe containing grades and demographics
-#major: string, code for major (e.g., "BIO")
-#downstream_course: string, optional parameter for looking at movement to alternate course if DFW on first attempt
-def course_attempts_pygraphviz(course_name, df, major, downstream_course=None):
-    # the following steps were worked out with ChatGPT4 as a way to avoid loss of students who switched their major after first attempt
-    # whether or not this should be done is something to address in our research question. Are we interested in the downstream attempts to take the same course if they left the major?
-    # Step 1: Get first attempts for all students for the course
-    course_df_all_attempts = df[df['Reg_Crse_Title'] == course_name]
-    course_df_all_attempts = course_df_all_attempts.sort_values(by=['Student_ID', 'Reg_Term'])
-    course_df_first_attempts_all = course_df_all_attempts.drop_duplicates(subset=['Student_ID'], keep='first')
-
-    # Step 2: Identify students with desired major in first attempt
-    desired_major_students = course_df_first_attempts_all[course_df_first_attempts_all['StuMajr_Code1'] == major]['Student_ID'].unique()
-
-    # Step 3: Filter all attempts for these students
-    course_df = course_df_all_attempts[course_df_all_attempts['Student_ID'].isin(desired_major_students)]
-    course_df_first_attempts = course_df.drop_duplicates(subset=['Student_ID'], keep='first')
-
-    print(f"Results for {course_name}({len(course_df_first_attempts)} students):")
-    # descriptives for the second attempts
-    first_pass_number = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])])
-    first_pass_proportion = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]) / len(course_df_first_attempts)
-    first_DFW_number = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])])
-    first_DFW_proportion =  len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]) / len(course_df_first_attempts)
-    first_W_number =len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['W'])])
-    first_W_proportion = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['W'])]) / len(course_df_first_attempts)
-
-    print(f"Proportion passing on first attempt: {round(first_pass_proportion,2)} ({first_pass_number} students)")
-    print(f"Proportion DFW on first attempt: {round(first_DFW_proportion,2)} ({first_DFW_number} students)")
-    print(f"Proportion W on first attempt: {round(first_W_proportion,2)} ({first_W_number} students)")
-
-    course_df_repeat_students = course_df[course_df.duplicated(subset=['Student_ID'], keep=False)]
-    course_df_second_attempts = course_df_repeat_students[course_df_repeat_students.duplicated(subset=['Student_ID'], keep='first')]
-
-    #descriptives for the second attempts
-    proportion_DFW_repeat = len(course_df_second_attempts)/first_DFW_number
-    second_pass_number = len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])])
-    second_pass_proportion = len(
-        course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]) / len(
-        course_df_second_attempts)
-    second_DFW_number = len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])])
-    second_DFW_proportion = len(
-        course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]) / len(
-        course_df_second_attempts)
-    # Find students who changed their major in the second attempt
-    changed_major_second_attempt = course_df_second_attempts[course_df_second_attempts['StuMajr_Code1'] != major]['Student_ID'].nunique()
-
-    print(f"\nNumber of second attempts: {len(course_df_second_attempts['Student_ID'].unique())}")
-    print(f"Proportion passing on second attempt: {round(second_pass_proportion,2)} ({second_pass_number})")
-    print(f"Proportion DFW on second attempt: {round(second_DFW_proportion,2)}  ({second_DFW_number})")
-    print(f"\nNumber of students in the second attempt who changed major from {major}: {changed_major_second_attempt}")
-
-    # If a downstream course is specified, check for switches to that course
-    if downstream_course:
-        # Step 4: Identify students who got a DFW on their first attempt for the main course
-        dfw_students = course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]['Student_ID'].unique()
-
-        # Step 5: Check which of these students later switched to the downstream course
-        switched_to_downstream = df[(df['Reg_Crse_Title'] == downstream_course) & df['Student_ID'].isin(dfw_students)]['Student_ID'].unique()
-
-        print(f"\nNumber of students who got a DFW in {course_name} on the first attempt and later switched to '{downstream_course}': {len(switched_to_downstream)}")
-    print("---------------------------")
-
-    # Create a PyGraphviz graph object
-    graph = pgv.AGraph(strict=False, directed=True)
-
-    # Create nodes for different categories
-    #custom_pie_chart_image_path = "pie_chart_image.png"
-    graph.add_node("First Attempt", shape = "box", color = "blue")
-    graph.add_node("Second Attempt", shape="box", color = "blue")
-    graph.add_node("Pass (first attempt)", label = "Pass")
-    graph.add_node("DFW (first attempt)", label="DFW")
-    graph.add_node("Pass (second attempt)", label="Pass")
-    graph.add_node("DFW (second attempt)", label="DFW")
-
-    #Create labels and add edges
-
-
-    label_temp = f"{round(first_pass_proportion,2)} ({first_pass_number})"
-    graph.add_edge("First Attempt", "Pass (first attempt)", label= label_temp)
-
-    label_temp = f"{round(first_DFW_proportion,2)} ({first_DFW_number})"
-    graph.add_edge("First Attempt", "DFW (first attempt)", label= label_temp)
-
-    label_temp = f"{round(proportion_DFW_repeat,2)} ({len(course_df_second_attempts)})"
-    graph.add_edge("DFW (first attempt)", "Second Attempt", label = label_temp)
-
-    label_temp = f"{round(second_pass_proportion,2)} ({second_pass_number})"
-    graph.add_edge("Second Attempt", "Pass (second attempt)", label= label_temp, labelloc = "l")
-
-    label_temp = f"{round(second_DFW_proportion, 2)} ({second_DFW_number})"
-    graph.add_edge("Second Attempt", "DFW (second attempt)", label= label_temp)
-
-    # If a downstream course is specified, add related nodes and edges
-    #if downstream_course:
-    #    graph.add_node(f"DFW in {course_name} and Switched to {downstream_course}")
-    #    graph.add_edge("First Attempt DFW", f"DFW in {course_name} and Switched to {downstream_course}",
-    #                   label=str(len(switched_to_downstream)))
-
-    graph.graph_attr["nodesep"] = "0.3"  # Adjust as needed
-    image_filename = f"{course_name}_attempts_graph.png"
-    graph.draw(image_filename, format="png", prog="dot")
-
-    # Create a figure and save it
-    plt.figure(figsize=(10, 10))
-    plt.title(f"Course Attempt Visualization for {course_name}")
-    plt.axis('off')
-    plt.tight_layout()
-
-    # Load and display the saved image using Matplotlib
-    img = plt.imread(image_filename)
-    plt.imshow(img)
-    plt.show()
-
+#2024-01-29 (PNU): This function is deprecated and replaced with course_sequence_analysis().
 #2023-10-19 (PNU): uses data from combine_course_grades_with_demographics() to determine proportions of students who passed course
 #course_name : string, name of course of interest (e.g., "CALC FOR THE LIFE SCIENCES I")
 #df : dataframe containing grades and demographics
@@ -822,8 +705,9 @@ def course_attempts_pydot(course_name, df, major, downstream_course=None, node_p
     course_df_first_attempts_all = course_df_all_attempts.drop_duplicates(subset=['Student_ID'], keep='first')
 
     # Step 2: Identify students with desired major in first attempt
-    desired_major_students = course_df_first_attempts_all[course_df_first_attempts_all['StuMajr_Code1'] == major][
-        'Student_ID'].unique()
+    ############CAUTION: IS THIS THE CORRECT FILTERING? SHOULDN'T THIS BE FILTERED BY 'MAJOR' instead of 'Stu_Majr_Code1'?############
+    desired_major_students = course_df_first_attempts_all[course_df_first_attempts_all['StuMajr_Code1'] == major]['Student_ID'].unique()
+    ############CAUTION: IS THIS THE CORRECT FILTERING? SHOULDN'T THIS BE FILTERED BY 'MAJOR' instead of 'Stu_Majr_Code1'?############
 
     # Step 3: Filter all attempts for these students
     course_df = course_df_all_attempts[course_df_all_attempts['Student_ID'].isin(desired_major_students)]
@@ -1191,15 +1075,6 @@ def course_sequence_analysis(course_sequence, df, major, node_pie = False):
             graph.add_edge(pydot.Edge(previous_pass_node, course_node,
                                       label=f"{proportion_taking_next:.3f} ({number_taking_next})"))
 
-
-        #if previous_pass_node:
-            #prerequisite_course_name = course_sequence[index -1]
-            #print(prerequisite_course_name)
-            #print(course_name)
-            #proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next = calculate_not_taking_next(
-            #    prerequisite_course_name, course_name, df, major)
-            #graph.add_edge(pydot.Edge(previous_pass_node, course_node, label=f"{proportion_taking_next:.3f} ({number_taking_next})"))
-
         previous_pass_node = pass_node
 
     # Set graph attributes
@@ -1217,77 +1092,6 @@ def course_sequence_analysis(course_sequence, df, major, node_pie = False):
     img = plt.imread(image_filename)
     ax.imshow(img)
     plt.show()
-
-
-# def course_sequence_analysis(course_sequence, df, major, node_pie=False):
-#     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
-#
-#     previous_pass_node = None
-#     for index, course_name in enumerate(course_sequence):
-#         results = analyze_course(course_name, df, major)
-#
-#         # Create nodes for the course
-#         course_node = pydot.Node(course_name, shape="box")
-#         pass_node = pydot.Node(f"Pass {course_name}", label="Pass")
-#         dfw_node = pydot.Node(f"DFW {course_name}", label="DFW")
-#         retake_node = pydot.Node(f"Retake {course_name}", label="Retake")
-#         did_not_take_next_node = pydot.Node(f"Did Not Take Next {course_name}", label="Did Not Take Next")
-#
-#         # Add nodes to the graph
-#         graph.add_node(course_node)
-#         graph.add_node(pass_node)
-#         graph.add_node(dfw_node)
-#         graph.add_node(retake_node)
-#         graph.add_node(did_not_take_next_node)
-#
-#         # Create edges with labels
-#         graph.add_edge(pydot.Edge(course_node, pass_node,
-#                                   label=f"{results['first_pass_proportion']:.3f} ({results['first_pass_number']})"))
-#         graph.add_edge(pydot.Edge(course_node, dfw_node,
-#                                   label=f"{results['first_DFW_proportion']:.3f} ({results['first_DFW_number']})"))
-#         graph.add_edge(pydot.Edge(dfw_node, retake_node, label=f"{results['proportion_DFW_repeat']:.3f}"))
-#         graph.add_edge(pydot.Edge(retake_node, pass_node,
-#                                   label=f"{results['second_pass_proportion']:.3f} ({results['second_pass_number']})"))
-#
-#         # Connect pass node to not taking next course node
-#         if index < len(course_sequence) - 1:
-#             next_course_name = course_sequence[index + 1]
-#             proportion_not_taking_next, number_not_taking_next = calculate_not_taking_next(course_name,
-#                                                                                            next_course_name, df, major)
-#             graph.add_edge(pydot.Edge(pass_node, did_not_take_next_node,
-#                                       label=f"{proportion_not_taking_next:.3f} ({number_not_taking_next})"))
-#
-#         # Node and edge for students entering from an alternate pathway
-#         if index > 0:
-#             prerequisite_course_name = course_sequence[index - 1]
-#             number_alternate_entry = calculate_alternate_entry(course_name, df, major, prerequisite_course_name)
-#             alternate_entry_node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
-#             graph.add_node(alternate_entry_node)
-#             graph.add_edge(
-#                 pydot.Edge(alternate_entry_node, course_node, label=f"Alternate Entry ({number_alternate_entry})"))
-#
-#         if previous_pass_node:
-#             graph.add_edge(pydot.Edge(previous_pass_node, course_node, label="Progress"))
-#
-#         previous_pass_node = pass_node
-#
-#     # Set graph attributes
-#     graph.set("nodesep", "1.0")
-#
-#     # Save or render the graph
-#     image_filename = "course_sequence_attempts_graph.png"
-#     graph.write_png(image_filename)
-#
-#     # Display the graph
-#     fig = plt.figure(figsize=(10, 10))
-#     fig.suptitle(f"Course Sequence Analysis for {major} Majors", fontsize=16)
-#     ax = fig.add_subplot(111)
-#     ax.axis('off')
-#     img = plt.imread(image_filename)
-#     ax.imshow(img)
-#     plt.show()
-#
-#     return image_filename  # Return the path to the saved image
 
 
 #2023-11-01 (Paul Ulrich/ChatGPT4)
