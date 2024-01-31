@@ -11,7 +11,7 @@ import datetime
 import pydot
 import pygraphviz as pgv
 import statsmodels.api as sm
-
+from matplotlib.backends.backend_pdf import PdfPages
 
 #Determine the number of students who were retained in a major since the semester of matriculation
 #major_code : 'BIO', 'CHM', etc
@@ -1465,3 +1465,92 @@ def process_math_chem_data(input_df, course_prefix, course_number):
 
     # Finally, return the processed DataFrame
     return first_attempt_df
+
+
+
+
+   """
+    Plots stacked bar charts of specified proportions by course and major.
+
+    This function iterates through each course and creates a stacked bar chart
+    for each specified proportion within the course. Each bar represents a major,
+    and the stacks represent the specified proportions within that major.
+    The charts can be saved to a multi-page PDF if desired.
+
+    Args:
+        df (DataFrame): The DataFrame containing the course data.
+        proportions_to_plot (list of str): The list of proportion column names to be plotted.
+        pdf_filename (str, optional): The filename for the output PDF. If None, the charts
+                                      will not be saved to a PDF. Default is None.
+        save_as_pdf (bool, optional): If True, and a pdf_filename is provided, the charts will
+                                      be saved to a multi-page PDF. If False, the charts will
+                                      be displayed on screen. Default is False.
+
+    Returns:
+        None: The function does not return a value. It either saves the charts to a PDF or displays them on screen.
+
+    Example:
+        plot_proportions_by_course(
+            df=my_dataframe,
+            proportions_to_plot=['Proportion_Female', 'Proportion_Male'],
+            pdf_filename='course_proportions.pdf',
+            save_as_pdf=True
+        )
+    """
+def plot_proportions_by_course(df, proportions_to_plot, pdf_filename=None, save_as_pdf=False):
+    unique_courses = df['COURSE'].unique()
+    unique_courses.sort()
+    num_courses = len(unique_courses)
+
+    if save_as_pdf and pdf_filename:
+        pdf = PdfPages(pdf_filename)
+
+    for proportion in proportions_to_plot:
+        # Calculate the number of rows needed for the subplots
+        num_rows = (num_courses - 1) // 3 + 1
+
+        # Set up the figure and axes
+        fig, axs = plt.subplots(num_rows, 3,
+                                figsize=(20, 5 * num_rows))  # Adjusted the figsize based on the number of courses
+
+        # If there's only one chart, it will not be in a 2D array format. This ensures that axs is always a 2D array.
+        if num_courses == 1:
+            axs = [axs]
+
+        # Flatten the axes array for easy indexing
+        axs_flat = axs.ravel()
+
+        for idx, course in enumerate(unique_courses):
+            course_df = df[df['COURSE'] == course]
+            course_df = course_df.sort_values(by='Proportion_Total', ascending=False).head(10)
+
+            # Calculate relative proportions for the proportion of interest
+            proportion_height = course_df[proportion] * course_df['Proportion_Total']
+            complement_height = (1 - course_df[proportion]) * course_df['Proportion_Total']
+
+            # Stacked bar chart
+            label = proportion.split("Proportion_")[1]
+            axs_flat[idx].bar(course_df['Major_Matriculation'], proportion_height, label=label)
+            axs_flat[idx].bar(course_df['Major_Matriculation'], complement_height, bottom=proportion_height)
+            axs_flat[idx].set_title(course)
+            axs_flat[idx].set_ylabel('Proportion')
+            axs_flat[idx].set_xlabel('Major')
+            axs_flat[idx].set_ylim(0, 0.8)
+            axs_flat[idx].legend()
+
+        # Hide any unused subplot axes
+        for idx in range(num_courses, 3 * num_rows):
+            axs_flat[idx].axis('off')
+
+        plt.subplots_adjust(left=0.05, bottom=0.05, right=0.95, top=0.9, wspace=0.2, hspace=0.3)
+        plt.suptitle(proportion, fontsize=20)
+
+        if save_as_pdf and pdf_filename:
+            pdf.savefig(fig)  # saves the current figure into a pdf page
+            plt.close(fig)  # close the figure to avoid too many open figures
+
+        else:
+            plt.show()  # display the figure
+
+    if save_as_pdf and pdf_filename:
+        pdf.close()

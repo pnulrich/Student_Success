@@ -307,40 +307,54 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
             return list(initial_demographics_transfer_df['Student_ID'])
 
 
-"""
+"""""
 Function Name: descriptive_course_stats
-Date: 2024/01/29 Paul Ulrich
+Author: Paul Ulrich
+Date: 2024/01/29
 
 Description:
-    This function calculates and tabulates descriptive statistics for a given DataFrame, filtered by various criteria,
-    and returns the absolute numbers of students by major at matriculation for a list of courses.
+    This function generates a summary of descriptive statistics for courses taken by students, 
+    with the ability to filter by specific courses, majors, attempts, semesters, and associate flags. 
+    It calculates the count and proportion of students by major, the average grade excluding certain values, 
+    and demographic proportions such as first-generation college status, gender, and Pell Grant eligibility.
 
 Parameters:
     df (DataFrame): The input DataFrame containing course and student data.
-    courses (list of str): A list of course codes to analyze.
-    majors (list of str, optional): Filter by majors (default: None).
-    all_attempts (bool, optional): Set to True to consider all attempts, False to consider only first attempts (default: None).
-    start_semester (int, optional): Filter by first semester code;  YYYYMM format (default: None).
-    end_semester (int, optional): Filter by end semester code; YYYYMM format (default: None).
+    courses (list of str, optional): A list of course codes to include in the analysis. Defaults to all courses if None.
+    majors (list of str, optional): A list of majors to filter the analysis. Defaults to None, which includes all majors.
+    all_attempts (bool, optional): When set to True, considers all attempts for the course; 
+                                   when False, considers only the first attempt. Defaults to None, which uses the default behavior.
+    start_semester (int, optional): The starting semester code (in YYYYMM format) to filter the analysis. Defaults to None.
+    end_semester (int, optional): The ending semester code (in YYYYMM format) to filter the analysis. Defaults to None.
+    associates (bool, optional): When set to True, includes courses marked with a flag in the 'flag_course_PC' field; 
+                                 when False, excludes these courses. Defaults to False.
 
 Returns:
-    DataFrame: A DataFrame containing the absolute numbers of students by major at matriculation for the specified courses.
+    DataFrame: A summary DataFrame with the following columns: 'COURSE', 'Major_Matriculation', 'Student_Count', 
+               'Proportion_Total', 'Average_Num_GRDE', 'Proportion_First_Gen', 'Proportion_Female', 
+               and 'Proportion_Pell_Eligible'.
 
 Example Usage:
-    # Assuming 'math_chem_df' is your DataFrame and 'courses' is a list of course codes
     courses = ['CHEM1211K', 'CHEM1212K']
-    result = descriptive_course_stats(df=math_chem_df, courses=courses, major='Math', start_semester='202201', end_semester='202205')
+    results = descriptive_course_stats(
+        df=math_chem_df, 
+        courses=courses, 
+        majors=['BIO', 'CHM'], 
+        start_semester=202201, 
+        end_semester=202205
+    )
+    print(results)
 """
-def descriptive_course_stats(df, courses=None, majors= None, all_attempts=None, start_semester=None, end_semester=None):
+def descriptive_course_stats(df, courses=None, majors= None, all_attempts=None, start_semester=None, end_semester=None, associates = False):
 
     df['COURSE'] = df['COURSE_PREFIX'] + df['COURSE_NUMBER'].astype(str) + df['COURSE_SUFFIX'].fillna("")
     if courses is None:
         courses = df['COURSE'].unique()
 
-    results = pd.DataFrame(columns=['COURSE', 'MAJOR', 'Student_Count'])
+    results = pd.DataFrame(columns=['COURSE', 'Major_Matriculation', 'Student_Count', 'Proportion_Total'])
 
     if majors:
-        df = df[df['MAJOR'].isin(majors)]
+        df = df[df['Major_Matriculation'].isin(majors)]
     if start_semester:
         df = df[df['TERM'] >= start_semester]
     if end_semester:
@@ -355,10 +369,34 @@ def descriptive_course_stats(df, courses=None, majors= None, all_attempts=None, 
             # Merge the original DataFrame with the earliest semester information
             course_df = course_df.merge(earliest_semester, on=['Student_ID', 'TERM'], how='inner')
 
+        if associates == False:
+            course_df = course_df[course_df['flag_course_PC'] == 0]
+
         # Tabulate the absolute numbers of students by major at matriculation
-        major_counts = course_df.groupby('MAJOR').size().reset_index(name='Student_Count')
+        major_counts = course_df.groupby('Major_Matriculation').size().reset_index(name='Student_Count')
         major_counts['COURSE'] = course
-        major_counts['Proportion'] = (major_counts['Student_Count'] / major_counts['Student_Count'].sum()).round(2)
+        major_counts['Proportion_Total'] = (major_counts['Student_Count'] / major_counts['Student_Count'].sum()).round(3)
+
+        # Calculate the average Num_GRDE, excluding -2 and -1
+        valid_grades = course_df[course_df['Num_GRDE'] >= 0]
+        avg_grade = valid_grades.groupby('Major_Matriculation')['Num_GRDE'].mean().round(2).reset_index(name='Average_Num_GRDE')
+        major_counts = major_counts.merge(avg_grade, on='Major_Matriculation', how='left')
+
+        # Calculate Proportion_First_Gen
+        proportion_first_gen = course_df.groupby('Major_Matriculation')['FIRST_GENERATION_IND'].mean().round(2)
+        major_counts = major_counts.merge(proportion_first_gen, on='Major_Matriculation', how='left')
+        major_counts.rename(columns={'FIRST_GENERATION_IND': 'Proportion_First_Gen'}, inplace=True)
+
+        # Calculate Proportion_Female
+        proportion_female = course_df.groupby('Major_Matriculation')['SEX'].mean().round(2)
+        major_counts = major_counts.merge(proportion_female, on='Major_Matriculation', how='left')
+        major_counts.rename(columns={'SEX': 'Proportion_Female'}, inplace=True)
+
+        # Calculate Proportion_Pell_Eligible
+        proportion_pell_eligible = course_df.groupby('Major_Matriculation')['PELL_ELIGIBLE_IND'].mean().round(2)
+        major_counts = major_counts.merge(proportion_pell_eligible, on='Major_Matriculation', how='left')
+        major_counts.rename(columns={'PELL_ELIGIBLE_IND': 'Proportion_Pell_Eligible'}, inplace=True)
+
         major_counts = major_counts.sort_values(by='Student_Count', ascending=False)
         results = pd.concat([results, major_counts])
 
