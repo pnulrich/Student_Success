@@ -256,7 +256,7 @@ def letter_grade_simplify(dataframe, c_minus_flag = 1):
         }
 
     df_copy = dataframe.copy()
-    df_copy['Final_GRDE_Simp'] = df_copy['Final_GRDE'].apply(lambda grade: re.sub(r'[%\^R#@*+-]', '', str(grade)))
+    df_copy['Final_GRDE_Simp'] = df_copy['Final_GRDE'].apply(lambda grade: re.sub(r'[%\^R#@*]', '', str(grade)))
     df_copy['Final_GRDE_Simp'] = df_copy['Final_GRDE_Simp'].map(grade_mapping).fillna(df_copy['Final_GRDE_Simp'])
 
     return df_copy
