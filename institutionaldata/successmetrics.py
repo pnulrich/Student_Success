@@ -632,32 +632,26 @@ def combine_course_grades_with_demographics(input_demographics_df):
     return combined_attempts
 
 #2023-10-27 Modified base code with ChatGPT4.0 to create subsequent course analysis work
-#this is likely not a necessary extra function and only has minor returning differences
 #2024-01-19 Revised and improved calculations because proportions of retakes were incorrect; used lots print statements to follow calculations
+#2024-02-21 Ironed out inconsistencies in numbers that occurred due to inaccurate filtering, counting, and anomalous student scenarios
 def analyze_course(course_name, df, major_matriculation, prerequisite_course = False, node_pie = False):
     # Check if DataFrame is empty
     if df.empty:
         print("DataFrame is empty.")
         return None
 
-    print(len(df))
     # Step 1: Get all attempts for the course
     course_df_all_attempts = df[(df['Reg_Crse_Title'] == course_name)]  # the reason we don't filter by major yet is because students in major at first attempt may switch to another major later
     course_df_all_attempts = course_df_all_attempts.sort_values(by=['Student_ID', 'Reg_Term'], ascending=[True, True])
     print(f"Total attempts for {course_name}: {len(course_df_all_attempts)}")
-    # course_df_all_attempts = df[(df['Reg_Crse_Title'] == course_name) & (df['Major'] == major)]
-
-    # print(f"Total attempts for {major} majors in {course_name}: {len(course_df_all_attempts)}")
 
     # Check if there are no attempts for the course
     if course_df_all_attempts.empty:
         print(f"No attempts found for {course_name}.")
         return None
 
-    # print(list(course_df_all_attempts))
     course_df_first_attempts_all = course_df_all_attempts.drop_duplicates(subset=['Student_ID'], keep='first')
     print(f"Number of unique students in first attempt of {course_name}: {len(course_df_first_attempts_all)}")
-
 
     # Step 2: Identify students with desired major in first attempt
     desired_major_students = course_df_first_attempts_all[(course_df_first_attempts_all['MAJOR_Matriculation'] == major_matriculation)]['Student_ID'].unique()
@@ -668,90 +662,29 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course = F
     # Step 3: Filter all attempts for these students
     course_df = course_df_all_attempts[course_df_all_attempts['Student_ID'].isin(desired_major_students)]
     course_df_first_attempts = course_df.drop_duplicates(subset=['Student_ID'], keep='first')
-    #print(len(course_df_first_attempts))
-    #print(len(course_df_first_attempts['Student_ID'].unique())) # # of Student_ID matches number of lines; no duplications
 
     # Descriptives for the first attempts
     first_pass_number = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])])
     print(f"First pass number : {first_pass_number}")
-    #first_pass_studentIDs = course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])][
-    #    'Student_ID']
-    #first_pass_studentIDs = course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]
-    #print(first_pass_studentIDs)
-    #first_pass_studentIDs.to_csv('first_pass_studentIDs.csv')
-    #print(first_pass_studentIDs['Student_ID'])
+
     first_pass_proportion = first_pass_number / len(course_df_first_attempts) if len(course_df_first_attempts) > 0 else 0
-    # first_DFW_students = course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]['Student_ID'].unique()
-
-
-    #2024-02-14 OLD CODE replaced with accurate measures
     first_DFW_number = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])])
     print(f"First DFW number : {first_DFW_number}")
-
-
-
-
-    #print(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]['Final_GRDE'].unique())
-    #first_DFW_studentIDs = course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])][
-    #    'Student_ID']
-    #first_DFW_studentIDs = course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]
-    #print(first_DFW_studentIDs)
-    #first_DFW_studentIDs.to_csv('first_DFW_studentIDs.csv')
-    #print(first_DFW_studentIDs['Student_ID'])
-    # WE ARE MISSING 1 OF THE 2781 BIO majors in first attempt; 745+ 2035 = 2780; There is an "N" grade value in the dataset (this is a continuing education student who needs to be filtered out)
-    # print(course_df_first_attempts['Final_GRDE_Simp'].unique())
-    # print(first_pass_number)
-    # print(first_pass_proportion)
-    # print(first_DFW_number)
-
-
-
-    #2024-02-12 OLD CODE REPLACED WITH ACCURATE COUNTING
     first_DFW_proportion = first_DFW_number / len(course_df_first_attempts) if len(course_df_first_attempts) > 0 else 0
-    # print(first_DFW_proportion)
 
     # Repeat analysis for students who did not pass the first time
     course_df_repeat_attempts_all = course_df[course_df.duplicated(subset=['Student_ID'], keep=False)]
     #print("Number of all repeats who did not pass the first time : ", len(course_df_repeat_attempts_all))
     print("Number of all unique students who did not pass the first time :", len(course_df_repeat_attempts_all['Student_ID'].unique()))
     course_df_second_attempts = course_df_repeat_attempts_all[course_df_repeat_attempts_all.duplicated(subset=['Student_ID'], keep='first')]
-    #second_attempt_number = len(course_df_second_attempts)
-    #print(len(course_df_second_attempts))
 
-    # Descriptives for the second attempts
-    #proportion_DFW_repeat = len(course_df_second_attempts) / first_DFW_number if first_DFW_number > 0 else 0
-    #print(proportion_DFW_repeat)
-
-    # 2024-02-14: OLD CODE REPLACED WITH ACCURATE COUNTING
-    # #print(course_df_second_attempts['Final_GRDE_Simp'].unique())
-    # second_pass_number = len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])])
-    # print("Number of second attempts calculated in second_pass_number : ", second_pass_number)
-    # #print("Number of all repeats who passed on second attempt : ", second_pass_number)
-    # second_pass_studentIDs = course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]
-    # print("Number of unique students who passed second attempt :", len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]['Student_ID'].unique()))
-    # #second_pass_studentIDs.to_csv('second_pass_studentIDs.csv')
-    # #print(second_pass_studentIDs['Student_ID'])
-    # second_pass_proportion = second_pass_number / len(course_df_second_attempts) if len(course_df_second_attempts) > 0 else 0
-    # second_DFW_number = len(course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])])
-    # second_DFW_proportion = second_DFW_number / len(course_df_second_attempts) if len(course_df_second_attempts) > 0 else 0
-    # second_DFW_studentIDs = course_df_second_attempts[course_df_second_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]
-
-    print("#################Current course is:", course_name)
-    #filtered_df = df[df['Reg_Crse_Title'] == course_name]
+    print("Current course is:", course_name)
     # Step 2: Filter to include only those students who attempted the course more than once for the second attempt analysis
     grouped_second_attempters_df = course_df_all_attempts[course_df_all_attempts['MAJOR_Matriculation'] == major_matriculation].groupby('Student_ID').filter(lambda x: len(x) > 1)
     #grouped_second_attempters_df = filtered_df.groupby('Student_ID').filter(lambda x: len(x) > 1)
     # Step 3: Filter to include only the rows corresponding to the second attempt
     first_attempt_df = grouped_second_attempters_df.groupby('Student_ID').nth(0)
     second_attempt_df = grouped_second_attempters_df.groupby('Student_ID').nth(1)
-
-
-    #first_DFW_number =  first_attempt_df[first_attempt_df['Final_GRDE_Simp'].isin(['D', 'F', 'W'])][
-    #    'Student_ID'].nunique()
-    #first_DFW_proportion = first_DFW_number / len(course_df_repeat_attempts_all['Student_ID'].unique()) if len(
-    #    grouped_second_attempters_df) > 0 else 0
-    print(first_DFW_number)
-    print(first_DFW_proportion)
     print(len(course_df_first_attempts['Student_ID'].unique()))
     proportion_DFW_repeat = len(second_attempt_df) / first_DFW_number if first_DFW_number > 0 else 0
     print(proportion_DFW_repeat)
@@ -764,10 +697,6 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course = F
     second_pass_proportion = second_pass_number / len(grouped_second_attempters_df['Student_ID'].unique()) if len(
         grouped_second_attempters_df) > 0 else 0
 
-    #second_pass_studentIDs = second_attempt_df[second_attempt_df['Final_GRDE_Simp'].isin(['A', 'B', 'C'])]
-    #second_pass_studentIDs.to_csv('second_pass_studentIDs.csv')
-
-
     second_DFW_number = second_attempt_df[second_attempt_df['Final_GRDE_Simp'].isin(['D', 'F', 'W'])][
         'Student_ID'].nunique()
     second_DFW_proportion = second_DFW_number / len(grouped_second_attempters_df['Student_ID'].unique()) if len(
@@ -777,10 +706,6 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course = F
     print(f"Number of students who passed the second attempt of {course_name}: {second_pass_number}")
     print(f"Number of students who failed the second attempt of {course_name}: {second_DFW_number}")
 
-    #print(second_DFW_studentIDs)
-    #second_DFW_studentIDs.to_csv('second_DFW_studentIDs.csv')
-    #print(second_DFW_studentIDs['Student_ID'])
-    #print(second_pass_proportion)
     # Return the results
     ## FUTURE DEVELOPMENT: add proportions for key demographics here if pie_flag is provided as function parameter
     ##if (node_pie):
@@ -805,20 +730,50 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course = F
         "second_DFW_proportion": second_DFW_proportion
     }
 
-    # Use block below to trouble-shoot disparities in numbers in prereq vs numbers in downstream course
-    # if prerequisite_course:
-    #    print(len(course_df_all_attempts[(course_df_all_attempts['Major'] == 'CHM') &(course_df_all_attempts['Reg_Crse_Title'] == prerequisite_course)]))
-    #    print(len(course_df_all_attempts[course_df_all_attempts['Major'] == 'CHM']['Student_ID'].unique()))
-
-    return descriptives, df[df['MAJOR_Matriculation'] == major_matriculation]
+    return descriptives
 
 #2023-10-28 Paul Ulrich, generated with ChatGPT4.0
 def calculate_alternate_entry(course_name, df, major_matriculation, prerequisite_course = False):
+    """
+    Calculate the number of students who entered a course through an alternate entry pathway.
+
+    Parameters
+    ----------
+    course_name : str
+        The name of the course for which alternate entry is being calculated.
+    df : pandas DataFrame
+        The DataFrame containing student enrollment data.
+    major_matriculation : str
+        The major matriculation of the students being considered.
+    prerequisite_course : str, optional
+        The name of the prerequisite course, if applicable. Default is False.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the number of alternate entry students and a list of their Student_IDs.
+
+    Notes
+    -----
+    This function calculates the number of students who are enrolled in the specified course but have not
+    completed the prerequisite course, if provided. It considers students based on their major matriculation.
+
+    This documentation was generated by ChatGPT3.5 using the function code, but I have not checked documentation for accuracy yet.
+
+    Examples
+    --------
+    >>> number, students = calculate_alternate_entry('Course B', df, 'Computer Science', 'Course A')
+    >>> print(f"Number of alternate entry students for Course B: {number}")
+    Number of alternate entry students for Course B: 10
+    >>> print(f"Student IDs for alternate entry students: {students}")
+    Student IDs for alternate entry students: ['ID001', 'ID002', ...]
+    """
+
     # Get students who are in the course but not in the prerequisite course
-    # print(f'course_name : {course_name}')
-    # print(f'major_matriculation : {major_matriculation}')
-    # print(f'prerequisite_course : {prerequisite_course}')
-    # print(df['MAJOR_Matriculation'].unique())
+    print(f'course_name : {course_name}')
+    print(f'major_matriculation : {major_matriculation}')
+    print(f'prerequisite_course : {prerequisite_course}')
+    #print(df['MAJOR_Matriculation'].unique())
 
     students_in_course = df[(df['Reg_Crse_Title'] == course_name) & (df['MAJOR_Matriculation'] == major_matriculation)]['Student_ID'].unique()
     #print(students_in_course)
@@ -830,44 +785,58 @@ def calculate_alternate_entry(course_name, df, major_matriculation, prerequisite
         #print(students_in_prerequisite)
         print(f"Number of unique students in prerequisite {prerequisite_course}: ", len(students_in_prerequisite))
         alternate_entry_students = [student for student in students_in_course if student not in students_in_prerequisite]
-        print(f"Alternate entry students for {course_name}: ", len(alternate_entry_students))
+        print(f"Number of alternate entry students for {course_name}: ", len(alternate_entry_students))
+        #print("Student_ID for alternate_entry students : \n", alternate_entry_students)
 
     # Calculate proportion and number
     #proportion_alternate_entry = len(alternate_entry_students) / len(students_in_course) if len(students_in_course) > 0 else 0
     number_alternate_entry = len(alternate_entry_students)
 
-    return number_alternate_entry
+    return number_alternate_entry, alternate_entry_students
 
 #2023-10-28 Paul Ulrich, generated with ChatGPT4.0
 # 2024-01-19 Paul Ulrich, updated with corrected filtering
-def calculate_not_taking_next(current_course, next_course, df, major_matriculation):
+def calculate_progression_to_next_course(current_course, next_course, df, major_matriculation):
+    """
+     Calculate the progression of students from a current course to a next course.
+
+     Parameters
+     ----------
+     current_course : str
+         The name of the current course.
+     next_course : str
+         The name of the next course.
+     df : pandas DataFrame
+         The DataFrame containing student enrollment data.
+     major_matriculation : str
+         The major matriculation of the students being considered.
+
+     Returns
+     -------
+     tuple
+         A tuple containing the proportion and number of students who passed the current course but did not take the next course,
+         the proportion and number of students who passed the current course and took the next course, and a list of Student_IDs
+         who took the next course.
+
+     Notes
+     -----
+     This function calculates the progression of students from a current course to a next course based on their major matriculation.
+     It analyzes second attempts, counts the number of students who passed or failed the current course, and checks how many of
+     those who passed the current course did not take the next course.
+
+     This documentation was generated by ChatGPT3.5 using the function code, but I have not checked documentation for accuracy yet.
+
+     Examples
+     --------
+     >>> proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, did_take_next = \
+         calculate_progression_to_next_course('Course A', 'Course B', df, 'Computer Science')
+     >>> print(f"Number of students who passed Course A but did not take Course B: {number_not_taking_next}")
+     Number of students who passed Course A but did not take Course B: 10
+     >>> print(f"Proportion of students who passed Course A and took Course B: {proportion_taking_next}")
+     Proportion of students who passed Course A and took Course B: 0.8
+     """
+
     df = df[df['MAJOR_Matriculation'] == major_matriculation]
-
-    # # Step 1: Filter the DataFrame to include only rows where 'Reg_Crse_Title' is equal to 'current_course'
-    # print("Current course is:", current_course)
-    # filtered_df = df[df['Reg_Crse_Title'] == current_course]
-    # filtered_df = filtered_df.groupby('Student_ID').filter(lambda x: len(x) > 1).sort_values(by=['Student_ID', 'Reg_Term'])
-    # # Step 2: Reset the index of the grouped DataFrame to make 'Student_ID' a regular column
-    # filtered_df.reset_index(drop=True, inplace=True)
-    # # Step 3: Filter each group to include only the rows where 'Final_GRDE_Simp' is 'D', 'F', or 'W' and keep only the first entry
-    # failed_first_attempts_df = filtered_df[filtered_df['Final_GRDE_Simp'].isin(['D', 'F', 'W'])].groupby('Student_ID').first()
-    # # Now, filtered_first_attempts_df contains only the first entry for each 'Student_ID' where 'Final_GRDE_Simp' is D, F, or W
-    # print(failed_first_attempts_df)
-    # # Steo 4: Filter filtered_df to include only those students who attempted the course more than once for the second attempt analysis
-    # grouped_second_attempters_df = filtered_df.groupby('Student_ID').filter(lambda x: len(x) > 1)
-    # # Step 5: Create an empty list to store 'Student_ID' with D, F, or W in both first and second attempts
-    # students_with_repeat_dfw = []
-    # # Step 6: Iterate over each 'Student_ID' in filtered_first_attempts_df
-    # for student_id in failed_first_attempts_df.index:
-    #     # Check if the corresponding 'Student_ID' in grouped_df has a D, F, or W grade in the second attempt
-    #     second_attempt_grade = \
-    #     grouped_second_attempters_df[grouped_second_attempters_df['Student_ID'] == student_id].iloc[1][
-    #         'Final_GRDE_Simp']
-    #     # If the second attempt grade is D, F, or W, add the 'Student_ID' to the list
-    #     if second_attempt_grade in ['D', 'F', 'W']:
-    #         students_with_repeat_dfw.append(student_id)
-    # print(f"Number of students who failed both attempts of: {current_course} is {len(students_with_repeat_dfw)}")
-
     # Step 1: Filter the DataFrame to include only rows where 'Reg_Crse_Title' is equal to 'current_course'
     print("Current course is:", current_course)
     filtered_df = df[df['Reg_Crse_Title'] == current_course]
@@ -888,15 +857,9 @@ def calculate_not_taking_next(current_course, next_course, df, major_matriculati
     print(f"Number of students who failed the second attempt of {current_course}: {second_attempt_DFW_number}")
 
     # Step 1: Get students who passed the current course
-    print(len(df))
     passed_students = df[(df['Reg_Crse_Title'] == current_course) & (df['Final_GRDE_Simp'].isin(['A', 'B', 'C']))]['Student_ID'].unique()
-    #passed_students_second_attempt = df[(df['Reg_Crse_Title'] == current_course) & (df['Final_GRDE_Simp'].isin(['D', 'F', 'W'])) & (df['Student_ID'].isin(passed_students))]['Student_ID'].unique()
-    #print("Student_IDs for those who passed on second attempt :", passed_students_second_attempt)
-    #print("Number of students who passed on second attempt :", len(passed_students_second_attempt))
-
     print(f"Total number of students who passed {current_course}: ", len(passed_students))
-    #all_passed_students_df = df[(df['Reg_Crse_Title'] == current_course) & (df['Final_GRDE_Simp'].isin(['A', 'B', 'C']))]
-    #all_passed_students_df.to_csv("all_passed_students.csv")
+
     # Step 2: Check how many of these students did not take the next course
     did_not_take_next = [student for student in passed_students if student not in df[(df['Reg_Crse_Title'] == next_course)]['Student_ID'].unique()]
     did_take_next = [student for student in passed_students if student in df[(df['Reg_Crse_Title'] == next_course)]['Student_ID'].unique()]
@@ -904,9 +867,7 @@ def calculate_not_taking_next(current_course, next_course, df, major_matriculati
     # Filter the DataFrame to include only students who passed and took the next course
     exploratory_df = df[(df['Student_ID'].isin(did_take_next)) & (df['Reg_Crse_Title'] == current_course)]
     second_attempts_dfw = exploratory_df.groupby('Student_ID').filter(lambda x: len(x) == 2 and not any(x['Final_GRDE_Simp'].isin(['A', 'B', 'C'])))
-    #second_attempts_dfw = second_attempts_dfw[second_attempts_dfw['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]
-    print(len(second_attempts_dfw))
-    print(second_attempts_dfw['Student_ID'].unique())
+
     print("Number of students who got a D, F, or W in their second attempt in", current_course, "and took", next_course, ":", len(second_attempts_dfw['Student_ID'].unique()))
     print(f'Number of students who passed {current_course} and took {next_course} : ', len(did_take_next))
 
@@ -917,7 +878,7 @@ def calculate_not_taking_next(current_course, next_course, df, major_matriculati
     number_taking_next = len(did_take_next)
     print(f"Number of students who passed {current_course} but did not take {next_course} : ", number_not_taking_next)
     print(f"Proportion of students who passed but did not take {next_course} : ", proportion_not_taking_next)
-    return proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next
+    return proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, did_take_next
 
 # 2023-10-28 (PNU, modified as extension from course_attempts_pydot() with ChatGPT4.0):
 # uses data from combine_course_grades_with_demographics() to determine proportions of students who passed course
@@ -926,20 +887,82 @@ def calculate_not_taking_next(current_course, next_course, df, major_matriculati
 # major_matriculation: string, code for major (e.g., "BIO")
 # [not implemented yet] node_pie: boolean; optional parameter that can be used to demonstrate population stats (like % female) for a specific node
 def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie = False):
+    """
+     Analyze the progression of students through a sequence of courses.
+
+     Parameters
+     ----------
+     course_sequence : list of str
+         The sequence of courses to analyze.
+     df : pandas DataFrame
+         The DataFrame containing student enrollment data.
+     major_matriculation : str
+         The major matriculation of the students being considered.
+     node_pie : bool, optional
+         Whether to include pie charts in the node labels (default is False).
+
+     Returns
+     -------
+     None
+
+     Notes
+     -----
+     This function analyzes the progression of students through a sequence of courses. It creates a directed graph where nodes represent
+     courses and edges represent various student outcomes such as passing, retaking, or not taking the next course. The graph is saved
+     as an image and displayed.
+
+     This documentation was generated by ChatGPT3.5 using the function code, but I have not checked documentation for accuracy yet.
+
+     Examples
+     --------
+     >>> course_sequence_analysis(['Course A', 'Course B', 'Course C'], df, 'Computer Science')
+     """
+
     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
     next_course_name = course_sequence[1]
     previous_pass_node = None
+
+    #Use MATRIC_TERM value associated with earliest 'TERM' for the 'Student_ID'
+    #Could be better to drag this in from demographics?
+    # Sort the DataFrame by 'Student_ID' and 'TERM' in ascending order
+    df_sorted = df.sort_values(by=['Student_ID', 'TERM'])
+    # Group by 'Student_ID' and get the row with the lowest 'TERM' for each group
+    earliest_major = df_sorted.groupby('Student_ID').first()['MAJOR_Matriculation']
+    # Merge the result back to the original DataFrame based on 'Student_ID'
+    df_merged = df.merge(earliest_major, how='left', on='Student_ID', suffixes=('', '_Earliest'))
+    # Fill missing values in 'MAJOR_Matriculation' with the corresponding values from 'MAJOR_Matriculation_Earliest'
+    df_merged['MAJOR_Matriculation'] = df_merged['MAJOR_Matriculation_Earliest'].fillna(
+        df_merged['MAJOR_Matriculation'])
+    # Drop the auxiliary column 'MAJOR_Matriculation_Earliest'
+    df_merged.drop(columns=['MAJOR_Matriculation_Earliest'], inplace=True)
+    df = df_merged.copy()
+
+
     for index, course_name in enumerate(course_sequence):
         # Analyze the course
-        if index == 0:
-            # print('Courses in non prereq loop : ', df['Reg_Crse_Title'].unique())
-            descriptives, data = analyze_course(course_name, df, major_matriculation)
+        if index == 0:  #if the course is the first in the sequence list
+            descriptives = analyze_course(course_name, df, major_matriculation)
+            proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_progression_to_next_course(
+                course_name, next_course_name, df, major_matriculation)
 
+        if index > 0:   #if the course is not the first in the  sequence list
+            prerequisite_course_name = course_sequence[index - 1]
+            #descriptives, data = analyze_course(course_name, df, major_matriculation, course_sequence[index-1]) ## 2024-02-21 I don't think the last parameter does anything yet
 
-        if index > 0:
-            # print('Courses in prereq loop : ', df['Reg_Crse_Title'].unique())
-            descriptives, data = analyze_course(course_name, df, major_matriculation, course_sequence[index-1])
+            #determine which students entered the course through an alternate route
+            number_alternate_entry, students_in_alternate_entry = calculate_alternate_entry(course_name, df, major_matriculation, prerequisite_course_name)
+            proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_progression_to_next_course(
+                prerequisite_course_name, course_name, df, major_matriculation)
 
+            # for downstream courses, we only want to look at students who either passed the first course or came in through alternate edge
+            # Universities occasionally permit students with a non-passing prereq score to take the next course. In the future, we may
+            # want these students to be illustrated as a separate edge from the DFW node in the prereq into the second course,
+            # but at this point (2024-02-21), they are being excluded
+
+            #analyze the course with only those students who passed and took the subsequent course or came in via alternate route
+            current_course_df = df[(df['Student_ID'].isin(students_who_did_take_next)) | (df['Student_ID'].isin(students_in_alternate_entry))]
+            descriptives = analyze_course(course_name, current_course_df, major_matriculation, course_sequence[
+                index - 1])  ## 2024-02-21 I don't think the last parameter does anything yet
 
         # Create nodes for the course
         course_node = pydot.Node(course_name, shape="box")
@@ -973,26 +996,26 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
         if index < len(course_sequence) - 1:
             next_course_name = course_sequence[index + 1]
             print("Next course name : ", next_course_name)
-            proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next = calculate_not_taking_next(
-                course_name, next_course_name, df, major_matriculation)
+            #proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_not_taking_next(
+            #    course_name, next_course_name, df, major_matriculation)
             print("Number taking next : ", number_taking_next)
             graph.add_edge(pydot.Edge(pass_node, did_not_take_next_node, label=f"{proportion_not_taking_next:.3f} ({number_not_taking_next})"))
 
         # Node and edge for students entering from an alternate pathway
         if index > 0:
-            prerequisite_course_name = course_sequence[index - 1]
+            #prerequisite_course_name = course_sequence[index - 1]
             print(f'The prerequisite course name is {prerequisite_course_name}')
             #print(data['MAJOR_Matriculation'].unique())
-            number_alternate_entry = calculate_alternate_entry(course_name, data, major_matriculation, prerequisite_course_name)
+            #number_alternate_entry, students_in_alternate_entry = calculate_alternate_entry(course_name, data, major_matriculation, prerequisite_course_name)
             alternate_entry_node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
             graph.add_node(alternate_entry_node)
             graph.add_edge(pydot.Edge(alternate_entry_node, course_node, label=f"{number_alternate_entry}"))
 
         if index > 0:
-            prerequisite_course_name = course_sequence[index - 1]
+            #prerequisite_course_name = course_sequence[index - 1]
             print('Prerequisite for : ', course_name, ' is ', prerequisite_course_name)
-            proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next = calculate_not_taking_next(
-                prerequisite_course_name, course_name, df, major_matriculation)
+            #proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_not_taking_next(
+            #   prerequisite_course_name, course_name, df, major_matriculation)
             graph.add_edge(pydot.Edge(previous_pass_node, course_node,
                                       label=f"{proportion_taking_next:.3f} ({number_taking_next})"))
 
