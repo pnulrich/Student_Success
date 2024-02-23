@@ -1,0 +1,34 @@
+# column_mapping.tsv
+# This file is used by utilityfunctions.rename_columns_in_bulk() in order to rename columns to a standardized format
+# for multi-institutional usage. variable_name_project is a column comprised in which standard field names are placed,
+# and variable_name_institution holds comma-separated variants that refer to this variable at any institution. Do not
+# include any white spaces after the comma in the list.
+# The description column is provided so we can write out common definitions
+variable_name_project   variable_name_institution   description
+major_matriculation     MAJOR_MATRICULATION
+major_term              major,SDSTUMAIN_MAJOR,StuMajr_Code1
+major_graduation
+term_matriculation      MATRIC_TERM,SDSTUMAIN_MATRIC_TERM
+student_ID              WHKEY,ID,PantherID,SDSTUMAIN_WHKEY,Student_ID,Pidm
+flag_first_generation   FIRST_GENERATION_IND
+flag_URM
+flag_PELL   PELL_ELIGIBLE_IND
+flag_grad
+course_college  COURSE_COLLEGE
+course_credits  HOURS
+course_instructor   Instr_Name
+course_prefix   COURSE_PREFIX
+course_number   COURSE_NUMBER
+course_suffix   COURSE_SUFFIX
+course_term TERM,SDSTUMAIN_TERM,Reg_Term
+course_title    Reg_Crse_Title
+course_grade_letter    LETTER_GRADE,Final_GRDE
+transfer_hours_matriculation    TRANSFER_HOURS
+demographics_first_generation
+demographics_high_school_GPA    SORHSCH_GPA
+demographics_race   RACE,SDSTUDEMOG_RACE
+demographics_sex    SEX,SDSTUDEMOG_SEX
+demographics_term   SDSTUDEMOG_TERM
+graduation_term
+graduation_date Grad_date
+student_level   STUDENT_LEVEL
