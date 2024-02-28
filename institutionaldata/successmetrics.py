@@ -1,3 +1,4 @@
+import pandas
 import pandas as pd
 import numpy as np
 
@@ -635,14 +636,59 @@ def combine_course_grades_with_demographics(input_demographics_df):
 #2024-01-19 Revised and improved calculations because proportions of retakes were incorrect; used lots print statements to follow calculations
 #2024-02-21 Ironed out inconsistencies in numbers that occurred due to inaccurate filtering, counting, and anomalous student scenarios
 def analyze_course(course_name, df, major_matriculation, prerequisite_course = False, node_pie = False):
+    """
+        Analyze student performance and attempt statistics for a given course.
+
+        Parameters
+        ----------
+        course_name : str
+            Name of the course to analyze (e.g., 'Principles of Chemistry I')
+        df : pandas.DataFrame
+            Input DataFrame containing course data.
+        major_matriculation : str
+            Major for which the analysis is conducted. (e.g., 'CHM')
+        prerequisite_course : str, optional
+            Indicator for whether the course is a prerequisite (default is False).
+        node_pie : bool, optional
+            Indicator for whether to include pie charts for key demographics (default is False).
+
+        Returns
+        -------
+        dict or None
+            A dictionary containing the following descriptive statistics if course attempts exist:
+                - 'first_pass_number': Number of students passing the course on the first attempt.
+                - 'first_pass_proportion': Proportion of students passing the course on the first attempt.
+                - 'first_DFW_number': Number of students receiving a D, F, or W grade on the first attempt.
+                - 'first_DFW_proportion': Proportion of students receiving a D, F, or W grade on the first attempt.
+                - 'proportion_DFW_repeat': Proportion of students repeating the course after initial failure.
+                - 'second_attempt_number': Total number of second attempts for the course.
+                - 'second_pass_number': Number of students passing the course on the second attempt.
+                - 'second_pass_proportion': Proportion of students passing the course on the second attempt.
+                - 'second_DFW_number': Number of students receiving a D, F, or W grade on the second attempt.
+                - 'second_DFW_proportion': Proportion of students receiving a D, F, or W grade on the second attempt.
+            Returns None if no attempts are found for the specified course.
+
+        Notes
+        -----
+        This function analyzes student performance and attempt statistics for a given course. It filters the input DataFrame
+        to include only attempts for the specified course, then calculates descriptive statistics for first attempts, including
+        pass rates and DFW rates. If second attempts exist, it further analyzes the performance on those attempts.
+
+        Example
+        -------
+        To analyze the performance statistics for a course named 'CHEM101' for students majoring in 'Chemistry', you can use:
+        analyze_course(course_name = 'Principles of Chemistry I', df, major_matriculation = 'CHM')
+        """
+
+
     # Check if DataFrame is empty
     if df.empty:
         print("DataFrame is empty.")
         return None
 
     # Step 1: Get all attempts for the course
-    course_df_all_attempts = df[(df['Reg_Crse_Title'] == course_name)]  # the reason we don't filter by major yet is because students in major at first attempt may switch to another major later
-    course_df_all_attempts = course_df_all_attempts.sort_values(by=['Student_ID', 'Reg_Term'], ascending=[True, True])
+    course_df_all_attempts = df[(df['course_title'] == course_name)]  # the reason we don't filter by major yet is because students in major at first attempt may switch to another major later
+    course_df_all_attempts = course_df_all_attempts.sort_values(by=['student_ID', 'course_term'], ascending=[True, True])
     print(f"Total attempts for {course_name}: {len(course_df_all_attempts)}")
 
     # Check if there are no attempts for the course
@@ -650,56 +696,56 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course = F
         print(f"No attempts found for {course_name}.")
         return None
 
-    course_df_first_attempts_all = course_df_all_attempts.drop_duplicates(subset=['Student_ID'], keep='first')
+    course_df_first_attempts_all = course_df_all_attempts.drop_duplicates(subset=['student_ID'], keep='first')
     print(f"Number of unique students in first attempt of {course_name}: {len(course_df_first_attempts_all)}")
 
     # Step 2: Identify students with desired major in first attempt
-    desired_major_students = course_df_first_attempts_all[(course_df_first_attempts_all['MAJOR_Matriculation'] == major_matriculation)]['Student_ID'].unique()
+    desired_major_students = course_df_first_attempts_all[(course_df_first_attempts_all['major_matriculation'] == major_matriculation)]['student_ID'].unique()
 
 
     print(f"Number of unique {major_matriculation} majors  : {len(desired_major_students)}")
 
     # Step 3: Filter all attempts for these students
-    course_df = course_df_all_attempts[course_df_all_attempts['Student_ID'].isin(desired_major_students)]
-    course_df_first_attempts = course_df.drop_duplicates(subset=['Student_ID'], keep='first')
+    course_df = course_df_all_attempts[course_df_all_attempts['student_ID'].isin(desired_major_students)]
+    course_df_first_attempts = course_df.drop_duplicates(subset=['student_ID'], keep='first')
 
     # Descriptives for the first attempts
-    first_pass_number = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['A', 'B', 'C'])])
+    first_pass_number = len(course_df_first_attempts[course_df_first_attempts['course_grade_letter_simp'].isin(['A', 'B', 'C'])])
     print(f"First pass number : {first_pass_number}")
 
     first_pass_proportion = first_pass_number / len(course_df_first_attempts) if len(course_df_first_attempts) > 0 else 0
-    first_DFW_number = len(course_df_first_attempts[course_df_first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])])
+    first_DFW_number = len(course_df_first_attempts[course_df_first_attempts['course_grade_letter_simp'].isin(['D', 'F', 'W'])])
     print(f"First DFW number : {first_DFW_number}")
     first_DFW_proportion = first_DFW_number / len(course_df_first_attempts) if len(course_df_first_attempts) > 0 else 0
 
     # Repeat analysis for students who did not pass the first time
-    course_df_repeat_attempts_all = course_df[course_df.duplicated(subset=['Student_ID'], keep=False)]
+    course_df_repeat_attempts_all = course_df[course_df.duplicated(subset=['student_ID'], keep=False)]
     #print("Number of all repeats who did not pass the first time : ", len(course_df_repeat_attempts_all))
-    print("Number of all unique students who did not pass the first time :", len(course_df_repeat_attempts_all['Student_ID'].unique()))
-    course_df_second_attempts = course_df_repeat_attempts_all[course_df_repeat_attempts_all.duplicated(subset=['Student_ID'], keep='first')]
+    print("Number of all unique students who did not pass the first time :", len(course_df_repeat_attempts_all['student_ID'].unique()))
+    course_df_second_attempts = course_df_repeat_attempts_all[course_df_repeat_attempts_all.duplicated(subset=['student_ID'], keep='first')]
 
     print("Current course is:", course_name)
     # Step 2: Filter to include only those students who attempted the course more than once for the second attempt analysis
-    grouped_second_attempters_df = course_df_all_attempts[course_df_all_attempts['MAJOR_Matriculation'] == major_matriculation].groupby('Student_ID').filter(lambda x: len(x) > 1)
+    grouped_second_attempters_df = course_df_all_attempts[course_df_all_attempts['major_matriculation'] == major_matriculation].groupby('student_ID').filter(lambda x: len(x) > 1)
     #grouped_second_attempters_df = filtered_df.groupby('Student_ID').filter(lambda x: len(x) > 1)
     # Step 3: Filter to include only the rows corresponding to the second attempt
-    first_attempt_df = grouped_second_attempters_df.groupby('Student_ID').nth(0)
-    second_attempt_df = grouped_second_attempters_df.groupby('Student_ID').nth(1)
-    print(len(course_df_first_attempts['Student_ID'].unique()))
+    first_attempt_df = grouped_second_attempters_df.groupby('student_ID').nth(0)
+    second_attempt_df = grouped_second_attempters_df.groupby('student_ID').nth(1)
+    print(len(course_df_first_attempts['student_ID'].unique()))
     proportion_DFW_repeat = len(second_attempt_df) / first_DFW_number if first_DFW_number > 0 else 0
     print(proportion_DFW_repeat)
     # Step 4: Count the number of students who passed and failed in their second attempts
     # proportion_DFW_repeat = len(second_attempt_df) / first_DFW_number if first_DFW_number > 0 else 0
     second_attempt_number = len(second_attempt_df)
     print(len(course_df_second_attempts))
-    second_pass_number = second_attempt_df[second_attempt_df['Final_GRDE_Simp'].isin(['A', 'B', 'C'])][
-        'Student_ID'].nunique()
-    second_pass_proportion = second_pass_number / len(grouped_second_attempters_df['Student_ID'].unique()) if len(
+    second_pass_number = second_attempt_df[second_attempt_df['course_grade_letter_simp'].isin(['A', 'B', 'C'])][
+        'student_ID'].nunique()
+    second_pass_proportion = second_pass_number / len(grouped_second_attempters_df['student_ID'].unique()) if len(
         grouped_second_attempters_df) > 0 else 0
 
-    second_DFW_number = second_attempt_df[second_attempt_df['Final_GRDE_Simp'].isin(['D', 'F', 'W'])][
-        'Student_ID'].nunique()
-    second_DFW_proportion = second_DFW_number / len(grouped_second_attempters_df['Student_ID'].unique()) if len(
+    second_DFW_number = second_attempt_df[second_attempt_df['course_grade_letter_simp'].isin(['D', 'F', 'W'])][
+        'student_ID'].nunique()
+    second_DFW_proportion = second_DFW_number / len(grouped_second_attempters_df['student_ID'].unique()) if len(
         grouped_second_attempters_df) > 0 else 0
 
     # Step 4: Print the results
@@ -746,7 +792,7 @@ def calculate_alternate_entry(course_name, df, major_matriculation, prerequisite
     major_matriculation : str
         The major matriculation of the students being considered.
     prerequisite_course : str, optional
-        The name of the prerequisite course, if applicable. Default is False.
+        The name of the prerequisite course, if applicable. Default is False. (e.g. 'Precalculus')
 
     Returns
     -------
@@ -773,15 +819,15 @@ def calculate_alternate_entry(course_name, df, major_matriculation, prerequisite
     print(f'course_name : {course_name}')
     print(f'major_matriculation : {major_matriculation}')
     print(f'prerequisite_course : {prerequisite_course}')
-    #print(df['MAJOR_Matriculation'].unique())
+    #print(df['major_matriculation'].unique())
 
-    students_in_course = df[(df['Reg_Crse_Title'] == course_name) & (df['MAJOR_Matriculation'] == major_matriculation)]['Student_ID'].unique()
+    students_in_course = df[(df['course_title'] == course_name) & (df['major_matriculation'] == major_matriculation)]['student_ID'].unique()
     #print(students_in_course)
     print(f"Number of unique students in course {course_name}: ", len(students_in_course))
 
     if prerequisite_course:
         # print(df['Reg_Crse_Title'].unique())
-        students_in_prerequisite = set(df[df['Reg_Crse_Title'] == prerequisite_course]['Student_ID'].unique())
+        students_in_prerequisite = set(df[df['course_title'] == prerequisite_course]['student_ID'].unique())
         #print(students_in_prerequisite)
         print(f"Number of unique students in prerequisite {prerequisite_course}: ", len(students_in_prerequisite))
         alternate_entry_students = [student for student in students_in_course if student not in students_in_prerequisite]
@@ -836,39 +882,39 @@ def calculate_progression_to_next_course(current_course, next_course, df, major_
      Proportion of students who passed Course A and took Course B: 0.8
      """
 
-    df = df[df['MAJOR_Matriculation'] == major_matriculation]
+    df = df[df['major_matriculation'] == major_matriculation]
     # Step 1: Filter the DataFrame to include only rows where 'Reg_Crse_Title' is equal to 'current_course'
     print("Current course is:", current_course)
-    filtered_df = df[df['Reg_Crse_Title'] == current_course]
+    filtered_df = df[df['course_title'] == current_course]
     # Step 2: Filter to include only those students who attempted the course more than once for the second attempt analysis
-    grouped_second_attempters_df = filtered_df.groupby('Student_ID').filter(lambda x: len(x) > 1)
+    grouped_second_attempters_df = filtered_df.groupby('student_ID').filter(lambda x: len(x) > 1)
 
     # Step 3: Filter to include only the rows corresponding to the second attempt
-    second_attempt_df = grouped_second_attempters_df.groupby('Student_ID').nth(1)
+    second_attempt_df = grouped_second_attempters_df.groupby('student_ID').nth(1)
 
     # Step 4: Count the number of students who passed and failed in their second attempts
-    second_attempt_pass_number = second_attempt_df[second_attempt_df['Final_GRDE_Simp'].isin(['A', 'B', 'C'])][
-        'Student_ID'].nunique()
-    second_attempt_DFW_number = second_attempt_df[second_attempt_df['Final_GRDE_Simp'].isin(['D', 'F', 'W'])][
-        'Student_ID'].nunique()
+    second_attempt_pass_number = second_attempt_df[second_attempt_df['course_grade_letter_simp'].isin(['A', 'B', 'C'])][
+        'student_ID'].nunique()
+    second_attempt_DFW_number = second_attempt_df[second_attempt_df['course_grade_letter_simp'].isin(['D', 'F', 'W'])][
+        'student_ID'].nunique()
 
     # Step 4: Print the results
     print(f"Number of students who passed the second attempt of {current_course}: {second_attempt_pass_number}")
     print(f"Number of students who failed the second attempt of {current_course}: {second_attempt_DFW_number}")
 
     # Step 1: Get students who passed the current course
-    passed_students = df[(df['Reg_Crse_Title'] == current_course) & (df['Final_GRDE_Simp'].isin(['A', 'B', 'C']))]['Student_ID'].unique()
+    passed_students = df[(df['course_title'] == current_course) & (df['course_grade_letter_simp'].isin(['A', 'B', 'C']))]['student_ID'].unique()
     print(f"Total number of students who passed {current_course}: ", len(passed_students))
 
     # Step 2: Check how many of these students did not take the next course
-    did_not_take_next = [student for student in passed_students if student not in df[(df['Reg_Crse_Title'] == next_course)]['Student_ID'].unique()]
-    did_take_next = [student for student in passed_students if student in df[(df['Reg_Crse_Title'] == next_course)]['Student_ID'].unique()]
+    did_not_take_next = [student for student in passed_students if student not in df[(df['course_title'] == next_course)]['student_ID'].unique()]
+    did_take_next = [student for student in passed_students if student in df[(df['course_title'] == next_course)]['student_ID'].unique()]
 
     # Filter the DataFrame to include only students who passed and took the next course
-    exploratory_df = df[(df['Student_ID'].isin(did_take_next)) & (df['Reg_Crse_Title'] == current_course)]
-    second_attempts_dfw = exploratory_df.groupby('Student_ID').filter(lambda x: len(x) == 2 and not any(x['Final_GRDE_Simp'].isin(['A', 'B', 'C'])))
+    exploratory_df = df[(df['student_ID'].isin(did_take_next)) & (df['course_title'] == current_course)]
+    second_attempts_dfw = exploratory_df.groupby('student_ID').filter(lambda x: len(x) == 2 and not any(x['course_grade_letter_simp'].isin(['A', 'B', 'C'])))
 
-    print("Number of students who got a D, F, or W in their second attempt in", current_course, "and took", next_course, ":", len(second_attempts_dfw['Student_ID'].unique()))
+    print("Number of students who got a D, F, or W in their second attempt in", current_course, "and took", next_course, ":", len(second_attempts_dfw['student_ID'].unique()))
     print(f'Number of students who passed {current_course} and took {next_course} : ', len(did_take_next))
 
     # Step 3: Calculate proportion and number
@@ -925,16 +971,16 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
     #Use MATRIC_TERM value associated with earliest 'TERM' for the 'Student_ID'
     #Could be better to drag this in from demographics?
     # Sort the DataFrame by 'Student_ID' and 'TERM' in ascending order
-    df_sorted = df.sort_values(by=['Student_ID', 'TERM'])
+    df_sorted = df.sort_values(by=['student_ID', 'course_term'])
     # Group by 'Student_ID' and get the row with the lowest 'TERM' for each group
-    earliest_major = df_sorted.groupby('Student_ID').first()['MAJOR_Matriculation']
+    earliest_major = df_sorted.groupby('student_ID').first()['major_matriculation']
     # Merge the result back to the original DataFrame based on 'Student_ID'
-    df_merged = df.merge(earliest_major, how='left', on='Student_ID', suffixes=('', '_Earliest'))
-    # Fill missing values in 'MAJOR_Matriculation' with the corresponding values from 'MAJOR_Matriculation_Earliest'
-    df_merged['MAJOR_Matriculation'] = df_merged['MAJOR_Matriculation_Earliest'].fillna(
-        df_merged['MAJOR_Matriculation'])
-    # Drop the auxiliary column 'MAJOR_Matriculation_Earliest'
-    df_merged.drop(columns=['MAJOR_Matriculation_Earliest'], inplace=True)
+    df_merged = df.merge(earliest_major, how='left', on='student_ID', suffixes=('', '_Earliest'))
+    # Fill missing values in 'major_matriculation' with the corresponding values from 'major_matriculation_Earliest'
+    df_merged['major_matriculation'] = df_merged['major_matriculation_Earliest'].fillna(
+        df_merged['major_matriculation'])
+    # Drop the auxiliary column 'major_matriculation_Earliest'
+    df_merged.drop(columns=['major_matriculation_Earliest'], inplace=True)
     df = df_merged.copy()
 
 
@@ -960,7 +1006,7 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
             # but at this point (2024-02-21), they are being excluded
 
             #analyze the course with only those students who passed and took the subsequent course or came in via alternate route
-            current_course_df = df[(df['Student_ID'].isin(students_who_did_take_next)) | (df['Student_ID'].isin(students_in_alternate_entry))]
+            current_course_df = df[(df['student_ID'].isin(students_who_did_take_next)) | (df['student_ID'].isin(students_in_alternate_entry))]
             descriptives = analyze_course(course_name, current_course_df, major_matriculation, course_sequence[
                 index - 1])  ## 2024-02-21 I don't think the last parameter does anything yet
 
@@ -1005,7 +1051,7 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
         if index > 0:
             #prerequisite_course_name = course_sequence[index - 1]
             print(f'The prerequisite course name is {prerequisite_course_name}')
-            #print(data['MAJOR_Matriculation'].unique())
+            #print(data['major_matriculation'].unique())
             #number_alternate_entry, students_in_alternate_entry = calculate_alternate_entry(course_name, data, major_matriculation, prerequisite_course_name)
             alternate_entry_node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
             graph.add_node(alternate_entry_node)
@@ -1038,106 +1084,121 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
     plt.show()
 
 
-# 2023-11-01 (Paul Ulrich/ChatGPT4)
-def track_major_change(initial_df, demographics_df, range_first_term_start = 200501, range_first_term_stop = 203001, matric_term_earliest = 200501, initial_major='BIO'):
+def track_major_change(initial_demographics_df, demographics_df, range_first_term_start = 200501, range_first_term_stop = 203001, matric_term_earliest = 200501, initial_major='BIO'):
     """
     Track students who started with a specified major and then changed
     to another specified major by the fall of their 3rd year.
 
-    Args:
-    - initial_df (pd.DataFrame): DataFrame containing demographics from first semester students took classes.
+    Parameters:
+    - initial_demographics_df (pd.DataFrame): DataFrame containing demographics from the first semester students took classes.
     - demographics_df (pd.DataFrame): Larger DataFrame containing demographics for all semester data.
-    - initial_major (str): The major to track initially.
-    - range_first_term_stop (int): term code (YYYYMM) representing the last semester a student could have started courses
-    - range_first_term_start (int): term code (YYYYMM) representing the first semester of interest a student could have started courses
-`   - matric_term_earliest (int): term code (YYYYMM) representing the earliest matriculation term that will be included in the dataset
-    Returns:
-    - pd.DataFrame: DataFrame with students' initial major,  major in fall of 3rd year, graduation status, sex, race, ethnicity, birth year, and GPA at first semester.
-    """
+    - initial_major (str): The students major declared their first semester (e.g., 'CHM')
+    - range_first_term_stop (int): Term code (YYYYMM) representing the last semester a student could have started courses.
+    - range_first_term_start (int): Term code (YYYYMM) representing the first semester of interest a student could have started courses.
+    - matric_term_earliest (int): Term code (YYYYMM) representing the earliest matriculation term that will be included in the dataset.
 
+    Returns:
+    - pd.DataFrame: DataFrame with students' initial major, major in fall of 3rd year, graduation status, sex, race, ethnicity, birth year, and GPA at the first semester.
+    """
     # Filter for students with the specified initial major
-    filtered_initial_df = initial_df[(initial_df['SDSTUMAIN_MAJOR'] == initial_major) & (initial_df['SDSTUDEMOG_TERM'] <= range_first_term_stop) &(initial_df['SDSTUDEMOG_TERM'] >= range_first_term_start) & (initial_df['SDSTUMAIN_MATRIC_TERM'] >= matric_term_earliest)].copy()
+    filtered_initial_demographics_df = initial_demographics_df[(initial_demographics_df['major_term'] == initial_major) & (initial_demographics_df['demographics_term'] <= range_first_term_stop) &(initial_demographics_df['demographics_term'] >= range_first_term_start) & (initial_demographics_df['term_matriculation'] >= matric_term_earliest)].copy()
 
     # Calculate the expected term for the fall of the 3rd year
-    filtered_initial_df['Year'] = filtered_initial_df['SDSTUDEMOG_TERM'] // 100
-    filtered_initial_df['ThirdYearFallTerm'] = (filtered_initial_df['Year'] + 2) * 100 + 8
+    filtered_initial_demographics_df['Year'] = filtered_initial_demographics_df['demographics_term'] // 100
+    filtered_initial_demographics_df['ThirdYearFallTerm'] = (filtered_initial_demographics_df['Year'] + 2) * 100 + 8
 
     # Use this term and Student_ID to filter the larger demographics_df
-    third_year_df = demographics_df[demographics_df.set_index(['Student_ID', 'SDSTUDEMOG_TERM']).index.isin(
-        filtered_initial_df.set_index(['Student_ID', 'ThirdYearFallTerm']).index)]
+    third_year_df = demographics_df[demographics_df.set_index(['student_ID', 'demographics_term']).index.isin(
+        filtered_initial_demographics_df.set_index(['student_ID', 'ThirdYearFallTerm']).index)]
 
     # Merge initial_df with third_year_df
-    result_df = filtered_initial_df.merge(third_year_df, on='Student_ID', suffixes=('', '_3rdYear'), how = "left")
+    result_df = filtered_initial_demographics_df.merge(third_year_df, on='student_ID', suffixes=('', '_3rdYear'), how = "left")
 
     # Identify students who don't have a third-year entry
-    missing_third_year = result_df['SDSTUMAIN_MAJOR_3rdYear'].isna()
+    missing_third_year = result_df['major_term_3rdYear'].isna()
     missing_count = missing_third_year.sum()
     print(f"{missing_count} students don't have a corresponding demographic entry for Fall of their third year.")
 
-    return result_df[['SDSTUDEMOG_TERM', 'Student_ID', 'BirthYear', 'SDSTUDEMOG_ETHNICITY_CODE', 'SDSTUDEMOG_RACE', 'SDSTUDEMOG_SEX','SDSTUMAIN_MAJOR', 'SDSTUGPA_GPA_INST', 'SDSTUMAIN_MATRIC_TERM', 'SDSTUMAIN_MAJOR_3rdYear', 'Grad_year', 'Grad_term', 'Degree']]
+    return result_df[['demographics_term', 'student_ID', 'BirthYear', 'SDSTUDEMOG_ETHNICITY_CODE', 'demographics_race', 'demographics_sex','major_term', 'SDSTUGPA_GPA_INST', 'term_matriculation', 'major_term_3rdYear', 'Grad_year', 'Grad_term', 'Degree']]
 
 
 
-#2023-11-29 modification from (2023-11-24 prototype with initial guidance from ChatGPT4 for major retention) to extend to leaving by 3rd year
-#df_demographics: pandas dataframe holding demographics for first semester
-#df_math_grades: pandas dataframe with course scores for courses of interest
-#df_hsgpa: pandas dataframe comprised of high school GPA of students
-#reference_course: course which GLM will benchmark against as baseline; default is precalculus
-#left : defaults to 0, indicating that analysis will be about retention in major; 1, determine predictors for those who left
-def glm_retention_analysis(df_demographics, df_math_grades, df_hsgpa, reference_course='PRECALCULUS', left = 0):
-    if(len(df_demographics['SDSTUMAIN_MAJOR'].unique())>1):
-        print("CAUTION: This function only accepts data for a single major. Your dataset included the following majors: ", df_demographics['SDSTUMAIN_MAJOR'].unique())
-        return
+def glm_retention_analysis(demographics_df, math_grades_df, major_matriculation, reference_course='PRECALCULUS', left = 0):
+    """
+        Perform a Generalized Linear Model (GLM) analysis of retention within the unviersity at year 3 as a function of their first mathematics
+        course and other variables.
 
-    # convert 'SDSTUDEMOG_SEX' data  to categorical where 'F' = 1 and 'M' = 0
-    df_demographics['SDSTUDEMOG_SEX'] = df_demographics['SDSTUDEMOG_SEX'].replace(
-        {'F': 1, 'M': 0}).astype(int)
-    print("Length of major_demographics_df input = ", len(df_demographics), " and number of unique students = ",
-          len(df_demographics['Student_ID'].unique()))
+        Parameters:
+        - demographics_df (DataFrame): DataFrame containing demographic information.
+        - math_grades_df (DataFrame): DataFrame containing math grades information.
+        - major_matriculation (str): students major code at matriculation (e.g, 'CHM').
+        - reference_course (str): Reference course for generating dummy variables. (e.g., 'PRECALCULUS')
+        - left (int): Flag indicating the type of analysis:
+                      - 0 (default): Retention analysis, prediction of retention at the university by Fall of 3rd academic year.
+                      - 1: Predicting students leaving the university.
+
+        Returns:
+        - results_GLM (GLMResults): GLM results object.
+        """
+
+    math_grades_df = math_grades_df[math_grades_df['major_matriculation'] == major_matriculation]
+
+    # convert 'demographics_sex' data  to categorical where 'F' = 1, 'M' = 0, and 'N' = 2
+    # TODO address non-binary sex codes if datasets have sufficient sample size to accommodate
+    math_grades_df.loc[:, 'demographics_sex'] = math_grades_df['demographics_sex'].replace(
+        {'F': 1, 'M': 0, 'N': 2}).astype(int)
+
+    #print(math_grades_df['demographics_sex'].unique())
+    demographics_df = demographics_df.dropna(subset=['demographics_sex'])  # Drop rows with NaN values in the 'demographics_sex' column
+    demographics_df.loc[:,'demographics_sex'] = demographics_df['demographics_sex'].replace({'F': 1, 'M': 0, 'N': 2}).astype(
+        int)
+
+    #print(demographics_df['demographics_sex'].unique())
+
+    print("Length of major_demographics_df input = ", len(demographics_df), " and number of unique students = ",
+          len(demographics_df['student_ID'].unique()))
 
     # Merge with math grades using the earliest math course record for each student
-    mask = df_math_grades.groupby('Student_ID')['Reg_Term'].idxmin()
-    first_math_course_df = df_math_grades.loc[mask]
-    merged_df = df_demographics.merge(first_math_course_df, on='Student_ID', how='left')
-    merged_df = merged_df[~(merged_df['SDSTUDEMOG_TERM'] > merged_df['Reg_Term'])]
+    mask = math_grades_df.groupby('student_ID')['course_term'].idxmin()
+    first_math_course_df = math_grades_df.loc[mask]
+    merged_df = demographics_df.merge(first_math_course_df, on='student_ID', how='left', suffixes=('', '_y'))
+
+    merged_df = merged_df[~(merged_df['demographics_term'] > merged_df['course_term'])]
 
     print("Length of merged_df after merge with first_math_course_df = ", len(merged_df),
           " and number of unique students = ",
-          len(merged_df['Student_ID'].unique()))
-    # Merge with high school GPA information
-    merged_df = merged_df.merge(df_hsgpa[['Student_ID', 'HS_AVERAGE']], on='Student_ID', how='left')
+          len(merged_df['student_ID'].unique()))
 
-    # duplicated_df = merged_df[merged_df[['Student_ID', 'HS_AVERAGE']].duplicated(keep = False)]
-    # print(len(duplicated_df))
-    print("Length of merged_df after merge with df_hsgpa = ", len(merged_df), " and number of unique students = ",
-          len(merged_df['Student_ID'].unique()))
-    # merged_df = merged_df[~merged_df[['Student_ID', 'HS_AVERAGE']].duplicated(keep='first')]
-    merged_df = merged_df[~merged_df.duplicated(subset=['Student_ID', 'HS_AVERAGE'], keep='first')]
+    merged_df = merged_df[~merged_df.duplicated(subset=['student_ID', 'demographics_high_school_GPA'], keep='first')]
 
     # merged_df = merged_df[~merged_df['HS_AVERAGE_y'].isnull()]
     print("Length of merged_df after merge with df_hsgpa and removal of duplicates = ", len(merged_df),
-          " and number of unique students = ", len(merged_df['Student_ID'].unique()))
+          " and number of unique students = ", len(merged_df['student_ID'].unique()))
 
     # Create flags for major retention by the 3rd year and if the student left
     merged_df['Major_Retention_3rdYear'] = (
-                merged_df['SDSTUMAIN_MAJOR_3rdYear'] == merged_df['SDSTUMAIN_MAJOR']).astype(int)
-    merged_df['left_by_3rdYear_flag'] = merged_df['SDSTUMAIN_MAJOR_3rdYear'].isnull().astype(int)
+                merged_df['major_term_3rdYear'] == merged_df['major_matriculation']).astype(int)
+    merged_df['left_by_3rdYear_flag'] = merged_df['major_term_3rdYear'].isnull().astype(int)
 
     # Calculate number of months from start of first semester to the start of the semester of first math course
-    merged_df['Months_Difference'] = ((merged_df['Reg_Term'] // 100 - merged_df[
-        'SDSTUDEMOG_TERM'] // 100) * 12) + (merged_df['Reg_Term'] % 100 - merged_df['SDSTUDEMOG_TERM'] % 100)
+    merged_df['Months_Difference'] = ((merged_df['course_term'] // 100 - merged_df[
+        'demographics_term'] // 100) * 12) + (merged_df['course_term'] % 100 - merged_df['demographics_term'] % 100)
 
     # Exclude students who never took one of the math courses
     merged_df = merged_df[~merged_df['Months_Difference'].isnull()]
     print("After excluding those who never took a math course ", len(merged_df))
 
     # Drop rows without high school GPA data or who left by 3rd year
-    merged_df = merged_df.dropna(subset=['HS_AVERAGE'])
+    merged_df = merged_df.dropna(subset=['demographics_high_school_GPA'])
     print("After excluding those who don't have a HS GPA: ", len(merged_df))
 
     # Exclude honor courses
-    merged_df = merged_df[~merged_df['Reg_Crse_Title'].str.contains(r'\bhon\b', case=False, na=False)]
+    merged_df = merged_df[~merged_df['course_title'].str.contains(r'\bhon\b', case=False, na=False)]
     print("After excluding students in honors sections: ", len(merged_df))
+
+    # Exclude rows without 'SDSTUGPA_GPA_INST' values
+    merged_df = merged_df[~merged_df['SDSTUGPA_GPA_INST'].isna()]
+    print("After excluding students with no institutional GPA for their first semester: ", len(merged_df))
 
     # if we are interested in retention in the major at 3rd year, run GLM with 'Major_Retention_3rdYear' as response variable
     if(left == 0):
@@ -1145,75 +1206,156 @@ def glm_retention_analysis(df_demographics, df_math_grades, df_hsgpa, reference_
         print("After excluding those who left by 3rd year: ", len(remained_df))
 
         # Generate dummy variables for course titles excluding the reference course
-        course_title_dummies = pd.get_dummies(remained_df['Reg_Crse_Title'], prefix='Course')
+        course_title_dummies = pd.get_dummies(remained_df['course_title'], prefix='Course')
+        course_title_sample_sizes = course_title_dummies.sum().to_dict() #this is calculated BEFORE dropping the PRECALC reference course
         course_title_dummies.drop(f'Course_{reference_course}', axis=1, inplace=True)
 
         # Prepare the final DataFrame for GLM
-        X = remained_df[['SDSTUDEMOG_SEX','SDSTUGPA_GPA_INST','Months_Difference', 'HS_AVERAGE']].join(course_title_dummies)
+        X = remained_df[['demographics_sex', 'demographics_age', 'flag_first_generation', 'flag_PELL', 'SDSTUGPA_GPA_INST','Months_Difference', 'demographics_high_school_GPA']].join(course_title_dummies)
+        y = remained_df['Major_Retention_3rdYear']
 
         # Convert boolean columns to 'int64' if any
         X = X.astype({col: 'int64' for col in X.select_dtypes(include=['bool']).columns})
 
-        # Drop the 'Reg_Crse_Title' column if it's still present
-        if 'Reg_Crse_Title' in X.columns:
-            X = X.drop('Reg_Crse_Title', axis=1)
+        # Ensure that 'demographics_high_school_GPA' and 'demographics_sex' are in GLM-compatible types
+        X['demographics_high_school_GPA'] = X['demographics_high_school_GPA'].astype(float)
+        X['demographics_sex'] = X['demographics_sex'].astype(int)
 
-        y = remained_df['Major_Retention_3rdYear']
+        # Drop 'course_title' column if it's still present
+        if 'course_title' in X.columns:
+            X = X.drop('course_title', axis=1)
 
         # Fit the GLM
         model = sm.GLM(y, X, family=sm.families.Binomial())
         results_GLM = model.fit()
+        print('\n', results_GLM.summary(), '\n')
+
+        # Extract coefficients from the summary table and report fold changes
+        coefficients = results_GLM.params
+        p_values = results_GLM.pvalues
+        fold_changes = np.exp(coefficients)
+        print('Fold changes for significant (alpha =  0.05) predictors:')
+        significant_predictors = (p_values<= 0.05)
+        for predictor, fold_change in fold_changes[significant_predictors].items():
+            print(f"{predictor}, Fold Change: {round(fold_change,2)}")
+
+
+        # Print sample sizes
+        sex_sample_sizes = X.groupby('demographics_sex').size().to_dict()
+        first_gen_sample_sizes = X.groupby('flag_first_generation').size().to_dict()
+        pell_sample_sizes = X.groupby('flag_PELL').size().to_dict()
+        print('\nSample sizes:')
+        print("...by course title:")
+        print(course_title_sample_sizes, '\n')
+        print("...by sex:")
+        print(sex_sample_sizes, '\n')
+        print("...by first generation:")
+        print(first_gen_sample_sizes, '\n')
+        print("...by pell eligibility:")
+        print(pell_sample_sizes, "\n ----------------------------------- \n")
         return results_GLM
+
 
     #if we are interested in predictors of students leaving the university,run the GLM with 'left_by_3rdYear_flag' as response variable
     if (left == 1):
         left_df = merged_df
 
         # Generate dummy variables for course titles excluding the reference course
-        course_title_dummies = pd.get_dummies(left_df['Reg_Crse_Title'], prefix='Course')
+        course_title_dummies = pd.get_dummies(left_df['course_title'], prefix='Course')
+        course_title_sample_sizes = course_title_dummies.sum().to_dict() #this is calculated BEFORE dropping the PRECALC reference course
         course_title_dummies.drop(f'Course_{reference_course}', axis=1, inplace=True)
 
         # Prepare the final DataFrame for GLM
-        X = left_df[['SDSTUDEMOG_SEX', 'SDSTUGPA_GPA_INST', 'Months_Difference', 'HS_AVERAGE']].join(
+        X = left_df[['demographics_sex', 'demographics_age', 'flag_first_generation', 'flag_PELL', 'SDSTUGPA_GPA_INST', 'Months_Difference', 'demographics_high_school_GPA']].join(
             course_title_dummies)
+        y = left_df['left_by_3rdYear_flag']
 
         # Convert boolean columns to 'int64' if any
         X = X.astype({col: 'int64' for col in X.select_dtypes(include=['bool']).columns})
 
-        # Drop the 'Reg_Crse_Title' column if it's still present
-        if 'Reg_Crse_Title' in X.columns:
-            X = X.drop('Reg_Crse_Title', axis=1)
+        # Ensure that 'demographics_high_school_GPA' and 'demographics_sex' are in GLM-compatible types
+        X['demographics_high_school_GPA'] = X['demographics_high_school_GPA'].astype(float)
+        X['demographics_sex'] = X['demographics_sex'].astype(int)
 
-        y = left_df['left_by_3rdYear_flag']
+
+        # Drop 'course_title' column if it's still present
+        if 'course_title' in X.columns:
+            X = X.drop('course_title', axis=1)
 
         # Fit the GLM
         model = sm.GLM(y, X, family=sm.families.Binomial())
         results_GLM = model.fit()
+        print("\n\n")
+        print(results_GLM.summary(), "\n")
+
+        # Extract coefficients from the summary table and report fold changes
+        coefficients = results_GLM.params
+        p_values = results_GLM.pvalues
+        fold_changes = np.exp(coefficients)
+        print('Fold changes for significant (alpha =  0.05) predictors:')
+        significant_predictors = (p_values <= 0.05)
+        for predictor, fold_change in fold_changes[significant_predictors].items():
+            print(f"{predictor}, Fold Change: {round(fold_change, 2)}")
+
+        # Print sample sizes
+        sex_sample_sizes = X.groupby('demographics_sex').size().to_dict()
+        first_gen_sample_sizes = X.groupby('flag_first_generation').size().to_dict()
+        pell_sample_sizes = X.groupby('flag_PELL').size().to_dict()
+        print('\nSample sizes:')
+        print("...by course title:")
+        print(course_title_sample_sizes, '\n')
+        print("...by sex:")
+        print(sex_sample_sizes, '\n')
+        print("...by first generation:")
+        print(first_gen_sample_sizes, '\n')
+        print("...by pell eligibility:")
+        print(pell_sample_sizes, "\n ----------------------------------- \n")
+
         return results_GLM
 
-# Example usage:
-# Assuming you have the required data in the three dataframes: demographics_df, math_grades_df, hsgpa_df
-# result = glm_major_retention_analysis(demographics_df, math_grades_df, hsgpa_df, major='BIO', reference_course='PRECALCULUS', left = 0)
-# print(result.summary())
-
-#2024-01-05 creates box and whisker plots for performance in a course by the attempt in the class
-#NOTE: withdrawals are not included
-#data: pandas dataframe holding grades data
-#course_prefix: string; department code for course of interest; e.g., MATH
-#course_number: integer; numeric code for course of interest, e.g., 1111
-#max_attempts: integer; largest number of attempts of a course that we are interested in
-#return_results: default = 0, no return value; 1 = return a dataframe comprised of all student ID's attempt #, and numeric grade
 def plot_attempt_descriptive_stats(data, course_prefix, course_number, max_attempts=4, return_results=0):
+    """
+        Plot descriptive statistics and box plots for course attempts. NOTE: withdrawals are not included in the output
+
+        Parameters
+        ----------
+        data : pandas.DataFrame
+            Input DataFrame containing course data.
+        course_prefix : str
+            Prefix of the course (e.g., CHEM)
+        course_number : int
+            Number of the course (e.g., 2211)
+        max_attempts : int, optional
+            Maximum number of attempts (default is 4).
+        return_results : int, optional
+            Indicator for whether to return results as a DataFrame (default is 0, no results returned).
+
+        Returns
+        -------
+        pandas.DataFrame or None
+            DataFrame containing student ID, attempt number, and course grade numeric if `return_results` is 1,
+            otherwise None.
+
+        Notes
+        -----
+        This function filters the input DataFrame to include only the specified course number and excludes withdrawals
+        (coded as -1) that could skew results. It then calculates descriptive statistics for each attempt and generates
+        box plots to visualize the distribution of course grades across attempts.
+
+        Example usage:
+        plot_attempt_descriptive_stats(math_1111_1113, course_prefix='MATH', course_number=1111, max_attempts=3, return_results=1)
+        """
+
     # Filter the data to include only the specified course number and exclude withdrawals (coded as -1) that would skew results
     course_data = data[
-        (data['COURSE_PREFIX'] == course_prefix) & (data['COURSE_NUMBER'] == course_number) & (data['Num_GRDE'] != -1)]
-    course_data = course_data.sort_values(by=['Student_ID', 'TERM'], ascending=[True, True])
+        (data['course_prefix'] == course_prefix) & (data['course_number'] == course_number) & (data['course_grade_numeric'] != -1)]
+    course_data = course_data.sort_values(by=['student_ID', 'course_term'], ascending=[True, True])
 
     # Initialize an empty list to store the sorted data
     data_list = []
 
     # Group the data by 'Student_ID'
-    grouped_data = course_data.groupby('Student_ID')
+    grouped_data = course_data.groupby('student_ID')
 
     # Initialize lists to store descriptive statistics for each attempt
     descriptive_stats_list = [[] for _ in range(max_attempts)]
@@ -1223,9 +1365,9 @@ def plot_attempt_descriptive_stats(data, course_prefix, course_number, max_attem
         for attempt in range(1, max_attempts + 1):
             if len(group) >= attempt:
                 attempt_data = group.iloc[attempt - 1]
-                descriptive_stats_list[attempt - 1].append(attempt_data['Num_GRDE'])
+                descriptive_stats_list[attempt - 1].append(attempt_data['course_grade_numeric'])
                 if return_results:
-                    data_list.append([student_id, attempt, attempt_data['Num_GRDE']])
+                    data_list.append([student_id, attempt, attempt_data['course_grade_numeric']])
 
     # Print descriptive statistics for each attempt
     #for i, stats in enumerate(descriptive_stats_list):
@@ -1253,134 +1395,208 @@ def plot_attempt_descriptive_stats(data, course_prefix, course_number, max_attem
     plt.show()
 
     # Create a DataFrame from the collected data
-    columns = ['Student_ID', 'Attempt', 'Num_GRDE']
+    columns = ['student_ID', 'Attempt', 'course_grade_numeric']
 
     # send back data
     if return_results:
         return pd.DataFrame(data_list, columns=columns)
 
-# Example usage:
-# Call the function with the DataFrame and specify the course number and maximum attempts
-# plot_attempt_descriptive_stats(math_1111_1113, course_prefix = 'MATH', course_number=1111, max_attempts=3, return_results = 1)
+def glm_effect_of_taking_classes_simultaneously(input_df, dependent_course_prefix, dependent_course_number, predictor_course_prefix, predictor_course_numbers, predictor_high_school_GPA = 0, predictor_sex = 0, predictor_transfer_credit = 0, predictor_first_generation = 0, predictor_pell = 0, associates_program_code = None, dependent_course_suffix = None):
+    """
+    Generalized Linear Model (GLM) for effect of taking certain courses on performance in a dependent course.
 
-def process_math_chem_data(input_df, course_prefix, course_number):
-    course_number = int(course_number)
-    # Drop rows with 'LETTER_GRADE' == 'nan'
-    input_df = input_df[~(input_df['LETTER_GRADE'] == 'nan')]
+    Parameters
+    ----------
+    input_df : pandas.DataFrame
+        Input DataFrame containing course data.
+    dependent_course_prefix : str
+        Prefix of the dependent course (e.g., 'CHEM' or 'BIOL').
+    dependent_course_number : int
+        Number of the dependent course (e.g., 1211).
+    predictor_course_prefix : str
+        Prefix of the predictor courses (e.g., 'CHEM' or 'BIOL').
+    predictor_course_numbers : list
+        Numbers of the predictor courses (e.g., ['1211', '1212', '1213']).
+    predictor_high_school_GPA : int, optional
+        Indicator for whether high school GPA is used as a predictor (default is 0).
+    predictor_transfer_credit : int, optional
+        Indicator for whether transfer credits are considered (default is 0, not included).
+    associates_program_code : str or None, optional
+        Code representing the associate's program (default is None).
+    dependent_course_suffix : str or None, optional
+        Suffix of the dependent course (default is None) (e.g., 'K' or 'L').
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    KeyError
+        If any required column is missing from the DataFrame.
+
+    Notes
+    -----
+    This function fits a Generalized Linear Model (GLM) to assess the effect of taking certain courses simultaneously on the performance in a dependent course. It preprocesses the input DataFrame, filtering rows, handling missing values, and creating necessary flags for analysis. Then, it fits the GLM model and calculates sample sizes for each course combination.
+
+    """
+
+    dependent_course_number = int(dependent_course_number)
+
+    # Drop rows with 'course_grade_letter' == 'nan'
+    input_df = input_df[~(input_df['course_grade_letter'] == 'nan')]
 
     # Remove duplicate rows
     input_df = input_df[~input_df.duplicated(
-        subset=['Student_ID', 'TERM', 'COURSE_PREFIX', 'COURSE_SUFFIX', 'COURSE_NUMBER', 'LETTER_GRADE'],
+        subset=['student_ID', 'course_term', 'course_prefix', 'course_suffix', 'course_number', 'course_grade_letter'],
         keep='first')]
 
-    # Create 'flag_course_PC' column
-    input_df['flag_course_PC'] = (input_df['COURSE_COLLEGE'] == 'PC').astype(int)
+    # Create 'flag_course_associates' column in the event that course attempts in a non-bachelor's program can be excluded
+    if (associates_program_code):
+        input_df['flag_course_associates'] = (input_df['course_college'] == associates_program_code).astype(int)
 
-    nonK_df = input_df[(input_df['COURSE_PREFIX'] == course_prefix) &
-                                (input_df['COURSE_NUMBER'] == course_number) &
-                                (input_df['flag_course_PC'] == 1)]  # this captures ALL rows of CHEM 1211 that were taken as lab or lecture components at Perimeter College
+    # Default behavior does does not use first generation as a predictor unless predictor_first_generation == 1
+    if(predictor_first_generation == 1):
+        input_df['flag_first_generation'].replace({'Y': 1, np.nan: 0}, inplace=True)
 
-    print("Rows in non-K course number = ", len(nonK_df))
+    # Default behavior does does not use Pell status as a predictor unless predictor_first_generation == 1
+    if(predictor_pell == 1):
+        input_df['flag_PELL'].replace({'Y': 1, np.nan: 0}, inplace=True)
 
-    # Filter rows for the specified course_prefix and course_number
-    course_df = input_df[(input_df['COURSE_PREFIX'] == course_prefix) &
-                         (input_df['COURSE_NUMBER'] == course_number)]
+    # Default behavior is to eliminate students from dataset who matriculate with transfer hours
+    if (predictor_transfer_credit == 0):
+        #print(input_df['transfer_hours_matriculation'].unique())
+        input_df = input_df[~(input_df['transfer_hours_matriculation'] > 0)]
 
+    # If high school GPA is indicated as a predictor for the model, then all rows without high school GPA should be dropped
+    if (predictor_high_school_GPA == 1):
+        # print(input_df['demographics_high_school_GPA'].unique())
+        input_df['demographics_high_school_GPA'] = pd.to_numeric(input_df['demographics_high_school_GPA'], errors='coerce')
+        input_df = input_df[~(input_df['demographics_high_school_GPA'].isna())]
+        # print(input_df['demographics_high_school_GPA'].unique())
 
-    ##############################################################################################
-    #2024-01-17 SMALL DISPARITIES IN PRIOR FILTERING OCCUR SOMEWHERE IN THIS EARLIEST TERMS LOGIC
-    ##############################################################################################
+    dependent_course_df = pandas.DataFrame
 
-    # Find the earliest 'TERM' for each 'Student_ID' for the specified course
-    earliest_terms_nonK = nonK_df.groupby('Student_ID')['TERM'].min().reset_index()
+    if (dependent_course_suffix is None):
+        # Filter rows for the specified course_prefix, number, and suffix
+        dependent_course_df = input_df[(input_df['course_prefix'] == dependent_course_prefix) &
+                               (input_df['course_number'] == dependent_course_number)]
+        # Find the earliest 'course_term' for each 'student_ID' in the dependent_course_df
+        dependent_course_earliest_terms = dependent_course_df.groupby('student_ID')['course_term'].min().reset_index()
+        print(len(dependent_course_df))
 
-    # Filter rows for the specified course_prefix and course_number with suffix 'K'
-    course_k_df = input_df[(input_df['COURSE_PREFIX'] == course_prefix) &
-                           (input_df['COURSE_NUMBER'] == course_number) &
-                           (input_df['COURSE_SUFFIX'] == 'K')]
+    # if data source includes courses with lab/lecture combined (at GSU, this could be CHEM 1212K) or separate lab and lecture (at GSU, CHEM 1212 lecture and CHEM 1212L laboratory)
+    # and dependent_course_suffix is not empty, then exclude all instances where students took these courses via separated format
+    elif(dependent_course_suffix):
+        # Filter rows for the specified course_prefix, number, and suffix
+        dependent_course_df = input_df[(input_df['course_prefix'] == dependent_course_prefix) &
+                                       (input_df['course_number'] == dependent_course_number) &
+                                       (input_df['course_suffix'] == dependent_course_suffix)]
 
-    print("Rows in K course number = ", len(course_k_df))
+        # Find the earliest 'course_term' for each 'student_ID' in the dependent_course_df
+        dependent_course_earliest_terms = dependent_course_df.groupby('student_ID')['course_term'].min().reset_index()
 
-    # Find the earliest 'TERM' for each 'Student_ID' for the specified course with suffix 'K'
-    earliest_terms_k = course_k_df.groupby('Student_ID')['TERM'].min().reset_index()
+        non_combined_course_df = input_df[(input_df['course_prefix'] == dependent_course_prefix) &
+                                    (input_df['course_number'] == dependent_course_number) &
+                                    (input_df['flag_course_associates'] == 1)]  # this captures ALL rows of the dependent ocurse taken via an associates program
 
-    # Merge the earliest 'TERM' values for both the specified course and course with suffix 'K'
-    merged_terms = pd.merge(earliest_terms_k, earliest_terms_nonK, on='Student_ID', how='left')
-    #print(list(merged_terms))
-    #print(merged_terms)
+        # Find the earliest 'TERM' for each 'Student_ID' for the specified course
+        non_combined_course_earliest_terms = non_combined_course_df.groupby('student_ID')['course_term'].min().reset_index()
 
-    # Filter out rows where 'TERM_x' is later than 'TERM_y' for the specified course with suffix 'K'
-    filtered_result_df = merged_terms[merged_terms['TERM_x'] <= merged_terms['TERM_y']]
-    #print(list(filtered_result_df))
-    #print(merged_terms)
+        # Merge the earliest 'course_term' values for both the specified course and course with course suffix
+        merged_terms = pd.merge(dependent_course_earliest_terms, non_combined_course_earliest_terms, on='student_ID', how='left')
 
-    print("Number of students before exclusion of those who took it before : ", len(course_k_df))
-    # Exclude students who took the specified course before
-    course_k_df = course_k_df[~course_k_df['Student_ID'].isin(filtered_result_df['Student_ID'])]
-    print("Number of students after exclusion of those who took it before : ", len(course_k_df))
+        # Filter out rows where 'course_term_x' is later than 'course_term_y'for the specified course course suffix
+        filtered_result_df = merged_terms[merged_terms['course_term_x'] <= merged_terms['course_term_y']]
+        print("Number of students before exclusion of those who took it before : ", len(dependent_course_df))
 
-    # Initialize a list to store values for a first attempt of the course
-    flag_first_attempt = []
+        # Exclude students who took the specified course before
+        dependent_course_df = dependent_course_df[~dependent_course_df['student_ID'].isin(filtered_result_df['student_ID'])]
+        print("Number of students after exclusion of those who took it before : ", len(dependent_course_df))
 
     # Group the data by 'Student_ID'
-    grouped_data = course_k_df.groupby('Student_ID')
+    grouped_data = dependent_course_df.groupby('student_ID')
 
     # Calculate the minimum 'TERM' value for the specified course for each student
-    min_term_by_student = grouped_data.apply(lambda group: group[group['COURSE_NUMBER'] == course_number]['TERM'].min())
+    min_term_by_student = grouped_data.apply(lambda group: group[group['course_number'] == dependent_course_number]['course_term'].min())
 
-    # Create a flag column based on the minimum 'TERM' value
-    course_k_df[f'flag_first_attempt_{course_prefix}_{course_number}'] = (
-        course_k_df.groupby('Student_ID')['TERM']
+    # Create a flag column based on the minimum 'course_term' value
+    dependent_course_df[f'flag_first_attempt_{dependent_course_prefix}_{dependent_course_number}'] = (
+        dependent_course_df.groupby('student_ID')['course_term']
         .transform(lambda x: x == min_term_by_student[x.name]).astype(int))
 
-    # Define a list of math course numbers for which you want to create flags
-    math_course_numbers = [1111, 1113, 2201, 2202, 2211, 2212]
-
-    # Create a DataFrame to store the math course data for all students
-    math_courses_df = input_df[input_df['COURSE_NUMBER'].isin(math_course_numbers)]
+    # Create a DataFrame to store the course data for all students in the predictor courses
+    predictor_courses_df = input_df[(input_df['course_number'].isin(predictor_course_numbers)) & (input_df['course_prefix'] == predictor_course_prefix)]
 
     # Merge the math course data with the specified course with suffix 'K' on 'Student_ID' and 'TERM' using a left join
-    merged_df = pd.merge(course_k_df, math_courses_df, on=['Student_ID', 'TERM'], how='left')
+    merged_df = pd.merge(dependent_course_df, predictor_courses_df, on=['student_ID', 'course_term'], how='left', suffixes=('', '_y'))
 
-    print("Number of non-first attempts : ", len(merged_df[merged_df[f'flag_first_attempt_{course_prefix}_{course_number}'] == 0]))
-    print("Number of first attempts : ", merged_df[f'flag_first_attempt_{course_prefix}_{course_number}'].sum())
+    print("Number of non-first attempts : ", len(merged_df[merged_df[f'flag_first_attempt_{dependent_course_prefix}_{dependent_course_number}'] == 0]))
+    print("Number of first attempts : ", merged_df[f'flag_first_attempt_{dependent_course_prefix}_{dependent_course_number}'].sum())
 
     # Iterate over math course numbers to create flags
-    for math_course in math_course_numbers:
+    for predictor_course in predictor_course_numbers:
         # Define a new column name for the flag
-        flag_column_name = f'flag_MATH{math_course}'
+        flag_column_name = f'flag_{predictor_course_prefix}{predictor_course}'
 
         merged_df[flag_column_name] = 0
 
-        # Create a boolean mask for students who took the specific math course during the same term they took the specified course with suffix 'K'
-        mask = (merged_df['COURSE_NUMBER_y'] == math_course)
+        # Create a boolean mask for students who took the predictor course during the same term they took the dependent course
+        mask = (merged_df['course_number_y'] == predictor_course)
 
         # Set the flag to 1 for rows that satisfy the condition
         merged_df.loc[mask, flag_column_name] = 1
 
     # Filter merged_df to keep only the rows where 'Student_ID' appears once
-    duplicate_students = merged_df[merged_df.duplicated(subset=['TERM', 'Student_ID'])]['Student_ID']
-    filtered_merged_df = merged_df[~merged_df['Student_ID'].isin(duplicate_students)]
+    duplicate_students = merged_df[merged_df.duplicated(subset=['course_term', 'student_ID'])]['student_ID']
+    filtered_merged_df = merged_df[~merged_df['student_ID'].isin(duplicate_students)]
 
-    print("Total number of students in filtered_merged_df after dropping of those from merged_df with duplicate 'TERM' and 'Student_ID : ",
+    print("Total number of students in filtered_merged_df after dropping of those from merged_df with duplicate 'course_term' and 'student_ID : ",
         len(filtered_merged_df))
 
-    # Filter rows with non-first attempts and negative 'Num_GRDE' values
-    first_attempt_df = filtered_merged_df[filtered_merged_df[f'flag_first_attempt_{course_prefix}_{course_number}'] == 1].copy()
-    first_attempt_df = first_attempt_df[~(first_attempt_df['Num_GRDE_x'] < 0)]
-    print(len(first_attempt_df))
+    # Filter rows with non-first attempts and negative 'course_grade_numeric' values
+    first_attempt_df = filtered_merged_df[filtered_merged_df[f'flag_first_attempt_{dependent_course_prefix}_{dependent_course_number}'] == 1].copy()
+    # print(list(first_attempt_df))
+    first_attempt_df = first_attempt_df[~(first_attempt_df['course_grade_numeric'] < 0)]
+    #print(first_attempt_df)
+    #print(list(first_attempt_df))
+    print("Total number of first attempts before exclusion of those without demographics_high_school_GPA or course_grade_numeric values = ", len(first_attempt_df))
 
-    print("Total number of first attempts before exclusion of those without SORHSCH_GPA or Num_GRDE values = ", len(first_attempt_df))
-
-    # Check if 'SEX_x' is present in the DataFrame
-    if 'SEX_x' not in first_attempt_df.columns:
-        raise KeyError('SEX_x column is missing from the DataFrame')
+    # Check if 'demographics_sex' is present in the DataFrame
+    if 'demographics_sex' not in first_attempt_df.columns:
+        raise KeyError('demographics_sex column is missing from the DataFrame')
 
     # Convert categorical variables to dummy variables
-    first_attempt_df = pd.get_dummies(first_attempt_df, columns=['SEX_x'], drop_first=True)
+    first_attempt_df = pd.get_dummies(first_attempt_df, columns=['demographics_sex'], drop_first=True)
+
 
     # Create a list of predictor columns
-    predictor_columns = ['SEX_x_M']+[f'flag_MATH{math_course}' for math_course in math_course_numbers]
+    predictor_columns = []
+
+    # Check if high school GPA is to be included as a predictor
+    if(predictor_high_school_GPA == 1):
+        predictor_columns.append('demographics_high_school_GPA')
+
+    # Check if sex is to be included as a predictor
+    if(predictor_sex == 1):
+        predictor_columns.append('demographics_sex_M')
+
+    # Check if first generation is to be included as a predictor
+    if(predictor_first_generation == 1):
+        predictor_columns.append('flag_first_generation')
+
+    # Check if Pell status is to be included as a predictor
+    if predictor_pell == 1:
+        predictor_columns.append('flag_PELL')
+
+    # Iterate over predictor course numbers and include them as predictors
+    predictor_columns.extend([f'flag_MATH{predictor_course}' for predictor_course in predictor_course_numbers])
+
+    #if(predictor_high_school_GPA == 1):
+    #    predictor_columns = ['demographics_high_school_GPA']+['flag_first_generation']+['demographics_sex_M'] + [f'flag_MATH{predictor_course}' for predictor_course in
+    #                                                  predictor_course_numbers]
+    #else:
+    #    predictor_columns = ['demographics_sex_M']+['flag_first_generation']+[f'flag_MATH{predictor_course}' for predictor_course in predictor_course_numbers]
 
     # Check if the predictors are all in the DataFrame
     missing_predictors = [col for col in predictor_columns if col not in first_attempt_df.columns]
@@ -1390,9 +1606,10 @@ def process_math_chem_data(input_df, course_prefix, course_number):
     # Add a constant to the model (intercept)
     X = sm.add_constant(first_attempt_df[predictor_columns])
     X = X.astype({col: 'int64' for col in X.select_dtypes(include=['bool']).columns})
-
+    print("Type of X : ", type(X))
     # Set up the y for the GLM
-    y = first_attempt_df['Num_GRDE_x']
+    y = first_attempt_df['course_grade_numeric']
+    print("Type of y : ", type(y))
 
     # Fit the GLM
     model = sm.GLM(y, X, family=sm.families.Gaussian())
@@ -1401,18 +1618,20 @@ def process_math_chem_data(input_df, course_prefix, course_number):
     # Dictionary to hold the sample sizes for each math course
     sample_sizes = {}
 
-    for math_course in math_course_numbers:
-        flag_column = f'flag_MATH{math_course}'
+    for predictor_course in predictor_course_numbers:
+        flag_column = f'flag_{predictor_course_prefix}{predictor_course}'
         # Sum up the flag column to get the number of students who took the specified math course along with the specified course with suffix 'K'
-        sample_sizes[f'MATH{math_course}'] = first_attempt_df[flag_column].sum()
+        sample_sizes[f'{predictor_course_prefix}{predictor_course}'] = first_attempt_df[flag_column].sum()
+
+    none_taken_count = ((first_attempt_df[[f'flag_{predictor_course_prefix}{predictor_course}' for predictor_course in
+                                           predictor_course_numbers]] == 0).all(axis=1)).sum()
+    sample_sizes['No simultaneously taken course'] = none_taken_count
 
     # Print results and sample sizes
-    print(results_GLM.summary(), "\n\n Sample Sizes for each course:", sample_sizes)
+    print(results_GLM.summary(), "\n\n Sample sizes for each course:", sample_sizes)
 
-    # Finally, return the processed DataFrame
-    return first_attempt_df
-
-
+    # Uncomment the following if you want to return the processed data frame
+    # return first_attempt_df
 
 
 """
@@ -1476,8 +1695,8 @@ def plot_proportions_by_course(df, proportions_to_plot, pdf_filename=None, save_
 
             # Stacked bar chart
             label = proportion.split("Proportion_")[1]
-            axs_flat[idx].bar(course_df['Major_Matriculation'], proportion_height, label=label)
-            axs_flat[idx].bar(course_df['Major_Matriculation'], complement_height, bottom=proportion_height)
+            axs_flat[idx].bar(course_df['major_matriculation'], proportion_height, label=label)
+            axs_flat[idx].bar(course_df['major_matriculation'], complement_height, bottom=proportion_height)
             axs_flat[idx].set_title(course)
             axs_flat[idx].set_ylabel('Proportion')
             axs_flat[idx].set_xlabel('Major')

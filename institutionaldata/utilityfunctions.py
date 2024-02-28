@@ -21,13 +21,13 @@ def scramble_ID(input_data, cipher):
             results_df = input_data.copy()
 
             # Ensure the 'Student_ID' column is present
-            if 'Student_ID' not in results_df.columns:
-                print("The dataframe does not have a 'Student_ID' column.")
+            if 'student_ID' not in results_df.columns:
+                print("The dataframe does not have a 'student_ID' column.")
                 return None
 
             # Scramble IDs for a dataframe
-            results_df["Student_ID"] = (
-                results_df["Student_ID"]
+            results_df["student_ID"] = (
+                results_df["student_ID"]
                 .astype(str)
                 .replace(scrambleDict, regex=True)
             )
@@ -40,13 +40,13 @@ def scramble_ID(input_data, cipher):
             return scrambled_id
 
         else:
-            print("Input must be a pandas DataFrame or a string representing a Student_ID.")
+            print("Input must be a pandas DataFrame or a string representing a student_ID.")
             return None
 
 #[Utility function] accepts a single, scrambled Student_ID and unscrambles it (given the appropriate cipher string)
 #Student_ID : string of characters representing the Student_ID to be unscrambled
 #cipher : a string of characters length of Student_ID; DON'T FORGET THIS AND DO NOT POST PUBLICALLY
-def unscramble_ID(Student_ID, cipher):
+def unscramble_ID(student_ID, cipher):
     if len(cipher) != 10: #if student IDs at your institution have different # of characters, then adjust accordingly
         print("The cipher must have 10 characters!")
         return None
@@ -59,7 +59,7 @@ def unscramble_ID(Student_ID, cipher):
     unscrambleDict = {char: str(i) for i, char in enumerate(cipher)}
 
     # Unscramble IDs
-    original_id = ''.join([unscrambleDict[char] for char in Student_ID])
+    original_id = ''.join([unscrambleDict[char] for char in student_ID])
 
     return original_id
 
@@ -256,8 +256,8 @@ def letter_grade_simplify(dataframe, c_minus_flag = 1):
         }
 
     df_copy = dataframe.copy()
-    df_copy['Final_GRDE_Simp'] = df_copy['Final_GRDE'].apply(lambda grade: re.sub(r'[%\^R#@*]', '', str(grade)))
-    df_copy['Final_GRDE_Simp'] = df_copy['Final_GRDE_Simp'].map(grade_mapping).fillna(df_copy['Final_GRDE_Simp'])
+    df_copy['course_grade_letter_simp'] = df_copy['course_grade_letter'].apply(lambda grade: re.sub(r'[%\^R#@*]', '', str(grade)))
+    df_copy['course_grade_letter_simp'] = df_copy['course_grade_letter_simp'].map(grade_mapping).fillna(df_copy['course_grade_letter_simp'])
 
     return df_copy
 
@@ -268,16 +268,33 @@ def load_grades():
     grades_df = pd.read_csv(csv_filename)
     return grades_df
 
-#[Utility function] accepts demographic dataframe and returns dataframe for first semester demographics
-#of students based on presence/absence of transfer credits. This is a rough approximation of first time, first year
-#Since SDSTUMAIN_MATRIC_TERM is not always exactly matched to the first term a student takes courses, the dataframe
-#is sorted to find the first demographics term for each student.
-#df: dataframe with demographics data
-#transfer: 0 = get all students (default); 1 = get students with transfer credits; 2 = get students with no transfer credits
-#return_dataframe: Boolean; 1 = return results as entire dataframe; 0 = return results as a list of unique student ID's
+
 def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
+    """
+       Get the demographics of students in their first semester.
+
+       Parameters:
+       - df (pd.DataFrame): DataFrame containing demographics data.
+       - transfer (int): Flag indicating whether to include students with transfer credits. Default is 0.
+                         - 0: Include all students.
+                         - 1: Include only students with transfer credits.
+                         - 2: Include only students without transfer credits.
+       - return_dataframe (int): Flag indicating the format of the output.
+                                 - 1: Return DataFrame containing first semester demographics.
+                                 - 0: Return list of student IDs.
+
+       Returns:
+       - pd.DataFrame or list: DataFrame containing first semester demographics for selected students,
+                               or list of student IDs depending on the value of return_dataframe.
+
+       Notes
+       ------
+       - Since term_matriculation is not always exactly matched to the first term a student takes courses, the dataframe
+         is sorted to find the first demographics term for each student.
+       """
+
     # Get the earliest term for each student
-    mask = df.groupby('Student_ID')['SDSTUDEMOG_TERM'].idxmin()
+    mask = df.groupby('student_ID')['demographics_term'].idxmin()
     earliest_df = df.loc[mask]
 
     # return dataframe containing first semester demographics for ALL students
@@ -285,7 +302,7 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
         if return_dataframe == 1:
             return earliest_df
         elif return_dataframe == 0:
-            return list(earliest_df['Student_ID'])
+            return list(earliest_df['student_ID'])
 
     # return dataframe containing first semester demographics for students who WITH transfer credit
     elif (transfer == 1):
@@ -294,7 +311,7 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
         if return_dataframe == 1:
             return initial_demographics_transfer_df
         elif return_dataframe == 0:
-            return list(initial_demographics_transfer_df['Student_ID'])
+            return list(initial_demographics_transfer_df['student_ID'])
 
     # return dataframe containing first semester demographics for students WITHOUT transfer credit
     elif (transfer == 2):
@@ -304,7 +321,7 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
         if return_dataframe == 1:
             return initial_demographics_transfer_df
         elif return_dataframe == 0:
-            return list(initial_demographics_transfer_df['Student_ID'])
+            return list(initial_demographics_transfer_df['student_ID'])
 
 
 """""
