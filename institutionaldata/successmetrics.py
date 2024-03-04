@@ -19,110 +19,110 @@ from matplotlib.backends.backend_pdf import PdfPages
 #years : four digit calendar year such as 2024
 #ftfy : "first time first year" argument; when True, only those students with 0 transfer credits will be in the output
 #2023-07-12 developed using ChatGPT 4.0 with Code Interpreter
-def major_retention(student_df, major_code, years, ftfy = True):
-    semester_codes = utilityfunctions.create_semesters(years)
-    print(semester_codes)
-
-    # Import the dataset
-    working_df = student_df.copy()
-    #working_df['Grad_term'] = working_df['Grad_term'].apply(utilityfunctions.adjust_grad_term)
-    #semesters = list()
-
-    #First time, first year argument ftfy defaults to True to in function. However, if we want to catch all students who matriculated in a time frame, the dataframe must not drop those with transfer credit
-    if ftfy == False:
-        working_df = working_df[
-            (working_df['SDSTUMAIN_MATRIC_TERM'].isin(semester_codes)) &
-            (working_df['SDSTUMAIN_MAJOR'] == major_code) &
-            (working_df['SDSTUMAIN_MATRIC_TERM'] == working_df['SDSTUDEMOG_TERM'])
-            ]
-        print(working_df)
-
-    #If only FTFY students are desired (default behavior), dataframe should have 0 transfer hours
-    else:
-        working_df = working_df[
-            (working_df['SDSTUMAIN_MATRIC_TERM'].isin(semester_codes)) &
-            (working_df['SDSTUMAIN_MAJOR'] == major_code) &
-            (working_df['SDSTUMAIN_MATRIC_TERM'] == working_df['SDSTUDEMOG_TERM']) &
-            (working_df['SDSTUMAIN_TRANSFER_HOURS'].isna() | (
-                    working_df['SDSTUMAIN_TRANSFER_HOURS'] == 0))
-            ]
-        print(working_df)
-
-
-    # Compute the new column
-    working_df['SDSTUMAIN_MATRIC_TERM'] = pd.to_datetime(working_df['SDSTUMAIN_MATRIC_TERM'], format='%Y%m')
-    working_df['Grad_term'] = pd.to_datetime(working_df['Grad_term'], format='%Y%m')
-    working_df['Grad_term_end'] = working_df['Grad_term'].apply(utilityfunctions.adjust_grad_term)
-    working_df['Months_Between'] = (working_df['Grad_term_end'].dt.year - working_df[
-        'SDSTUMAIN_MATRIC_TERM'].dt.year) * 12 + working_df['Grad_term_end'].dt.month - working_df[
-                                       'SDSTUMAIN_MATRIC_TERM'].dt.month
-
-    #Provide boolean flag to simplify various measures
-    working_df['grad_flag'] = working_df['Grad_term'].notnull().astype(int)
-    major_retention_flag = 'major_retention' + major_code
-    working_df[major_retention_flag] = 0
-    working_df.loc[(working_df['Grad_term'].notnull()) & (working_df['Major'] == major_code), major_retention_flag] = 1
-    # Compute the summary statistics
-    total_students = working_df.shape[0]
-    non_graduates = working_df['Grad_term'].isna().sum()
-    graduates = total_students - non_graduates
-    major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)].shape[0]
-    non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)].shape[0]
-
-
-    #Compute time till graduation for different segments
-    average_months_all = working_df['Months_Between'].mean()
-    std_dev_months_all = working_df['Months_Between'].std()
-    average_years_non_graduates = working_df[working_df['Grad_term'].isna()]['Months_Between'].mean()/12  # Should be NaN
-    std_dev_years_non_graduates = working_df[working_df['Grad_term'].isna()]['Months_Between'].std()/12  # Should be NaN
-    average_years_graduates = working_df[working_df['Grad_term'].notna()]['Months_Between'].mean()/12
-    std_dev_years_graduates = working_df[working_df['Grad_term'].notna()]['Months_Between'].std()/12
-
-    average_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)]['Months_Between'].mean() / 12
-    std_dev_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)][
-        'Months_Between'].std()/12
-
-    average_years_non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)][
-                                      'Months_Between'].mean() / 12
-    std_dev_years_non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)][
-                                      'Months_Between'].std() / 12
-
-    #Compute institutional GPA at graduation for graduates in the specific major or different major
-
-    #average_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)]['Months_Between'].mean() / 12
-    #std_dev_years_bio_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == 'BIO')][
-    #                                  'Months_Between'].std() / 12
-
-    #Need to pull in demog data from demographics of last semester because graduation purge report does not include GPA
-    #gpa_all_graduates = working_df[(working_df['Grad_term'].notna())[]
-    #gpa_bio_graduates =
-    #gpa_non_bio_graduates
-
-    # Create the summary DataFrame
-    summary_df = pd.DataFrame(
-        columns=['Category', 'Count', 'Percentage', 'Avg Years to Graduation', 'Std Dev Years to Graduation'])
-
-    rows_list = [
-        {'Category': 'Total Students', 'Count': total_students, 'Percentage': 100, 'Avg Years to Graduation': None,
-         'Std Dev Years to Graduation': None},
-        {'Category': 'Non-Graduates', 'Count': non_graduates, 'Percentage': non_graduates / total_students * 100,
-         'Avg Years to Graduation': average_years_non_graduates,
-         'Std Dev Years to Graduation': std_dev_years_non_graduates},
-        {'Category': 'Graduates', 'Count': graduates, 'Percentage': graduates / total_students * 100,
-         'Avg Years to Graduation': average_years_graduates, 'Std Dev Years to Graduation': std_dev_years_graduates},
-        {'Category': 'Graduates Retained within Major', 'Count': major_code_graduates, 'Percentage': major_code_graduates / total_students * 100,
-         'Avg Years to Graduation': average_years_major_code_graduates,
-         'Std Dev Years to Graduation': std_dev_years_major_code_graduates},
-        {'Category': 'Graduates who Left Major', 'Count': graduates - major_code_graduates,
-         'Percentage': (graduates - major_code_graduates) / total_students * 100,
-         'Avg Years to Graduation': average_years_non_major_code_graduates,
-         'Std Dev Years to Graduation': std_dev_years_non_major_code_graduates}
-    ]
-
-    summary_df = pd.concat([summary_df, pd.DataFrame(rows_list)], ignore_index=True)
-
-    # Return the result
-    return(summary_df, working_df)
+# def major_retention_v1(student_df, major_code, years, ftfy = True):
+#     semester_codes = utilityfunctions.create_semesters(years)
+#     print(semester_codes)
+#
+#     # Import the dataset
+#     working_df = student_df.copy()
+#     #working_df['Grad_term'] = working_df['Grad_term'].apply(utilityfunctions.adjust_grad_term)
+#     #semesters = list()
+#
+#     #First time, first year argument ftfy defaults to True to in function. However, if we want to catch all students who matriculated in a time frame, the dataframe must not drop those with transfer credit
+#     if ftfy == False:
+#         working_df = working_df[
+#             (working_df['SDSTUMAIN_MATRIC_TERM'].isin(semester_codes)) &
+#             (working_df['SDSTUMAIN_MAJOR'] == major_code) &
+#             (working_df['SDSTUMAIN_MATRIC_TERM'] == working_df['SDSTUDEMOG_TERM'])
+#             ]
+#         print(working_df)
+#
+#     #If only FTFY students are desired (default behavior), dataframe should have 0 transfer hours
+#     else:
+#         working_df = working_df[
+#             (working_df['SDSTUMAIN_MATRIC_TERM'].isin(semester_codes)) &
+#             (working_df['SDSTUMAIN_MAJOR'] == major_code) &
+#             (working_df['SDSTUMAIN_MATRIC_TERM'] == working_df['SDSTUDEMOG_TERM']) &
+#             (working_df['SDSTUMAIN_TRANSFER_HOURS'].isna() | (
+#                     working_df['SDSTUMAIN_TRANSFER_HOURS'] == 0))
+#             ]
+#         print(working_df)
+#
+#
+#     # Compute the new column
+#     working_df['SDSTUMAIN_MATRIC_TERM'] = pd.to_datetime(working_df['SDSTUMAIN_MATRIC_TERM'], format='%Y%m')
+#     working_df['Grad_term'] = pd.to_datetime(working_df['Grad_term'], format='%Y%m')
+#     working_df['Grad_term_end'] = working_df['Grad_term'].apply(utilityfunctions.adjust_grad_term)
+#     working_df['Months_Between'] = (working_df['Grad_term_end'].dt.year - working_df[
+#         'SDSTUMAIN_MATRIC_TERM'].dt.year) * 12 + working_df['Grad_term_end'].dt.month - working_df[
+#                                        'SDSTUMAIN_MATRIC_TERM'].dt.month
+#
+#     #Provide boolean flag to simplify various measures
+#     working_df['grad_flag'] = working_df['Grad_term'].notnull().astype(int)
+#     major_retention_flag = 'major_retention' + major_code
+#     working_df[major_retention_flag] = 0
+#     working_df.loc[(working_df['Grad_term'].notnull()) & (working_df['Major'] == major_code), major_retention_flag] = 1
+#     # Compute the summary statistics
+#     total_students = working_df.shape[0]
+#     non_graduates = working_df['Grad_term'].isna().sum()
+#     graduates = total_students - non_graduates
+#     major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)].shape[0]
+#     non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)].shape[0]
+#
+#
+#     #Compute time till graduation for different segments
+#     average_months_all = working_df['Months_Between'].mean()
+#     std_dev_months_all = working_df['Months_Between'].std()
+#     average_years_non_graduates = working_df[working_df['Grad_term'].isna()]['Months_Between'].mean()/12  # Should be NaN
+#     std_dev_years_non_graduates = working_df[working_df['Grad_term'].isna()]['Months_Between'].std()/12  # Should be NaN
+#     average_years_graduates = working_df[working_df['Grad_term'].notna()]['Months_Between'].mean()/12
+#     std_dev_years_graduates = working_df[working_df['Grad_term'].notna()]['Months_Between'].std()/12
+#
+#     average_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)]['Months_Between'].mean() / 12
+#     std_dev_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)][
+#         'Months_Between'].std()/12
+#
+#     average_years_non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)][
+#                                       'Months_Between'].mean() / 12
+#     std_dev_years_non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)][
+#                                       'Months_Between'].std() / 12
+#
+#     #Compute institutional GPA at graduation for graduates in the specific major or different major
+#
+#     #average_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)]['Months_Between'].mean() / 12
+#     #std_dev_years_bio_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == 'BIO')][
+#     #                                  'Months_Between'].std() / 12
+#
+#     #Need to pull in demog data from demographics of last semester because graduation purge report does not include GPA
+#     #gpa_all_graduates = working_df[(working_df['Grad_term'].notna())[]
+#     #gpa_bio_graduates =
+#     #gpa_non_bio_graduates
+#
+#     # Create the summary DataFrame
+#     summary_df = pd.DataFrame(
+#         columns=['Category', 'Count', 'Percentage', 'Avg Years to Graduation', 'Std Dev Years to Graduation'])
+#
+#     rows_list = [
+#         {'Category': 'Total Students', 'Count': total_students, 'Percentage': 100, 'Avg Years to Graduation': None,
+#          'Std Dev Years to Graduation': None},
+#         {'Category': 'Non-Graduates', 'Count': non_graduates, 'Percentage': non_graduates / total_students * 100,
+#          'Avg Years to Graduation': average_years_non_graduates,
+#          'Std Dev Years to Graduation': std_dev_years_non_graduates},
+#         {'Category': 'Graduates', 'Count': graduates, 'Percentage': graduates / total_students * 100,
+#          'Avg Years to Graduation': average_years_graduates, 'Std Dev Years to Graduation': std_dev_years_graduates},
+#         {'Category': 'Graduates Retained within Major', 'Count': major_code_graduates, 'Percentage': major_code_graduates / total_students * 100,
+#          'Avg Years to Graduation': average_years_major_code_graduates,
+#          'Std Dev Years to Graduation': std_dev_years_major_code_graduates},
+#         {'Category': 'Graduates who Left Major', 'Count': graduates - major_code_graduates,
+#          'Percentage': (graduates - major_code_graduates) / total_students * 100,
+#          'Avg Years to Graduation': average_years_non_major_code_graduates,
+#          'Std Dev Years to Graduation': std_dev_years_non_major_code_graduates}
+#     ]
+#
+#     summary_df = pd.concat([summary_df, pd.DataFrame(rows_list)], ignore_index=True)
+#
+#     # Return the result
+#     return(summary_df, working_df)
 
 #Calculate the number of math courses taken by a subset of students
 #major code: major (e.g. 'BIO', 'CHM', 'PSY')
@@ -405,10 +405,10 @@ def major_retention(demographics_df, years, major_code, student_ids):
 
     # print(len(demographics_df))
     # Filter demographics_df for the students we care about
-    working_df = demographics_df[demographics_df['Student_ID'].isin(student_ids)]
+    working_df = demographics_df[demographics_df['student_ID'].isin(student_ids)]
 
     # NOTE (2023-08-14) this analysis excludes those who earn two BS to keep things simple; not sure this is the best approach
-    mask = working_df.duplicated(subset=['Student_ID', 'SDSTUDEMOG_TERM'], keep=False)  # Create a mask for duplicate rows where a student earns two degrees
+    mask = working_df.duplicated(subset=['student_ID', 'demographics_term'], keep=False)  # Create a mask for duplicate rows where a student earns two degrees
     working_df = working_df[~mask]  # Apply the mask to keep only non-duplicate rows; that is, exclude those students who earned two BS
     #print(len(working_df))
 
@@ -417,33 +417,33 @@ def major_retention(demographics_df, years, major_code, student_ids):
         semesters = utilityfunctions.create_semesters([academicyear])
 
         # Filter to semesters associated with argument years
-        df_filtered = working_df[working_df['SDSTUDEMOG_TERM'].isin(semesters)]
+        df_filtered = working_df[working_df['demographics_term'].isin(semesters)]
         #print(len(df_filtered))
         for student in student_ids:
-            student_df = df_filtered[df_filtered['Student_ID'] == student]
+            student_df = df_filtered[df_filtered['student_ID'] == student]
 
             for semester in semesters:
-                semester_df = student_df[student_df['SDSTUDEMOG_TERM'] == semester]
+                semester_df = student_df[student_df['demographics_term'] == semester]
 
                 if semester_df.empty:
                     continue
 
                 #Flag non-graduated students as 0 and graduated students as 1
                 #TO DO: Find a way for grad_flag to be set to 1 for the last semester of the degree rather than fixed characteristic
-                if (semester_df[((semester_df['Student_ID'] == student) & (semester_df['Grad_term']) > 0)].empty):
+                if (semester_df[((semester_df['student_ID'] == student) & (semester_df['Grad_term'] > 0))].empty):
                     grad_flag = 0
                 else:
                     grad_flag = 1
 
                 #indicate if student is still in the indicated major for this semester
-                major_retention_flag = int((semester_df['SDSTUMAIN_MAJOR'] == major_code).all())
-                major = semester_df['SDSTUMAIN_MAJOR'].item()
+                major_retention_flag = int((semester_df['major_term'] == major_code).all())
+                major = semester_df['major_term'].item()
                 grad_term = semester_df['Grad_term'].item()
 
                 #add the semester and data for current student to the records list
                 records.append({
-                    'Student_ID': student,
-                    'Semester': semester,
+                    'student_ID': student,
+                    'semester': semester,
                     'AcademicYear': academicyear,
                     'major': major,
                     'major_retention_flag': major_retention_flag,
@@ -455,33 +455,33 @@ def major_retention(demographics_df, years, major_code, student_ids):
     major_retention_df = pd.DataFrame(records)
 
     #for semesters of each academic year, calculate a running sum of how many semesters they were retained in major_code
-    major_retention_df= major_retention_df.groupby('Student_ID').apply(calculate_running_retention_flag).reset_index(drop=True)
+    major_retention_df= major_retention_df.groupby('student_ID').apply(calculate_running_retention_flag).reset_index(drop=True)
 
     #for students who changed major, it is helpful to know when they did this to determine where the curriculum structure could be affecting their decisions
     major_changed_df = major_retention_df[major_retention_df['major'] != major_code]  # create dataframe comprised of all students who changed to a different major
     major_changed_df = major_changed_df.reset_index(drop=True)  # reset index to ensure it is contiguous
-    major_changed_df = major_changed_df.sort_values(by=['Semester'], ascending=True)
-    idx = major_changed_df.groupby('Student_ID')['Semester'].idxmin()  # Find index of row with smallest 'Semester' for each 'Student_ID'
+    major_changed_df = major_changed_df.sort_values(by=['semester'], ascending=True)
+    idx = major_changed_df.groupby('student_ID')['semester'].idxmin()  # Find index of row with smallest 'Semester' for each 'Student_ID'
     major_changed_df = major_changed_df.loc[idx]
-    major_changed_df.rename(columns={'Semester': 'major_change_semester'},inplace=True)  # rename the column to avoid confusion
-    major_retention_df = pd.merge(major_retention_df, major_changed_df[['Student_ID', 'major_change_semester']], on='Student_ID', how = 'left', validate = 'many_to_one')
+    major_changed_df.rename(columns={'semester': 'major_change_semester'},inplace=True)  # rename the column to avoid confusion
+    major_retention_df = pd.merge(major_retention_df, major_changed_df[['student_ID', 'major_change_semester']], on='student_ID', how = 'left', validate = 'many_to_one')
 
     # Determine how many semesters passed before student changed major
     # Group by 'Student_ID' and 'major_change_semester', then apply a lambda function to calculate the count
     semesters_before_major_change_df = (
-        major_retention_df.groupby(['Student_ID', 'major_change_semester'])
-        .apply(lambda x: (x['Semester'] < x['major_change_semester']).sum())
+        major_retention_df.groupby(['student_ID', 'major_change_semester'])
+        .apply(lambda x: (x['semester'] < x['major_change_semester']).sum())
         .reset_index(name='semesters_before_major_change')
     )
-    major_retention_df = pd.merge(major_retention_df, semesters_before_major_change_df, on=['Student_ID', 'major_change_semester'], how ='left')
+    major_retention_df = pd.merge(major_retention_df, semesters_before_major_change_df, on=['student_ID', 'major_change_semester'], how ='left')
     # major_retention_df['total_semesters'] = major_retention_df.groupby('Student_ID').size()
-    major_retention_df['total_semesters'] = major_retention_df.groupby('Student_ID')['Student_ID'].transform('size')
+    major_retention_df['total_semesters'] = major_retention_df.groupby('student_ID')['student_ID'].transform('size')
 
     # Create a dataframe reportingt those who graduated that includes the last semester of their BS coursework
     grad_df = major_retention_df[(major_retention_df['grad_flag'] == 1)]  # creates a dataframe comprised of all students who graduated
     grad_df = grad_df.reset_index(drop=True)  # reset the index to ensure it is contiguous
     # grad_df['semesters_till_graduation'] = grad_df.groupby('Student_ID').size()
-    idx_last_semester = grad_df.groupby('Student_ID')['Semester'].idxmax()  # Find the index of the row with the largest 'Semester' for each 'Student_ID'
+    idx_last_semester = grad_df.groupby('student_ID')['semester'].idxmax()  # Find the index of the row with the largest 'Semester' for each 'Student_ID'
 
     #idx_first_semester = grad_df.groupby('Student_ID')['Semester'].idxmin()
     #grad_df_last_semester = grad_df.loc[idx_last_semester]  # filter grad_df by the index of the row for the LAST semester in BS
@@ -637,48 +637,48 @@ def combine_course_grades_with_demographics(input_demographics_df):
 #2024-02-21 Ironed out inconsistencies in numbers that occurred due to inaccurate filtering, counting, and anomalous student scenarios
 def analyze_course(course_name, df, major_matriculation, prerequisite_course = False, node_pie = False):
     """
-        Analyze student performance and attempt statistics for a given course.
+    Analyze student performance and attempt statistics for a given course.
 
-        Parameters
-        ----------
-        course_name : str
-            Name of the course to analyze (e.g., 'Principles of Chemistry I')
-        df : pandas.DataFrame
-            Input DataFrame containing course data.
-        major_matriculation : str
-            Major for which the analysis is conducted. (e.g., 'CHM')
-        prerequisite_course : str, optional
-            Indicator for whether the course is a prerequisite (default is False).
-        node_pie : bool, optional
-            Indicator for whether to include pie charts for key demographics (default is False).
+    Parameters
+    ----------
+    course_name : str
+        Name of the course to analyze (e.g., 'Principles of Chemistry I')
+    df : pandas.DataFrame
+        Input DataFrame containing course data.
+    major_matriculation : str
+        Major for which the analysis is conducted. (e.g., 'CHM')
+    prerequisite_course : str, optional
+        Indicator for whether the course is a prerequisite (default is False).
+    node_pie : bool, optional
+        Indicator for whether to include pie charts for key demographics (default is False).
 
-        Returns
-        -------
-        dict or None
-            A dictionary containing the following descriptive statistics if course attempts exist:
-                - 'first_pass_number': Number of students passing the course on the first attempt.
-                - 'first_pass_proportion': Proportion of students passing the course on the first attempt.
-                - 'first_DFW_number': Number of students receiving a D, F, or W grade on the first attempt.
-                - 'first_DFW_proportion': Proportion of students receiving a D, F, or W grade on the first attempt.
-                - 'proportion_DFW_repeat': Proportion of students repeating the course after initial failure.
-                - 'second_attempt_number': Total number of second attempts for the course.
-                - 'second_pass_number': Number of students passing the course on the second attempt.
-                - 'second_pass_proportion': Proportion of students passing the course on the second attempt.
-                - 'second_DFW_number': Number of students receiving a D, F, or W grade on the second attempt.
-                - 'second_DFW_proportion': Proportion of students receiving a D, F, or W grade on the second attempt.
-            Returns None if no attempts are found for the specified course.
+    Returns
+    -------
+    dict or None
+        A dictionary containing the following descriptive statistics if course attempts exist:
+            - 'first_pass_number': Number of students passing the course on the first attempt.
+            - 'first_pass_proportion': Proportion of students passing the course on the first attempt.
+            - 'first_DFW_number': Number of students receiving a D, F, or W grade on the first attempt.
+            - 'first_DFW_proportion': Proportion of students receiving a D, F, or W grade on the first attempt.
+            - 'proportion_DFW_repeat': Proportion of students repeating the course after initial failure.
+            - 'second_attempt_number': Total number of second attempts for the course.
+            - 'second_pass_number': Number of students passing the course on the second attempt.
+            - 'second_pass_proportion': Proportion of students passing the course on the second attempt.
+            - 'second_DFW_number': Number of students receiving a D, F, or W grade on the second attempt.
+            - 'second_DFW_proportion': Proportion of students receiving a D, F, or W grade on the second attempt.
+        Returns None if no attempts are found for the specified course.
 
-        Notes
-        -----
-        This function analyzes student performance and attempt statistics for a given course. It filters the input DataFrame
-        to include only attempts for the specified course, then calculates descriptive statistics for first attempts, including
-        pass rates and DFW rates. If second attempts exist, it further analyzes the performance on those attempts.
+    Notes
+    -----
+    This function analyzes student performance and attempt statistics for a given course. It filters the input DataFrame
+    to include only attempts for the specified course, then calculates descriptive statistics for first attempts, including
+    pass rates and DFW rates. If second attempts exist, it further analyzes the performance on those attempts.
 
-        Example
-        -------
-        To analyze the performance statistics for a course named 'CHEM101' for students majoring in 'Chemistry', you can use:
-        analyze_course(course_name = 'Principles of Chemistry I', df, major_matriculation = 'CHM')
-        """
+    Example
+    -------
+    To analyze the performance statistics for a course named 'CHEM101' for students majoring in 'Chemistry', you can use:
+    analyze_course(course_name = 'Principles of Chemistry I', df, major_matriculation = 'CHM')
+    """
 
 
     # Check if DataFrame is empty
@@ -1125,21 +1125,21 @@ def track_major_change(initial_demographics_df, demographics_df, range_first_ter
 
 def glm_retention_analysis(demographics_df, math_grades_df, major_matriculation, reference_course='PRECALCULUS', left = 0):
     """
-        Perform a Generalized Linear Model (GLM) analysis of retention within the unviersity at year 3 as a function of their first mathematics
-        course and other variables.
+    Perform a Generalized Linear Model (GLM) analysis of retention within the university at year 3 as a function of their first mathematics
+    course and other variables.
 
-        Parameters:
-        - demographics_df (DataFrame): DataFrame containing demographic information.
-        - math_grades_df (DataFrame): DataFrame containing math grades information.
-        - major_matriculation (str): students major code at matriculation (e.g, 'CHM').
-        - reference_course (str): Reference course for generating dummy variables. (e.g., 'PRECALCULUS')
-        - left (int): Flag indicating the type of analysis:
-                      - 0 (default): Retention analysis, prediction of retention at the university by Fall of 3rd academic year.
-                      - 1: Predicting students leaving the university.
+    Parameters:
+    - demographics_df (DataFrame): DataFrame containing demographic information.
+    - math_grades_df (DataFrame): DataFrame containing math grades information.
+    - major_matriculation (str): students major code at matriculation (e.g., 'CHM').
+    - reference_course (str): Reference course for generating dummy variables. (e.g., 'PRECALCULUS')
+    - left (int): Flag indicating the type of analysis:
+        - 0 (default): Retention analysis, prediction of retention at the university by Fall of 3rd academic year.
+        - 1: Predicting students leaving the university.
 
-        Returns:
-        - results_GLM (GLMResults): GLM results object.
-        """
+    Returns:
+    - results_GLM (GLMResults): GLM results object.
+    """
 
     math_grades_df = math_grades_df[math_grades_df['major_matriculation'] == major_matriculation]
 

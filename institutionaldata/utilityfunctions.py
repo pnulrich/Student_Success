@@ -8,6 +8,42 @@ import re
 #working_df : dataframe where Student_ID is the column to be ciphered
 #cipher : a string of characters length of Student_ID; DON'T FORGET THIS AND DO NOT POST PUBLICALLY
 def scramble_ID(input_data, cipher):
+    """
+        Scramble student IDs based on a cipher.
+
+        Parameters
+        ----------
+        input_data : pandas.DataFrame or str
+            The input data to scramble. If a DataFrame is provided, it should contain a column named 'student_ID'
+            with the original student IDs. If a string is provided, it represents a single student ID to be scrambled.
+        cipher : str
+            The cipher used for scrambling. It should be a string of exactly 10 characters representing the mapping
+            of each digit (0-9) to a new character.
+
+        Returns
+        -------
+        pandas.DataFrame or str or None
+            - If input_data is a DataFrame, returns a copy of the DataFrame with the 'student_ID' column scrambled
+              according to the provided cipher.
+            - If input_data is a string, returns the scrambled student ID corresponding to the input string.
+            - If input_data is neither a DataFrame nor a string, returns None.
+
+        Notes
+        -----
+        - The cipher must have exactly 10 characters. If student IDs at your institution have a different number of characters,
+          adjust the cipher accordingly.
+        - For DataFrames, the 'student_ID' column must be present. If not found, an error message is displayed, and None is returned.
+        - Do not post any ciphers publically
+
+        Examples
+        --------
+        >>> # Scramble a DataFrame of student IDs
+        >>> scrambled_df = scramble_ID(dataframe, "abcdefghij")
+        >>>
+        >>> # Scramble a single student ID string
+        >>> scrambled_id = scramble_ID("1234567890", "abcdefghij")
+        """
+
     if len(cipher) != 10: #if student IDs at your institution have different # of characters, then adjust accordingly
         print("The cipher must have 10 characters!")
         return None
@@ -47,6 +83,37 @@ def scramble_ID(input_data, cipher):
 #Student_ID : string of characters representing the Student_ID to be unscrambled
 #cipher : a string of characters length of Student_ID; DON'T FORGET THIS AND DO NOT POST PUBLICALLY
 def unscramble_ID(student_ID, cipher):
+    """
+    Unscramble a student ID based on a cipher.
+
+    Parameters
+    ----------
+    student_ID : str
+        The scrambled student ID to be unscrambled.
+    cipher : str
+        The cipher used for unscrambling. It should be a string of exactly the same length as the student ID,
+        representing the mapping of each character in the scrambled ID to its original digit.
+
+    Returns
+    -------
+    str or None
+        - If the unscrambling is successful, returns the original unscrambled student ID.
+        - If the cipher length is not equal to the length of the student ID, returns None.
+
+    Notes
+    -----
+    - The cipher must have exactly the same length as the student ID. If student IDs at your institution have
+      a different number of characters, adjust the cipher accordingly.
+    - The function assumes that the provided cipher matches the scrambling performed by the `scramble_ID` function.
+    - Do not post any ciphers publically
+
+    Examples
+    --------
+    >>> original_id = unscramble_ID("abcdefghij", "abcdefghij")
+    >>> original_id
+    '0123456789'
+    """
+
     if len(cipher) != 10: #if student IDs at your institution have different # of characters, then adjust accordingly
         print("The cipher must have 10 characters!")
         return None
@@ -65,6 +132,44 @@ def unscramble_ID(student_ID, cipher):
 
 #[Utility function]  adjust grad_term to give the ending month from a beginning of a grad_term 2023-07-12
 def adjust_grad_term(row):
+    """
+        Adjust the graduation term based on the given month.
+
+        Parameters
+        ----------
+        row : pandas.Series
+            A pandas Series representing a row of data containing a 'month' attribute.
+
+        Returns
+        -------
+        pandas.Timestamp or pandas.NaT
+            The adjusted graduation term as a pandas Timestamp object, or NaT (Not a Timestamp) if the input is NaN.
+
+        Notes
+        -----
+        - This function adjusts the graduation term based on the month:
+            - If the month is January (1), the graduation term is adjusted to May (5).
+            - If the month is May (5), the graduation term is adjusted to August (8).
+            - If the month is August (8), the graduation term is adjusted to December (12).
+            - For any other month, the graduation term remains unchanged.
+        - If the input row is NaN (Not a Number), representing missing or undefined data, the function returns NaT.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> adjust_grad_term(pd.Series({'month': 1}))
+        Timestamp('NaT')
+
+        >>> adjust_grad_term(pd.Series({'month': 5}))
+        Timestamp('NaT')
+
+        >>> adjust_grad_term(pd.Series({'month': 8}))
+        Timestamp('NaT')
+
+        >>> adjust_grad_term(pd.Series({'month': 10}))
+        Timestamp('NaT')
+        """
+
     if pd.isna(row):  # This checks for NaN values
         return pd.NaT
     if row.month == 1:
@@ -79,6 +184,36 @@ def adjust_grad_term(row):
 #[Utility function] produce a list of semesters given a list of a year or years (created 2023-07-13; updated 2023-07-17)
 #defaults to academic semester codes, but calendar_year flag can be set to True as alternative
 def create_semesters(years, calendar_year = False):
+    """
+    Generate a list of semester codes based on the given years.
+
+    Parameters
+    ----------
+    years : list of int
+        A list containing the academic years for which semester codes will be generated.
+    calendar_year : bool, optional
+        Indicator for whether the academic year aligns with the calendar year (default is False).
+
+    Returns
+    -------
+    list of int
+        A sorted list of semester codes corresponding to the input academic years.
+
+    Notes
+    -----
+    - This function generates semester codes based on academic years and returns them as a sorted list.
+    - By default, the function assumes that the academic year starts in the fall and ends in the summer of the following year.
+    - If 'calendar_year' is True, the function assumes that the academic year aligns with the calendar year, with spring starting in January, summer starting in May, and fall starting in August.
+
+    Examples
+    --------
+    >>> create_semesters([2022, 2023])
+    [202108, 202201, 202205, 202208, 202301, 202305]
+
+    >>> create_semesters([2022, 2023], calendar_year=True)
+    [202101, 202105, 202108, 202201, 202205, 202208, 202301, 202305, 202308]
+    """
+
     semesters = list()
 
     if calendar_year:
@@ -104,6 +239,24 @@ def create_semesters(years, calendar_year = False):
 #[Utility function] produce a list of semesters given a list of a year or years (created 2023-07-13; updated 2023-07-17)
 #defaults to academic semester codes, but calendar_year flag can be set to True as alternative
 def increment_semester(semester_input):
+    """
+    Increment the given semester code to the next semester.
+
+    Parameters
+    ----------
+    semester_input : int
+        The current semester code (e.g., 202201 for Spring 2022).
+
+    Returns
+    -------
+    int
+        The semester code for the next semester.
+
+    Notes
+    -----
+    This function increments the given semester code to the next semester, following the academic calendar.
+    """
+
     year_code = str(semester_input)[:4]
     semester_code = str(semester_input)[4:]
     if(semester_code == '08'):
@@ -168,6 +321,26 @@ def num_grade_institutional(grade):
 # [Utility function] Normalizes numeric grade to 4.00 for cross-institution comparison
 # ported on 20230717 from R utility_functions_v2 using ChatCPT 3.5
 def num_grade_normalized(num_grade, institutional_max):
+    """
+    Normalize a numeric grade to a 4.00 scale for cross-institutional comparison.
+
+    Parameters
+    ----------
+    num_grade : int or float
+        The numeric grade to be normalized.
+    institutional_max : int or float
+        The maximum grade allowed by the institution.
+
+    Returns
+    -------
+    float
+        The normalized grade on a 4.00 scale.
+
+    Notes
+    -----
+    This function normalizes a numeric grade to a 4.00 scale for cross-institutional comparison.
+    """
+
     grade_normalized = -1  # default to a -1 numeric grade
 
     # If num_grade or institutional_max is invalid, return -1 flag
@@ -191,6 +364,27 @@ def num_grade_normalized(num_grade, institutional_max):
 #c_minus_flag = 1 --> C- = D
 #c_minus_flag = 0 --> C- = C
 def letter_grade_simplify(dataframe, c_minus_flag = 1):
+    """
+    Simplify letter grades by eliminating distinctions and various grade indicators.
+
+    Parameters
+    ----------
+    dataframe : pandas.DataFrame
+        The DataFrame containing the column 'course_grade_letter' with letter grades to be simplified.
+    c_minus_flag : int, optional
+        Flag indicating whether to consider C- as a passing grade (default is 1).
+
+    Returns
+    -------
+    pandas.DataFrame
+        A copy of the input DataFrame with simplified letter grades.
+
+    Notes
+    -----
+    This function simplifies letter grades by eliminating distinctions and various grade indicators.
+    It optionally treats C- as a passing grade based on the value of 'c_minus_flag'.
+    """
+
     if(c_minus_flag == 0):
         grade_mapping = {
             "A+": "A",
@@ -263,6 +457,20 @@ def letter_grade_simplify(dataframe, c_minus_flag = 1):
 
 #Utility function: gets user input on which CSV grades reports files to load and returns as a pandas dataframe
 def load_grades():
+    """
+    Load a CSV grades report file selected by the user and return it as a pandas DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The DataFrame containing the grades data loaded from the selected CSV file.
+
+    Notes
+    -----
+    This function prompts the user to select a CSV grades report file, loads the file as a pandas DataFrame,
+    and returns the DataFrame.
+    """
+
     csv_filename = fd.askopenfilename(title = 'Please select the grades file') # show an "Open" dialog box and return the path to the selected file
     print(csv_filename)
     grades_df = pd.read_csv(csv_filename)
@@ -271,27 +479,33 @@ def load_grades():
 
 def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
     """
-       Get the demographics of students in their first semester.
+    Get the demographics of students in their first semester.
 
-       Parameters:
-       - df (pd.DataFrame): DataFrame containing demographics data.
-       - transfer (int): Flag indicating whether to include students with transfer credits. Default is 0.
-                         - 0: Include all students.
-                         - 1: Include only students with transfer credits.
-                         - 2: Include only students without transfer credits.
-       - return_dataframe (int): Flag indicating the format of the output.
-                                 - 1: Return DataFrame containing first semester demographics.
-                                 - 0: Return list of student IDs.
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing demographics data.
+    transfer : int, optional
+        Flag indicating whether to include students with transfer credits.
+        - 0: Include all students.
+        - 1: Include only students with transfer credits.
+        - 2: Include only students without transfer credits. (default is 0)
+    return_dataframe : int, optional
+        Flag indicating the format of the output.
+        - 1: Return DataFrame containing first semester demographics.
+        - 0: Return list of student IDs. (default is 1)
 
-       Returns:
-       - pd.DataFrame or list: DataFrame containing first semester demographics for selected students,
-                               or list of student IDs depending on the value of return_dataframe.
+    Returns
+    -------
+    pandas.DataFrame or list
+        DataFrame containing first semester demographics for selected students,
+        or list of student IDs depending on the value of return_dataframe.
 
-       Notes
-       ------
-       - Since term_matriculation is not always exactly matched to the first term a student takes courses, the dataframe
-         is sorted to find the first demographics term for each student.
-       """
+    Notes
+    -----
+    - Since 'term_matriculation' is not always exactly matched to the first term a student takes courses,
+      the DataFrame is sorted to find the first demographics term for each student.
+    """
 
     # Get the earliest term for each student
     mask = df.groupby('student_ID')['demographics_term'].idxmin()
@@ -363,6 +577,38 @@ Example Usage:
     print(results)
 """
 def descriptive_course_stats(df, courses=None, majors= None, all_attempts=None, start_semester=None, end_semester=None, associates = False):
+    """
+    Generate descriptive statistics for student performance in specified courses.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame containing student data.
+    courses : list of str, optional
+        List of course codes to analyze (default is None, which analyzes all unique courses in the DataFrame).
+    majors : list of str, optional
+        List of major codes to filter the data by (default is None, which includes all majors).
+    all_attempts : bool, optional
+        Flag indicating whether to consider all attempts or only first attempts (default is None, which considers only first attempts).
+    start_semester : int, optional
+        The starting semester code to filter the data by (default is None, which includes all semesters).
+    end_semester : int, optional
+        The ending semester code to filter the data by (default is None, which includes all semesters).
+    associates : bool, optional
+        Flag indicating whether to include associate courses (default is False).
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame containing descriptive statistics for each specified course,
+        including student counts, proportions, average grades, and demographic information.
+
+    Notes
+    -----
+    This function generates descriptive statistics for student performance in specified courses.
+    It calculates student counts, proportions, average grades, and demographic information such as
+    the proportion of first-generation students, female students, and Pell Grant-eligible students.
+    """
 
     df['COURSE'] = df['COURSE_PREFIX'] + df['COURSE_NUMBER'].astype(str) + df['COURSE_SUFFIX'].fillna("")
     if courses is None:
