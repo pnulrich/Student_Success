@@ -11,6 +11,22 @@ import institutionaldata.utilityfunctions as utilityfunctions
 
 #collate rows from CSV files of user-selected math courses and drop unnecessary columns
 def collate_math_grades(course_number_mapping = False):
+    """
+    Reads and combines multiple CSV files containing math grades into a single DataFrame.
+
+    Parameters
+    ----------
+    course_number_mapping : dict or False, optional
+        A dictionary mapping course titles to course numbers. If provided, a new column
+        'Course_Number' will be created based on this mapping. (default is False)
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame containing the combined data from all input CSV files.
+
+    """
+
     # Prompt the user to select CSV files
     root = tk.Tk()
     root.withdraw()
@@ -40,6 +56,29 @@ def collate_math_grades(course_number_mapping = False):
 
 #Joins demographics reports with graduation records in a single dataframe
 def demographics_grad_combine(cipher = None):
+    """
+    Combines demographics reports with graduation records into a single DataFrame.
+
+    Parameters
+    ----------
+    cipher : str or None, optional
+        A cipher value used to obscure student IDs. (default is None)
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame containing combined demographics and graduation data.
+
+    Notes
+    -----
+    - The function prompts the user to select CSV files for demographics and graduation records.
+    - Demographics and graduation data are merged based on student ID.
+    - Duplicate rows with the same term and student ID are eliminated.
+    - The output DataFrame is saved as a CSV file in a user-defined folder with a filename
+      suffix in YYYYMMDD format.
+
+    """
+
     if (cipher == None):
         print("You must provide a cipher value to use this function in order to obscure student IDs.")
         return
