@@ -968,11 +968,9 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
     #next_course_name = course_sequence[1]
     previous_pass_node = None
 
-
-
     #Use MATRIC_TERM value associated with earliest 'TERM' for the 'Student_ID'
     #Could be better to drag this in from demographics?
-    # Sort the DataFrame by 'Student_ID' and 'TERM' in ascending order
+    # Sort the DataFrame by 'student_ID' and 'course_term' in ascending order
     df_sorted = df.sort_values(by=['student_ID', 'course_term'])
     # Group by 'Student_ID' and get the row with the lowest 'TERM' for each group
     earliest_major = df_sorted.groupby('student_ID').first()['major_matriculation']
@@ -1006,7 +1004,6 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
             graph.add_node(did_not_take_next_node)
 
         # Analyze the course
-
         if index == 0:  #if the course is the first in the sequence list
             descriptives = analyze_course(course_name, df, major_matriculation)
             #next_course_name = course_sequence[index + 1]
@@ -1021,35 +1018,20 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
             graph.add_edge(pydot.Edge(pass_node, did_not_take_next_node,
                                       label=f"{proportion_not_taking_next:.3f} ({number_not_taking_next})"))
 
-        #print(len(course_sequence))
-        #print(len(course_sequence)-2)
         # if the course is not the first in the sequence list or the last in the list
-        #if (index > 0) & (index < (len(course_sequence) - 1)):
         if index > 0:
             prerequisite_course_name = course_sequence[index - 1]
             print("The prerequisite course name is ", prerequisite_course_name, "and current course is",
                   course_sequence[index])
             if index < (len(course_sequence) - 1):
-                #prerequisite_course_name = course_sequence[index - 1]
-
-                #descriptives, data = analyze_course(course_name, df, major_matriculation, course_sequence[index-1]) ## 2024-02-21 I don't think the last parameter does anything yet
-
                 #determine which students entered the course through an alternate route
                 number_alternate_entry, students_in_alternate_entry = calculate_alternate_entry(course_name, df, major_matriculation, prerequisite_course_name)
 
                 #determine how many students came from the prerequisite course and edge connecting prior course to current course
                 prerequisite_course_results = calculate_progression_to_next_course(
                     current_course = prerequisite_course_name, next_course = course_name, df = df, major_matriculation = major_matriculation)
-                #print("Results are , ", proportion_not_taking_next, number_not_taking_next, proportion_taking_next,
-                #      number_taking_next)
-                #print(prerequisite_course_results)
                 graph.add_edge(pydot.Edge(previous_pass_node, course_node,
                                           label=f"{prerequisite_course_results[2]:.3f} ({prerequisite_course_results[3]})"))
-
-                ##calculate performance on current course
-                ##proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_progression_to_next_course(
-                ##    current_course = course_name, next_course = course_sequence[index], df = df, major_matriculation = major_matriculation)
-                ##print("Results are", proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next)
 
                 # for downstream courses, we only want to look at students who either passed the first course or came in through alternate edge
                 # Universities occasionally permit students with a non-passing prereq score to take the next course. In the future, we may
@@ -1066,10 +1048,6 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
             if (index == (len(course_sequence) - 1)):
                 print("INDEX IS...", index)
                 prerequisite_course_name = course_sequence[index - 1]
-                #print("The prerequisite course name is ", prerequisite_course_name, "and current course is",
-                #      course_sequence[index])
-                # descriptives, data = analyze_course(course_name, df, major_matriculation, course_sequence[index-1]) ## 2024-02-21 I don't think the last parameter does anything yet
-
                 # determine which students entered the course through an alternate route
                 number_alternate_entry, students_in_alternate_entry = calculate_alternate_entry(course_name, df,
                                                                                                 major_matriculation,
@@ -1079,21 +1057,8 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
                 prerequisite_course_results = calculate_progression_to_next_course(
                     current_course=prerequisite_course_name, next_course=course_name, df=df,
                     major_matriculation=major_matriculation)
-                # print("Results are , ", proportion_not_taking_next, number_not_taking_next, proportion_taking_next,
-                #      number_taking_next)
-                #print(prerequisite_course_results[0], prerequisite_course_results[1], prerequisite_course_results[2], prerequisite_course_results[3], prerequisite_course_results[4])
                 graph.add_edge(pydot.Edge(previous_pass_node, course_node,
                                           label=f"{prerequisite_course_results[2]:.3f} ({prerequisite_course_results[3]})"))
-
-                ##calculate performance on current course
-                ##proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_progression_to_next_course(
-                ##    current_course = course_name, next_course = course_sequence[index], df = df, major_matriculation = major_matriculation)
-                ##print("Results are", proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next)
-
-                # for downstream courses, we only want to look at students who either passed the first course or came in through alternate edge
-                # Universities occasionally permit students with a non-passing prereq score to take the next course. In the future, we may
-                # want these students to be illustrated as a separate edge from the DFW node in the prereq into the second course,
-                # but at this point (2024-02-21), they are being excluded
 
                 # analyze the course with only those students who passed and took the subsequent course or came in via alternate route
                 current_course_df = df[(df['student_ID'].isin(students_who_did_take_next)) | (
@@ -1101,28 +1066,8 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
                 print(course_name)
                 descriptives = analyze_course(course_name, current_course_df, major_matriculation, course_sequence[
                     index])  ## 2024-02-21 I don't think the last parameter does anything yet
-                # print(descriptives)
-                # descriptives = analyze_course(course_name, current_course_df, major_matriculation, course_sequence[
-                #    index])  ## 2024-02-21 I don't think the last parameter does anything yet
-
-        # # Create nodes for the course
-        # course_node = pydot.Node(course_name, shape="box")
-        # pass_node = pydot.Node(f"Pass {course_name}", label="Pass")
-        # dfw_node = pydot.Node(f"DFW {course_name}", label="DFW")
-        # retake_node = pydot.Node(f"Retake {course_name}", label="Retake")
-        # if index < len(course_sequence) - 1:
-        #     did_not_take_next_node = pydot.Node(f"Did Not Take Next {course_name}", label="Did Not Take Next")
-        #
-        # # Add nodes to the graph
-        # graph.add_node(course_node)
-        # graph.add_node(pass_node)
-        # graph.add_node(dfw_node)
-        # graph.add_node(retake_node)
-        # if index < len(course_sequence) - 1:
-        #     graph.add_node(did_not_take_next_node)
 
 
-        #print(descriptives)
         # Create edges and set labels with limited significant figures
         print(descriptives)
         graph.add_edge(pydot.Edge(course_node, pass_node, label=f"{descriptives['first_pass_proportion']:.3f} ({descriptives['first_pass_number']})"))
@@ -1133,21 +1078,6 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
             graph.add_edge(pydot.Edge(retake_node, did_not_take_next_node, label=f"{descriptives['second_DFW_proportion']:.3f} ({descriptives['second_DFW_number']})"))
         graph.add_edge(pydot.Edge(retake_node, pass_node, label=f"{descriptives['second_pass_proportion']:.3f} ({descriptives['second_pass_number']})"))
 
-        # if index < len(course_sequence):
-        #    graph.add_edge(pydot.Edge(retake_node, did_not_take_next_node,label=f"{1-descriptives['second_pass_proportion']:.3f}"))
-
-        # Edge for students who pass but do not take the next course
-
-        #if index == 0:
-            # next_course_name = course_sequence[index + 1]
-            # print("Next course name : ", next_course_name)
-            # #proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_not_taking_next(
-            # #    course_name, next_course_name, df, major_matriculation)
-            # print("Number taking next : ", number_taking_next)
-            # graph.add_edge(pydot.Edge(pass_node, did_not_take_next_node, label=f"{proportion_not_taking_next:.3f} ({number_not_taking_next})"))
-
-        #if index < len(course_sequence) - 1:
-        #if (index > 0) & (index < (len(course_sequence) - 1)):
         if (index > 0):
             if(index < (len(course_sequence) - 1)):
                 next_course_name = course_sequence[index + 1]
@@ -1161,21 +1091,11 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
 
             # Node and edge for students entering from alternate pathways (tested out, etc)
             prerequisite_course_name = course_sequence[index -1]
-            #print(f'The prerequisite course name is {prerequisite_course_name}. Adding edge for alternate entry')
-            #print(f'The prerequisite course name is {prerequisite_course_name}')
-            #print(data['major_matriculation'].unique())
-            #number_alternate_entry, students_in_alternate_entry = calculate_alternate_entry(course_name, data, major_matriculation, prerequisite_course_name)
             number_alternate_entry, students_in_alternate_entry = calculate_alternate_entry(course_name, df, major_matriculation, prerequisite_course_name)
             print(number_alternate_entry, len(students_in_alternate_entry))
             alternate_entry_node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
             graph.add_node(alternate_entry_node)
             graph.add_edge(pydot.Edge(alternate_entry_node, course_node, label=f"{number_alternate_entry}"))
-            #prerequisite_course_name = course_sequence[index - 1]
-            #print('Prerequisite for : ', course_name, ' is ', prerequisite_course_name)
-            #proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, students_who_did_take_next = calculate_not_taking_next(
-            #   prerequisite_course_name, course_name, df, major_matriculation)
-            #graph.add_edge(pydot.Edge(previous_pass_node, course_node,
-            #                          label=f"{proportion_taking_next:.3f} ({number_taking_next})"))
 
         previous_pass_node = pass_node
 
