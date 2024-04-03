@@ -10,6 +10,7 @@ Welcome to HHMI Student Success - Project B's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   GettingStarted
    modules
 
 

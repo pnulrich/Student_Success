@@ -3,6 +3,7 @@ import pandas as pd
 from tkinter import filedialog as fd
 import tkinter as tk
 import re
+import numpy as np
 
 #[Utility function] permit simple ciphering of Student_ID numbers; depending on input, returns either a dataframe or a string
 #working_df : dataframe where Student_ID is the column to be ciphered
@@ -363,7 +364,7 @@ def num_grade_normalized(num_grade, institutional_max):
 #c_minus_flag is available if the C- grade typically is not passing (as at GSU)
 #c_minus_flag = 1 --> C- = D
 #c_minus_flag = 0 --> C- = C
-def letter_grade_simplify(dataframe, c_minus_flag = 1):
+def letter_grade_simplify(dataframe, c_minus_flag = True):
     """
     Simplify letter grades by eliminating distinctions and various grade indicators.
 
@@ -372,7 +373,7 @@ def letter_grade_simplify(dataframe, c_minus_flag = 1):
     dataframe : pandas.DataFrame
         The DataFrame containing the column 'course_grade_letter' with letter grades to be simplified.
     c_minus_flag : int, optional
-        Flag indicating whether to consider C- as a passing grade (default is 1).
+        Flag indicating whether to consider C- as a passing grade (default is True).
 
     Returns
     -------
@@ -385,7 +386,7 @@ def letter_grade_simplify(dataframe, c_minus_flag = 1):
     It optionally treats C- as a passing grade based on the value of 'c_minus_flag'.
     """
 
-    if(c_minus_flag == 0):
+    if(c_minus_flag == False):
         grade_mapping = {
             "A+": "A",
             "A-": "A",
@@ -417,7 +418,7 @@ def letter_grade_simplify(dataframe, c_minus_flag = 1):
             ## suffix = ]don't know]
         }
 
-    elif (c_minus_flag == 1):
+    elif (c_minus_flag == True):
         grade_mapping = {
             "A+": "A",
             "A-": "A",
@@ -576,99 +577,323 @@ Example Usage:
     )
     print(results)
 """
-def descriptive_course_stats(df, courses=None, majors= None, all_attempts=None, start_semester=None, end_semester=None, associates = False):
+def descriptive_course_stats(df, courses=None, majors= None, all_attempts=False, start_semester=None, end_semester=None, associates = False, exclude_honors = True, return_dataframe = True):
     """
-    Generate descriptive statistics for student performance in specified courses.
+      Generate descriptive statistics for student performance in specified courses while providing the option to exclude honors courses and filter by course, major, semester, and other criteria. This function also allows specifying whether to consider all course attempts or only the first attempt for each student and whether to include courses taken as part of associate degree programs.
+
+      Parameters
+      ----------
+      df : pandas.DataFrame
+          DataFrame containing student course data.
+      courses : list of str, optional
+          Course codes to include in the analysis. Analyzes all courses if None.
+      majors : list of str, optional
+          Major codes to filter the data. Includes all majors if None.
+      all_attempts : bool, optional
+          True to include all attempts; considers only the first attempt if False or None.
+      start_semester : int, optional
+          The starting semester code (YYYYMM format) for filtering data. Uses the minimum available semester if None.
+      end_semester : int, optional
+          The ending semester code (YYYYMM format) for filtering data. Uses the maximum available semester if None.
+      associates : bool, optional
+          True to include associate courses; excludes them if False.
+      exclude_honors : bool, optional
+          True to exclude honors courses based on titles starting with 'HON' or 'hon'; includes all courses if False.
+
+      Returns
+      -------
+      pandas.DataFrame
+          A DataFrame with descriptive statistics for each course, including counts, proportions, average grades, demographic information, course titles, and the sampling period.
+
+      Examples
+      --------
+      >>> stats_df = descriptive_course_stats(df=student_df, courses=['CHEM1211K', 'CHEM1212K'], majors=['BIO', 'CHM'], start_semester=202201, end_semester=202205)
+      >>> print(stats_df)
+      """
+
+    df = df.copy()
+
+    # default behavior excludes honors courses from analysis
+    if exclude_honors == True:
+        honors_regex = "(?i)HON"
+        mask = ~df['course_title'].str.contains(honors_regex,regex=True,na=False)
+        df = df[mask]
+
+    # default behavior excludes associates level from analysis
+    if associates == False:
+        df = df[df['flag_course_PC'] == 0]
+
+    # Set sampling period if not provided.
+    if start_semester is None:
+        start_semester = df['course_term'].min()
+    if end_semester is None:
+        end_semester = df['course_term'].max()
+
+    # Create sampling period string
+    sampling_period = f"{start_semester} - {end_semester}"
+
+    # create full course number codes
+    df['course_fullcode'] = df['course_prefix'] + df['course_number'].astype(str) + df['course_suffix'].fillna('')
+    if courses is None:
+        courses = df['course_fullcode'].unique()
+
+    if not all_attempts:
+        # Keep only the first attempt for each student_ID
+        df.sort_values(by=['student_ID', 'course_term'], inplace=True)
+        df = df.drop_duplicates(subset=['student_ID', 'course_fullcode'], keep='first')
+
+    # create a dataframe to hold the descriptive results
+    results = pd.DataFrame(columns=['course', 'course_fullcode', 'major_matriculation', 'sampling_period', 'sample_size'])
+
+    # filter the dataframe for majors and time range
+    if majors:
+        df = df[df['major_matriculation'].isin(majors)]
+    if start_semester:
+        df = df[df['course_term'] >= start_semester]
+    if end_semester:
+        df = df[df['course_term'] <= end_semester]
+
+    # calculate descriptives for each of the courses in the dataframe
+    for course in courses:
+        course_df = df[df['course_fullcode'] == course].copy()
+
+        # if  no students are in the dataframe, skip this course
+        if course_df.empty:
+            continue
+
+        # Add 'course_title' to 'major_counts' by getting the first 'course_title' for the current 'course_fullcode'
+        course_title = course_df['course_title'].iloc[0]  # Assumes that all 'course_title' associate with the same 'course_fullcode' are synonymous
+
+        # Tabulate absolute numbers of students by major at matriculation
+        major_counts = course_df.groupby('major_matriculation').size().reset_index(name='sample_size')
+        major_counts['sampling_period'] = sampling_period  # Add sampling period to the DataFrame
+        major_counts['course_fullcode'] = course
+
+        #Calculate proportion the current major is of the total students in the course
+        if len(majors) > 1:
+            major_counts['Proportion_Total'] = (major_counts['sample_size'] / major_counts['sample_size'].sum()).round(2)
+
+        # Calculate average numerical grade in the course, excluding oddball grades (coded as -2) and withdrawals (coded as -1)
+        valid_grades = course_df[course_df['course_grade_numeric'] >= 0].copy()
+        avg_grade = valid_grades.groupby('major_matriculation')['course_grade_numeric'].mean().round(2).reset_index(name='course_grade_average')
+        major_counts = major_counts.merge(avg_grade, on='major_matriculation', how='left')
+
+        # Calculate proportion of first generations students in the course
+        proportion_first_gen = course_df.groupby('major_matriculation')['flag_first_generation'].mean().round(2).reset_index(name='proportion_first_gen')
+        major_counts = major_counts.merge(proportion_first_gen, on='major_matriculation', how='left')
+        #major_counts.rename(columns={'flag_first_generation': 'First_Gen'}, inplace=True)
+
+        # Calculate Proportion_Female
+        proportion_female = course_df[~(course_df['flag_sex'] < 0)] #non-binary sex codes too infrequent and not included, though code can be amended if this changes
+        proportion_female = proportion_female.groupby('major_matriculation')['flag_sex'].mean().round(2).reset_index(name='proportion_female')
+        major_counts = major_counts.merge(proportion_female, on='major_matriculation', how='left')
+        #major_counts.rename(columns={'flag_sex': 'Female'}, inplace=True)
+
+        # Calculate Proportion_Pell_Eligible
+        proportion_pell_eligible = course_df.groupby('major_matriculation')['flag_PELL'].mean().round(2).reset_index(name='proportion_pell_eligible')
+        major_counts = major_counts.merge(proportion_pell_eligible, on='major_matriculation', how='left')
+        #major_counts.rename(columns={'flag_PELL': 'Pell_Eligible'}, inplace=True)
+
+        # Calculate Proportion_PEER (note that self-identification that is more than one race but provides no specifics on race are not included in calculation of proportion)
+        proportion_PEER = course_df[course_df['flag_PEER'].isin([0,1])]
+        proportion_PEER = proportion_PEER.groupby('major_matriculation')['flag_PEER'].mean().round(2).reset_index(name='proportion_PEER (undefined, more than one race not included)')
+        major_counts = major_counts.merge(proportion_PEER, on='major_matriculation', how='left')
+        #major_counts.rename(columns={'flag_PEER': 'PEER'}, inplace=True)
+
+        # Calculate Proportion_DFW
+        proportion_DFW = course_df.groupby('major_matriculation')['course_grade_letter_simp'].apply(
+            lambda x: (x.isin(['D', 'F', 'W']).sum()) / len(x)).round(2).reset_index(name='proportion_DFW')
+        major_counts = major_counts.merge(proportion_DFW, on='major_matriculation', how='left')
+
+        major_counts['course'] = course_title
+        major_counts = major_counts.sort_values(by='sample_size', ascending=False)
+        results = pd.concat([results, major_counts])
+
+    if return_dataframe: return results, df
+    else: return results
+
+def calculate_deltas(df):
+    """
+    Calculate the difference (delta) in mean course grades and DFW rates between
+    groups within a segment, specifically focusing on the group where `segment_value == 1`
+    against the overall population or another specified group.
+
+    This function assumes that the input DataFrame `df` includes pre-computed statistics
+    (mean and DFW rates) for each segment and that these calculations are intended
+    to be performed where the `segment_value == 1`.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The DataFrame containing student data.
+        A DataFrame with pre-computed mean and DFW rate statistics for a specific
+        segment of interest. It should contain rows for segment values, including
+        mean grades and DFW rates, to allow for delta calculations.
+
+    Returns
+    -------
+    tuple
+        A tuple containing two elements: the delta in mean grades (`delta_mean`)
+        and the delta in DFW rates (`delta_dfw`) between the specified group
+        (`segment_value == 1`) and the reference group or population.
+
+    Notes
+    -----
+    The function is designed to work with data where segment analyses have been
+    pre-aggregated. It expects the input DataFrame to include specific columns:
+    `mean` for the average grades and `proportion_DFW` for the DFW rates.
+
+    Created using ChatGPT 4.0 (Ulrich, 2024-04-01)
+    """
+
+
+    if df.empty or len(df) < 2:
+        return 0, 0  # Return default deltas if insufficient data
+
+    # Ensure the DataFrame is sorted by segment value to guarantee alignment
+    df = df.sort_values(by='segment_value')
+
+    # Calculate deltas
+    delta_mean = round(df.iloc[1]['mean'] - df.iloc[0]['mean'], 2)  # 1's mean - 0's mean
+    delta_dfw = round(df.iloc[1]['proportion_DFW'] - df.iloc[0]['proportion_DFW'], 2)  # 1's DFW - 0's DFW
+
+    return delta_mean, delta_dfw
+
+def calculate_gaps_in_course_grades(df, courses=None, majors=None, all_attempts=False,
+                                    start_semester=None, end_semester=None,
+                                    associates=False, exclude_honors=True):
+    """
+    Calculate gaps in course_grade_numeric (mean ± 1 standard deviation) and
+    delta DFW (Drop, Fail, Withdraw) rates for students, segmented by gender (flag_sex),
+    race/ethnicity (flag_PEER), and Pell Grant eligibility (flag_PELL), considering
+    various filtering options. This function aims to highlight disparities in academic
+    performance and outcomes across different demographic groups within the dataset.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame containing student course data, including demographics and grade outcomes.
     courses : list of str, optional
-        List of course codes to analyze (default is None, which analyzes all unique courses in the DataFrame).
+        Specific course titles to include in the analysis. Analyzes all courses if None.
     majors : list of str, optional
-        List of major codes to filter the data by (default is None, which includes all majors).
+        Specific major codes to filter the data. Includes all majors if None.
     all_attempts : bool, optional
-        Flag indicating whether to consider all attempts or only first attempts (default is None, which considers only first attempts).
+        If True, include all course attempts by a student; if False, considers only the
+        first attempt.
     start_semester : int, optional
-        The starting semester code to filter the data by (default is None, which includes all semesters).
+        The starting semester code (YYYYMM format) for filtering data. Analyzes from
+        the earliest semester available if None.
     end_semester : int, optional
-        The ending semester code to filter the data by (default is None, which includes all semesters).
+        The ending semester code (YYYYMM format) for filtering data. Analyzes up to
+        the latest semester available if None.
     associates : bool, optional
-        Flag indicating whether to include associate courses (default is False).
+        If True, include courses taken as part of associate degree programs; otherwise,
+        excludes them.
+    exclude_honors : bool, optional
+        If True, exclude honors courses from the analysis; includes all courses if False.
 
     Returns
     -------
     pandas.DataFrame
-        A DataFrame containing descriptive statistics for each specified course,
-        including student counts, proportions, average grades, and demographic information.
+        A DataFrame containing the calculated grade gaps (mean ± 1 standard deviation)
+        and delta DFW rates, with each row representing a different demographic
+        segment for the selected courses. This version focuses on differences where
+        `segment_value == 1`, highlighting disparities for these groups specifically.
 
     Notes
     -----
-    This function generates descriptive statistics for student performance in specified courses.
-    It calculates student counts, proportions, average grades, and demographic information such as
-    the proportion of first-generation students, female students, and Pell Grant-eligible students.
+    - The function includes optional filtering capabilities to refine the analysis based
+      on course, major, attempt status, semester range, associate degree inclusion,
+      and the exclusion of honors courses.
+    - Deltas are calculated to highlight differences in performance for segments where
+      `segment_value == 1`, offering insights into specific disparities within the dataset.
+    - Created in conjunction with ChatGPT 4.0 (Ulrich, 2024-04-01)
     """
+    df = df.copy()
 
-    df['COURSE'] = df['COURSE_PREFIX'] + df['COURSE_NUMBER'].astype(str) + df['COURSE_SUFFIX'].fillna("")
-    if courses is None:
-        courses = df['COURSE'].unique()
+    # Apply filters based on parameters
+    if exclude_honors:
+        df = df[~df['course_title'].str.contains('HON', case=False, na=False)]
 
-    results = pd.DataFrame(columns=['COURSE', 'Major_Matriculation', 'Student_Count', 'Proportion_Total'])
+    if not associates:
+        df = df[df['flag_course_PC'] == 0]
 
-    if majors:
-        df = df[df['Major_Matriculation'].isin(majors)]
-    if start_semester:
-        df = df[df['TERM'] >= start_semester]
-    if end_semester:
-        df = df[df['TERM'] <= end_semester]
+    if start_semester is not None:
+        df = df[df['course_term'] >= start_semester]
+
+    if end_semester is not None:
+        df = df[df['course_term'] <= end_semester]
+
+    if majors is not None:
+        df = df[df['major_matriculation'].isin(majors)]
+
+    if courses is not None:
+        df = df[df['course_title'].isin(courses)]
+
+    # create full course number codes
+    df['course_fullcode'] = df['course_prefix'] + df['course_number'].astype(str) + df['course_suffix'].fillna('')
+
+    if not all_attempts:
+        df.sort_values(by=['student_ID', 'course_term'], inplace=True)
+        df = df.drop_duplicates(subset=['student_ID', 'course_fullcode'], keep='first')
+
+    # Utilize only binary flag_sex since non-binary (coded as -2) are so rare
+    # TODO : modify setup_demographic_flags() with  logic for situations where non-binary codes are utilized
+    df = df[df['flag_sex'] >=0]
+
+    # If more than one race reported, then do not include
+    # TODO : modify setup_demographic_flags() to address situations where more than one race reported but still PEER
+    df = df[df['flag_PEER'].isin([0,1])]
+
+    # Exclude withdrawals and odd situations from course_grade_numeric calculations
+    # df_valid_grades = df[df['course_grade_numeric'] >= 0]
+
+    # Segments to analyze
+    segments = ['flag_sex', 'flag_PEER', 'flag_PELL']
+    all_results = []
 
     for course in courses:
-        course_df = df[df['COURSE'] == course]
+        course_df = df.copy()
+        course_df = course_df[course_df['course_title'] == course]
 
-        # Default behavior is to only look at first attempts for the course
-        if all_attempts is None:
-            earliest_semester = course_df.groupby('Student_ID')['TERM'].min().reset_index()
-            # Merge the original DataFrame with the earliest semester information
-            course_df = course_df.merge(earliest_semester, on=['Student_ID', 'TERM'], how='inner')
+        # Exclude withdrawals and odd situations from course_grade_numeric calculations
+        course_valid_grades_df = course_df[course_df['course_grade_numeric'] >= 0]
 
-        if associates == False:
-            course_df = course_df[course_df['flag_course_PC'] == 0]
+        # Create a column that flags DFW's
+        course_df['flag_DFW'] = course_df['course_grade_letter_simp'].isin(['D', 'F', 'W'])
 
-        # Tabulate the absolute numbers of students by major at matriculation
-        major_counts = course_df.groupby('Major_Matriculation').size().reset_index(name='Student_Count')
-        major_counts['COURSE'] = course
-        major_counts['Proportion_Total'] = (major_counts['Student_Count'] / major_counts['Student_Count'].sum()).round(3)
+        results = []
 
-        # Calculate the average Num_GRDE, excluding -2 and -1
-        valid_grades = course_df[course_df['Num_GRDE'] >= 0]
-        avg_grade = valid_grades.groupby('Major_Matriculation')['Num_GRDE'].mean().round(2).reset_index(name='Average_Num_GRDE')
-        major_counts = major_counts.merge(avg_grade, on='Major_Matriculation', how='left')
+        for segment in segments:
+            # Calculate mean and standard deviation of course grades for each segment
+            segment_grade_stats = course_valid_grades_df.groupby(segment)['course_grade_numeric'].agg(['mean', 'std']).reset_index()
+            segment_grade_stats['mean'] = segment_grade_stats['mean'].round(2)
+            segment_grade_stats['std'] = segment_grade_stats['std'].round(2)
 
-        # Calculate Proportion_First_Gen
-        proportion_first_gen = course_df.groupby('Major_Matriculation')['FIRST_GENERATION_IND'].mean().round(2)
-        major_counts = major_counts.merge(proportion_first_gen, on='Major_Matriculation', how='left')
-        major_counts.rename(columns={'FIRST_GENERATION_IND': 'Proportion_First_Gen'}, inplace=True)
+            # Calculate proportion of DFW grades for each segment
+            proportion_DFW = course_df.groupby(segment)['flag_DFW'].mean().round(2).reset_index(name='proportion_DFW')
 
-        # Calculate Proportion_Female
-        proportion_female = course_df.groupby('Major_Matriculation')['SEX'].mean().round(2)
-        major_counts = major_counts.merge(proportion_female, on='Major_Matriculation', how='left')
-        major_counts.rename(columns={'SEX': 'Proportion_Female'}, inplace=True)
+            # Merge grade stats with DFW proportions
+            segment_results = pd.merge(segment_grade_stats, proportion_DFW, on=segment)
+            segment_results.rename(columns={segment: 'segment_value'}, inplace=True)
 
-        # Calculate Proportion_Pell_Eligible
-        proportion_pell_eligible = course_df.groupby('Major_Matriculation')['PELL_ELIGIBLE_IND'].mean().round(2)
-        major_counts = major_counts.merge(proportion_pell_eligible, on='Major_Matriculation', how='left')
-        major_counts.rename(columns={'PELL_ELIGIBLE_IND': 'Proportion_Pell_Eligible'}, inplace=True)
+            delta_mean, delta_dfw = calculate_deltas(segment_results)
+            segment_results['delta_mean_grade'] = delta_mean
+            segment_results['delta_DFW_rate'] = delta_dfw
 
-        major_counts = major_counts.sort_values(by='Student_Count', ascending=False)
-        results = pd.concat([results, major_counts])
+            # Prepare the segment stats for merging
+            segment_results['segment'] = segment
+            segment_results['course'] = course
+            results.append(segment_results)
 
-    return results
-# Example usage:
-# Assuming 'math_chem_df' is your DataFrame and 'courses' is a list of course codes
-# courses = ['CHEM1211K', 'CHEM1212K']
-# print(descriptive_course_stats(df=math_chem_df, courses=courses, majors= ['BIO', 'CHM'], start_semester=202201, end_semester=202205))
+        course_results = pd.concat(results, ignore_index=True)
+        all_results.append(course_results)
 
+    # Concatenate results for all courses
+    results_df = pd.concat(all_results, ignore_index=True)
+    # Explicitly rearrange columns for output to have 'segment' as the first column
+    results_df = results_df[['course', 'segment', 'segment_value', 'mean', 'std', 'delta_mean_grade', 'proportion_DFW', 'delta_DFW_rate']]
+
+    return results_df
 
 def rename_columns_in_bulk(df, column_mapping_filepath):
     """
@@ -771,3 +996,71 @@ def flatten_column_mapping(column_mapping):
                     # If not present, create a new entry with the project name
                     flattened_mapping[name] = [project_name]
     return flattened_mapping
+
+def set_up_demographic_flags(df, peer = True, pell = True, first_generation = True, sex =True):
+    """
+    Sets up demographic flags in the given DataFrame based on specified demographic criteria.
+
+    This function conditionally adds several columns to the DataFrame indicating demographic flags for
+    first-generation status, PELL grant eligibility, PEER group membership, and sex, based on the boolean
+    parameters provided.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The DataFrame to which the demographic flags will be added. It is expected to have columns named
+        'demographics_race' and 'demographics_sex', among others, depending on the flags requested.
+    peer : bool, optional
+        If True, sets up the PEER group flag based on 'demographics_race'. Defaults to True.
+    pell : bool, optional
+        If True, sets up the PELL grant eligibility flag. Defaults to True.
+    gender : bool, optional
+        Placeholder for future implementation. Currently does not alter function behavior. Defaults to True.
+    first_generation : bool, optional
+        If True, sets up the first-generation student flag. Defaults to True.
+    sex : bool, optional
+        If True, sets up the sex flag based on 'demographics_sex'. Defaults to True.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A copy of the input DataFrame with additional columns for each of the demographic flags requested.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({'demographics_race': ['Asian', 'Black or African American', 'White'],
+    ...                     'demographics_sex': ['Male', 'Female', np.nan],
+    ...                     'flag_first_generation': ['Y', 'N', np.nan]})
+    >>> set_up_demographic_flags(df)
+    """
+
+    peer_dict = {'American Indian or Alaska Native': 1, 'Asian': 0, 'Black or African American': 1, 'More Than One Race Reported': 2, 'Not Reported': -1, 'White': 0}
+    sex_dict = {'Female': 1, 'Male': 0, 'F': 1, 'M': 0, np.nan: -1}
+
+    dataframe_with_flags = df.copy()
+
+    if first_generation:
+        dataframe_with_flags['flag_first_generation'].replace({'Y': 1, 'N':0, np.nan: 0}, inplace=True)
+    if pell == True:
+        dataframe_with_flags['flag_PELL'].replace({'Y': 1, 'N': 0, np.nan: 0}, inplace=True)
+        dataframe_with_flags['flag_PELL'] = dataframe_with_flags['flag_PELL'].astype('int')
+    if peer == True:
+        # Use regex to match specified races in a case-insensitive way
+        # Joining the races with '|', which works as an "OR" operator in regex
+        races_regex = "(?i)african american|black|american indian|hawaiian|alaska native|native american"
+
+        # Default 'flag_PEER' to 0 to correctly handle 'White' and any other values not matching the regex
+        dataframe_with_flags['flag_PEER'] = 0
+
+        # Create a new column 'flag_PEER', set to 1 where 'demographics_race' matches the regex, 0 otherwise
+        dataframe_with_flags['flag_PEER'] = dataframe_with_flags['demographics_race'].str.contains(races_regex,
+                                                                                                   regex=True,
+                                                                                                  na=False).astype(int)
+        # Explicitly set specific situations
+        dataframe_with_flags.loc[dataframe_with_flags['demographics_race'] == 'Not Reported', 'flag_PEER'] = -1
+        dataframe_with_flags.loc[dataframe_with_flags['demographics_race'] == 'More Than One Race Reported', 'flag_PEER'] = 2
+
+    if sex == True:
+        dataframe_with_flags['flag_sex'] =  dataframe_with_flags['demographics_sex'].map(sex_dict).fillna(-1) # any values that don't have a corresponding key in sex_dict are coded to -1
+
+    return dataframe_with_flags

@@ -908,8 +908,11 @@ def calculate_progression_to_next_course(current_course, next_course, df, major_
 
     # Step 2: Check how many of these students did not take the next course
     did_not_take_next = [student for student in passed_students if student not in df[(df['course_title'] == next_course)]['student_ID'].unique()]
+    # print("Did NOT take next:")
+    # print(did_not_take_next)
     did_take_next = [student for student in passed_students if student in df[(df['course_title'] == next_course)]['student_ID'].unique()]
-
+    # print("Did take next:")
+    # print(did_take_next)
     # Filter the DataFrame to include only students who passed and took the next course
     exploratory_df = df[(df['student_ID'].isin(did_take_next)) & (df['course_title'] == current_course)]
     second_attempts_dfw = exploratory_df.groupby('student_ID').filter(lambda x: len(x) == 2 and not any(x['course_grade_letter_simp'].isin(['A', 'B', 'C'])))
@@ -922,7 +925,7 @@ def calculate_progression_to_next_course(current_course, next_course, df, major_
     number_not_taking_next = len(did_not_take_next)
     proportion_taking_next = len(did_take_next) / len(passed_students) if len(passed_students) > 0 else 0
     number_taking_next = len(did_take_next)
-    #print(f"Number of students who passed {current_course} but did not take {next_course} : ", number_not_taking_next)
+    print(f"Number of students who passed {current_course} but did not take {next_course} : ", number_not_taking_next)
     #print(f"Proportion of students who passed but did not take {next_course} : ", proportion_not_taking_next)
     return proportion_not_taking_next, number_not_taking_next, proportion_taking_next, number_taking_next, did_take_next
 
@@ -1077,6 +1080,17 @@ def course_sequence_analysis(course_sequence, df, major_matriculation, node_pie 
             graph.add_edge(pydot.Edge(dfw_node, did_not_take_next_node, label=f"{1-descriptives['proportion_DFW_repeat']:.3f} ({descriptives['first_DFW_number'] - descriptives['second_attempt_number']})"))
             graph.add_edge(pydot.Edge(retake_node, did_not_take_next_node, label=f"{descriptives['second_DFW_proportion']:.3f} ({descriptives['second_DFW_number']})"))
         graph.add_edge(pydot.Edge(retake_node, pass_node, label=f"{descriptives['second_pass_proportion']:.3f} ({descriptives['second_pass_number']})"))
+
+        # Return the results
+        ## FUTURE DEVELOPMENT: add proportions for key demographics here if pie_flag is provided as function parameter
+        ##if (node_pie):
+        ##    first_attempt_node = pydot.Node("T1", shape="circle", style="wedged",
+        ##                                    fillcolor=f"blue;{first_attempt_proportion_female}:green")
+        ##    second_attempt_node = pydot.Node("T2", shape="circle", style="wedged",
+        ##                                     fillcolor=f"blue;{second_attempt_proportion_female}:green")
+        ##else:
+        ##    first_attempt_node = pydot.Node("T1", shape="box")
+        ##    second_attempt_node = pydot.Node("T2", shape="box")
 
         if (index > 0):
             if(index < (len(course_sequence) - 1)):

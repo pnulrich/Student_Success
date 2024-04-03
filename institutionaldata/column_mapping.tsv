@@ -11,7 +11,8 @@ major_graduation
 term_matriculation      MATRIC_TERM,SDSTUMAIN_MATRIC_TERM
 student_ID              WHKEY,ID,PantherID,SDSTUMAIN_WHKEY,Student_ID,Pidm
 flag_first_generation   FIRST_GENERATION_IND
-flag_URM
+flag_sex
+flag_PEER
 flag_PELL   PELL_ELIGIBLE_IND
 flag_grad
 course_college  COURSE_COLLEGE
@@ -24,7 +25,7 @@ course_term TERM,SDSTUMAIN_TERM,Reg_Term
 course_title    Reg_Crse_Title,COURSE_TITLE
 course_grade_letter    LETTER_GRADE,Final_GRDE
 course_grade_letter_simp    course_grade_letter_Simp
-course_student_level    STUDENT_LEVEL
+# course_student_level    STUDENT_LEVEL this naming convention should be modified to avoid confusion of course level and student level (BS vs BA)
 transfer_hours_matriculation    TRANSFER_HOURS
 demographics_first_generation
 demographics_high_school_GPA    SORHSCH_GPA
