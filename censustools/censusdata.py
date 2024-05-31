@@ -5,6 +5,24 @@ import pandas as pd
 import aiohttp
 import asyncio
 
+# Function to patch the census library with debugging
+# def patch_census_library():
+#     def _field_type(self, field, year):
+#         types = {"fips-for": str,
+#                  "fips-in": str,
+#                  "int": float_or_str,
+#                  "long": float_or_str,
+#                  "float": float,
+#                  "string": str}
+#
+#         predicate_type = self._predicate_type(field, year)
+#         if predicate_type not in types:
+#             print(f"Unrecognized type '{predicate_type}' for field '{field}' in year '{year}'")  # Debugging output
+#             raise KeyError(f"Unrecognized type '{predicate_type}' for field '{field}'")
+#         return types[predicate_type]
+#
+#     Census._field_type = _field_type
+
 #2023-08-04 based on https://pygis.io/docs/d_access_census.html
 #This function yields income and poverty levels from 5 year ACS data tables. The vintage year should be set for the year
 #of the ACS survey. For instance, the 5 year estimates for ACS 2017 would use vintageyear = 2017
@@ -12,6 +30,49 @@ import asyncio
 #def tract_income_poverty(statefp, vintageyear, countyfps = [], censustracts = []):
 #2023-08-04 comparison against async approach used in optimzied_tract_income_poverty for 230 tracts; non optimized took 176 seconds; optimized took 172 seconds
 def tract_income_poverty(input_df, vintageyear):
+    """
+    Fetch income and poverty levels from 5-year ACS data tables for given census tracts.
+
+    This function retrieves data on income and poverty levels from the American Community Survey (ACS) 5-year estimates
+    for specified census tracts. The vintage year should be set to the year of the ACS survey. For example, the 5-year
+    estimates for ACS 2017 would use `vintageyear = 2017`.
+
+    Parameters
+    ----------
+    input_df : pandas.DataFrame
+        A DataFrame containing columns 'statefp', 'countyfp', and 'tract' representing the state, county, and census tract
+        Federal Information Processing Standards (FIPS) codes, respectively.
+    vintageyear : int
+        The year of the ACS survey for which data is to be retrieved.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame containing the fetched income and poverty data for the specified census tracts.
+
+    Notes
+    -----
+    - The Census API key should be stored in a .env file in the root directory. Do not include any API keys in the code.
+    - GEOIDs used in Census datasets must be properly formatted with leading zeroes if necessary.
+    - If results are returned as NaN, an element of the FIPS code (likely census tract) is potentially not appropriate for the vintage year
+
+    See Also
+    --------
+    https://pygis.io/docs/d_access_census.html : Documentation on accessing Census data using the `census` package.
+    https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html : Guidance on GEOIDs.
+    https://api.census.gov/data/2019/acs/acs5/variables.html : List of variables available in the ACS 5-year data.
+    https://pypi.org/project/census/ : `census` package documentation.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> data = {'statefp': [36, 13], 'countyfp': [81, 153], 'tract': [400, 21121]}
+    >>> input_df = pd.DataFrame(data)
+    >>> vintageyear = 2019
+    >>> result_df = tract_income_poverty(input_df, vintageyear)
+    >>> print(result_df)
+    """
+
     # API key should be stored in .env file in root directory; Do not include any API keys in code
     load_dotenv()
     api_key = os.environ['CENSUS_API_KEY']
@@ -36,14 +97,19 @@ def tract_income_poverty(input_df, vintageyear):
         # C17002_003E: count of ratio of income to poverty in the past 12 months (0.50 - 0.99)
         # B01003_001E: total population
         # Sources: https://api.census.gov/data/2019/acs/acs5/variables.html; https://pypi.org/project/census/
-        {'for': 'state:*'}
-        tractdata = c.acs5.state_county_tract(
-            fields=("NAME", "C17002_001E", "C17002_002E", "C17002_003E", "B01003_001E"),
-            state_fips=statefp,
-            county_fips=countyfp,
-            tract=censustract,
-            year=vintageyear
-        )
+
+        try:
+            tractdata = c.acs5.state_county_tract(
+                fields=("NAME","C17002_001E", "C17002_002E", "C17002_003E", "B01003_001E"),
+                state_fips=statefp,
+                county_fips=countyfp,
+                tract=censustract,
+                year=vintageyear
+            )
+
+        except KeyError as e:
+            print(f"Key error: {e}")
+            tractdata = []
 
         # Check if the tractdata list is not empty before appending
         if tractdata:
@@ -68,6 +134,41 @@ def tract_income_poverty(input_df, vintageyear):
     return result_df
 
 async def fetch_tract_data(session, c, statefp, countyfp, censustract, vintageyear):
+    """
+    Asynchronously fetch income and poverty levels from 5-year ACS data tables for a given census tract.
+
+    Parameters
+    ----------
+    session : aiohttp.ClientSession
+        The session used to make the asynchronous API request.
+    c : Census
+        The Census object used to query the ACS data.
+    statefp : str
+        The state FIPS code, zero-padded to 2 digits.
+    countyfp : str
+        The county FIPS code, zero-padded to 3 digits.
+    censustract : str
+        The census tract code, zero-padded to 6 digits.
+    vintageyear : int
+        The year of the ACS survey for which data is to be retrieved.
+
+    Returns
+    -------
+    dict or None
+        A dictionary containing the fetched income and poverty data for the specified census tract, or None if an error occurs.
+
+    See Also
+    --------
+    tract_income_poverty : The synchronous version of this function.
+
+    Examples
+    --------
+    >>> async with aiohttp.ClientSession() as session:
+    >>>     c = Census(api_key)
+    >>>     data = await fetch_tract_data(session, c, '36', '081', '004000', 2017)
+    >>>     print(data)
+    """
+
     try:
         tractdata = c.acs5.state_county_tract(
             fields=("NAME", "C17002_001E", "C17002_002E", "C17002_003E", "B01003_001E"),

@@ -106,3 +106,109 @@ def batch_geocode(input_address_dataframe, vintage, benchmark=None):
     #the dataframe that is returned can be merged wtih a demographics dataframe with a command such as
     #test_demographics_df.merge(result, left_on=['StudentID', 'SDSTUDEMOG_TERM'], right_on=['StudentID', 'term'])
     return output_geocode_dataFrame
+
+
+# Updated 2024-05-28, Paul Ulrich
+# Accepts a data frame with the following columns: 'StudentID','SDSTUDEMOG_TERM', 'SDSTUDEMOG_ADDRESS_LINE_1','SDSTUDEMOG_CITY', 'SDSTUDEMOG_STATE', 'SDSTUDEMOG_ZIPCODE'
+# Vintage and benchmark arguments should be passed using naming conventions used in documentation. Vintage is a required argument.
+def batch_geocode_matriculation_address(input_address_dataframe, vintage, benchmark=None):
+    # API key should be stored in .env file in root directory; Do not include any API keys in code
+    load_dotenv()
+    api_key = os.environ['CENSUS_API_KEY']
+    census_geocode = cg.CensusGeocode()
+
+    #if benchmark provided as an argument, then set the benchmark here; otherwise it will use API default of Public_AR_Current
+    #if a benchmark is specified as an argument, set it accordingly
+    if benchmark is not None:
+        census_geocode.set_benchmark(benchmark)
+
+    #set the vintage for the address lookup; for instance, ACS2017 would be set as 'ACS2017_Current'
+    census_geocode.set_vintage(vintage)
+
+    print("Census vintage : ", census_geocode.vintage)
+    print("Census benchmark : ", census_geocode.benchmark)
+
+    batch_size = 10000
+    num_batches = math.ceil(
+        len(input_address_dataframe) / batch_size
+    )
+
+    output_geocode_dataFrame = pandas.DataFrame(
+        columns=[
+            "student_ID",
+            "term_matriculation",
+            "vintage",
+            "tigerlineid",
+            "statefp",
+            "countyfp",
+            "tract",
+            "block",
+        ]
+    )
+
+    input_address_dataframe = input_address_dataframe.sort_values(by=['student_ID', 'term_matriculation']).groupby(
+        'student_ID').first().reset_index()
+    print('# of rows in input_address_dataframe after filtering:, ', len(input_address_dataframe))
+    print('# of unique students  in input_address_dataframe after filtering:, ', len(input_address_dataframe['student_ID'].unique()))
+    working_address_df = input_address_dataframe.drop(['term_matriculation'], axis=1) #term column is not expected by API so must be dropped; we have stored term variable already as "term" so it is not lost
+    working_address_df = working_address_df[['student_ID', 'address_street', 'address_city', 'address_state', 'address_zipcode']]
+    print('# of rows in working_address_df', len(working_address_df))
+
+    # Census API accepts batches of addresses up to a max of 10,0000. Determine the # of batch submissions to perform
+    num_batches = math.ceil(len(working_address_df) / batch_size)
+
+    for batch_num in range(num_batches):
+        start_index = batch_num * batch_size
+        end_index = min((batch_num + 1) * batch_size, len(working_address_df))
+        print("batch_num = " + str(batch_num), start_index, end_index)
+
+        #batch geocoding function takes a file path as the first argument
+        temp_output_filepath = "TempAddresses.csv"
+        working_address_df[start_index:end_index].to_csv(temp_output_filepath, encoding="utf-8", index=False,
+                                                         header=None)
+
+        #TODO : adjust vintage to parameter passed by user
+        result = census_geocode.addressbatch(temp_output_filepath, vintage=vintage, benchmark = benchmark)  # store the result
+
+        try:
+            for count, row in enumerate(result):
+                student_ID = result[count]["id"]
+                tigerlineid = result[count]["tigerlineid"]
+                statefp = result[count]["statefp"]
+                countyfp = result[count]["countyfp"]
+                tract = result[count]["tract"]
+                block = result[count]["block"]
+
+                geocodeDict = {
+                    "student_ID": student_ID,
+                    "term_matriculation": input_address_dataframe[input_address_dataframe['student_ID'] == student_ID]['term_matriculation'].iloc[0],
+                    "vintage": census_geocode.vintage,
+                    "benchmark": census_geocode.benchmark,
+                    "tigerlineid": tigerlineid,
+                    "statefp": statefp,
+                    "countyfp": countyfp,
+                    "tract": tract,
+                    "block": block,
+                }
+
+                #add the geocoded address to the output dataframe
+                output_geocode_dataFrame = pandas.concat([output_geocode_dataFrame, pandas.DataFrame([geocodeDict])])
+
+            if len(working_address_df) > 10000:
+                print(
+                    len(result),
+                    " geocoded in batch number: ",
+                    batch_num,
+                    "\n going to sleep for 5 minutes before running next batch",
+                )
+                sleep(300)
+
+        except Exception as e:
+                print("Error while processing batch:", str(e))
+
+        except KeyboardInterrupt:
+            break
+
+    #the dataframe that is returned can be merged wtih a demographics dataframe with a command such as
+    #test_demographics_df.merge(result, left_on=['student_ID', 'term_matriculation'], right_on=['student_ID', 'term_matriculation'])
+    return output_geocode_dataFrame

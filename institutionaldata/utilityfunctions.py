@@ -373,7 +373,7 @@ def letter_grade_simplify(dataframe, c_minus_flag = True):
     dataframe : pandas.DataFrame
         The DataFrame containing the column 'course_grade_letter' with letter grades to be simplified.
     c_minus_flag : int, optional
-        Flag indicating whether to consider C- as a passing grade (default is True).
+        Flag indicating whether to consider C- as a non-passing grade (D) (default is True).
 
     Returns
     -------
@@ -897,7 +897,7 @@ def calculate_gaps_in_course_grades(df, courses=None, majors=None, all_attempts=
 
 def rename_columns_in_bulk(df, column_mapping_filepath):
     """
-    Rename columns in a DataFrame in bulk based on a column mapping extracted from a file.
+    Rename columns in a DataFrame in bulk based on a column mapping extracted from an Excel file.
 
     Parameters
     ----------
@@ -913,17 +913,18 @@ def rename_columns_in_bulk(df, column_mapping_filepath):
 
     Notes
     -----
-    This function reads a tab-delimited file containing a column mapping, extracts the mapping, flattens
+    This function reads an Excel file (.xls or .xlsx) containing two sheets: a description sheet with information,
+    on the file and a sheet detailing the column mapping. The function extracts the mapping, flattens
     the nested column mapping dictionary, and renames the columns of the input DataFrame accordingly.
 
-    The column mapping file should have three columns: 'variable_name_project', 'variable_name_institution',
+    The column mapping file must include three columns: 'variable_name_project', 'variable_name_institution',
     and 'description', where 'variable_name_project' corresponds to the old column names and
     'variable_name_institution' corresponds to the new column names.
 
     Example usage:
     ```python
     df = pd.DataFrame(...)  # Define your DataFrame
-    renamed_df = rename_columns_in_bulk(df, 'path/to/column_mapping_file.tsv')
+    renamed_df = rename_columns_in_bulk(df, 'path/to/column_mapping_file.xlsx')
     ```
 
     """
@@ -939,12 +940,12 @@ def rename_columns_in_bulk(df, column_mapping_filepath):
 
 def extract_column_mapping(file_path):
     """
-    Extract column mapping from a tab-delimited file.
+    Extract column mapping from an Excel file (.xlsx or .xls)
 
     Parameters
     ----------
     file_path : str
-        Path to the tab-delimited file containing column mapping.
+        Path to the Excel spreadsheet file containing column mapping.
 
     Returns
     -------
@@ -952,7 +953,7 @@ def extract_column_mapping(file_path):
         A dictionary where keys are variable_name_project values and values are lists of variable_name_institution values.
     """
     column_mapping = {}
-    df = pd.read_csv(file_path, delimiter='\s+', skipinitialspace=True, comment='#')
+    df = pd.read_excel(file_path, sheet_name = 'codebook', engine = 'openpyxl')
     for index, row in df.iterrows():
         project_name = row['variable_name_project']
         institution_names = str(row['variable_name_institution'])
