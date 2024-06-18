@@ -131,6 +131,44 @@ def unscramble_ID(student_ID, cipher):
 
     return original_id
 
+
+def clean_matriculation_term(demographics_df, student_id_col='student_ID', term_col='term_matriculation',
+                             demo_term_col='demographics_term'):
+    """
+    Cleans the DataFrame by identifying and keeping only rows for student_ID's that have a
+    demographics term associated with the minimum matriculation term. This avoids issues
+    that occur when a dataset for various years includes demographics but the dataset does not go
+    back far enough in time to get demographics associated with their first term.
+
+    Parameters:
+    - courses_df (pd.DataFrame): DataFrame containing course and student information.
+    - student_id_col (str): Column name for student ID.
+    - term_col (str): Column name for the term of matriculation.
+    - demo_term_col (str): Column name for the demographics term.
+
+    Returns:
+    - pd.DataFrame: A cleaned DataFrame containing only the rows where the demographics term
+      matches the minimum term of matriculation for each student and at least one valid match exists.
+    """
+    # Step 1: Determine the minimum 'term_matriculation' for each student
+    min_matriculation_df = demographics_df.groupby(student_id_col)[term_col].min().reset_index()
+
+    # Step 2: Merge this minimum matriculation back with the original DataFrame
+    merged_df = pd.merge(demographics_df, min_matriculation_df, on=student_id_col, suffixes=('', '_min')).copy()
+
+    # Step 3: Check for matching course terms
+    merged_df['is_valid'] = merged_df[demo_term_col] == merged_df[f'{term_col}_min']
+
+    # Step 4: Identify students with at least one valid course term match
+    valid_student_ids = merged_df[merged_df['is_valid']][student_id_col].unique()
+
+    # Step 5: Keep all rows in merged_df for students who have at least one valid match
+    cleaned_df = merged_df[merged_df[student_id_col].isin(valid_student_ids)]
+
+    return cleaned_df
+
+
+
 #[Utility function]  adjust grad_term to give the ending month from a beginning of a grad_term 2023-07-12
 def adjust_grad_term(row):
     """
