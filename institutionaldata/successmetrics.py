@@ -379,7 +379,175 @@ def plot_grades(grades_df, letterGrades = False, title = 'Frequency Diagram of G
         # plt.title(title)  # Set the title of the plot
         # plt.show()
 
+def calculate_retention_rates(input_df, stem_majors=[], major_list=[], stem = True, student_id_col='student_ID',
+                              major_col='major_term', semester_col='semester_number'):
+    """
+        Calculates the retention rates for a specified major and optionally for STEM majors within a DataFrame.
 
+        Parameters:
+        - input_df (pd.DataFrame): DataFrame containing the student data.
+        - stem_majors (list): List of major codes considered as STEM majors.
+        - major (str): Specific major to analyze. Default 'All' calculates retention for each major in the DataFrame.
+        - stem (bool): Flag to determine whether to calculate STEM major retention rates. Defaults to True.
+        - student_id_col (str): Column name for student IDs.
+        - major_col (str): Column name for students' initial majors at matriculation.
+        - semester_col (str): Column name for semester number.
+
+        Returns:
+        - pd.DataFrame: The original DataFrame augmented with 'flag_retention_major' and, if `stem` is True, 'retention_STEM'.
+        The 'flag_retention_major' column indicates whether students are retained in their initial major or the specified major per term.
+        The 'retention_STEM' column flags students whose major belongs to the specified list of STEM majors, indicating their retention within STEM fields.
+
+        Example of usage:
+        - cleaned_df = calculate_retention_rates(cleaned_df, stem_majors=['CHM', 'BIOL', 'PHYS'], major='BIO')
+        """
+    # Calculate retention for the specific major
+    #if major == 'All':
+    #    #df['retention_major'] = (df[major_col] == major).astype(int)
+    #    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
+    #else:
+    #    #df['retention_major'] = df.groupby([student_id_col, semester_col])[major_col].transform('first').eq(
+    #    #    df[major_col]).astype(int)
+    input_df = input_df[input_df['major_matriculation'].isin(major_list)].copy()
+    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
+
+    # Calculate retention for STEM majors
+    if stem:
+        input_df['flag_retention_STEM'] = input_df[major_col].isin(stem_majors).astype(int)
+
+    return input_df
+
+
+def plot_retention_rate(cleaned_df, semester_col='semester_number', major_retention_col='flag_major_retention', stem_retention_col='flag_retention_STEM', stem_plot=True, major_plot=True, major_list=[]):
+    """
+    Plots the retention rate for a specified major and optionally for STEM majors within a DataFrame.
+
+    Parameters:
+    - cleaned_df (pd.DataFrame): DataFrame containing student data.
+    - semester_col (str): Column name for semester numbers.
+    - major_retention_col (str): Column name indicating retention in the specified major.
+    - stem_retention_col (str): Column name indicating retention in STEM majors.
+    - stem_plot (bool): Flag to determine whether to plot STEM major retention rates. Defaults to True.
+    - major_plot (bool): Flag to determine whether to plot specific major retention rates. Defaults to True.
+    - major_list (list): list of string major codes that will be included in plot
+
+    Returns:
+    - None: Displays a plot of the retention rate alongside a histogram of total students per semester.
+
+    Notes:
+    - The function allows for separate or simultaneous plotting of retention rates for a specific major and STEM majors.
+    - Retention rates are calculated as the mean percentage of students retained, with error bars representing the standard error of the mean.
+
+    Example usage:
+    - plot_retention_rate(cleaned_df, major='BIO')
+    """
+    #if major != 'All':
+    major_df = cleaned_df[cleaned_df['major_matriculation'].isin(major_list)].copy()
+    #else:
+    #    major_df = cleaned_df.copy()
+
+    if major_plot:
+        major_retention_stats = major_df.groupby(semester_col)[major_retention_col].agg(['mean', 'std', 'count']).reset_index()
+        major_retention_stats['mean'] *= 100
+        major_retention_stats['std'] = (major_retention_stats['std'] / np.sqrt(major_retention_stats['count'])) * 100
+
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+        ax1.errorbar(major_retention_stats[semester_col], major_retention_stats['mean'], yerr=major_retention_stats['std'], fmt='o-', capsize=5, label='Major Retention Rate')
+        ax1.set_title(f'Cumulative {major_list} Major Retention Rate')
+        ax1.set_xlabel('Semester Number')
+        ax1.set_ylabel('Retention Rate (%)', color='tab:blue')
+        ax1.grid(True)
+
+        ax2 = ax1.twinx()
+        ax2.bar(major_retention_stats[semester_col], major_retention_stats['count'], alpha=0.3, color='grey', label='Total Students')
+        ax2.set_ylabel('Number of Students', color='grey')
+        ax2.tick_params(axis='y', labelcolor='grey')
+
+        fig.tight_layout()
+        fig.legend(loc='upper right', bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
+        plt.show()
+
+    if stem_plot:
+        stem_retention_stats = major_df.groupby(semester_col)[stem_retention_col].agg(['mean', 'std', 'count']).reset_index()
+        stem_retention_stats['mean'] *= 100
+        stem_retention_stats['std'] = (stem_retention_stats['std'] / np.sqrt(stem_retention_stats['count'])) * 100
+
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+        ax1.errorbar(stem_retention_stats[semester_col], stem_retention_stats['mean'], yerr=stem_retention_stats['std'], fmt='o-', capsize=5, label='STEM Retention Rate')
+        ax1.set_title('Cumulative STEM Major Retention Rate')
+        ax1.set_xlabel('Semester Number')
+        ax1.set_ylabel('Retention Rate (%)', color='tab:blue')
+        ax1.grid(True)
+
+        ax2 = ax1.twinx()
+        ax2.bar(stem_retention_stats[semester_col], stem_retention_stats['count'], alpha=0.3, color='grey', label='Total Students')
+        ax2.set_ylabel('Number of Students', color='grey')
+        ax2.tick_params(axis='y', labelcolor='grey')
+
+        fig.tight_layout()
+        fig.legend(loc='upper right', bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
+        plt.show()
+
+
+
+
+
+def plot_major_retention_rate(cleaned_df, major='All', student_id_col='student_ID', major_col='major_matriculation',
+                              flag_col='flag_major_retention', semester_col='semester_number'):
+    """
+    Calculates and plots the retention rate for a specified major across semesters along with a histogram showing
+    the total number of students per semester.
+
+    Parameters:
+    - cleaned_df (pd.DataFrame): DataFrame with student data.
+    - major (str): Specific major to analyze. Default 'All' analyzes all majors.
+    - student_id_col (str): Column name for student IDs.
+    - major_col (str): Column name for students' majors.
+    - flag_col (str): Column name indicating retention in the major.
+    - semester_col (str): Column name for semester number.
+
+    Returns:
+    - None: Displays a plot of the retention rate alongside a histogram of total students per semester.
+
+    Notes:
+    - Created out of code developed by Paul Ulrich (2024-06-18) using ChatGPT 4.
+    """
+    if major != 'All':
+        major_df = cleaned_df[cleaned_df[major_col] == major].copy()
+    else:
+        major_df = cleaned_df.copy()
+
+    print(f'Unique students in {major}:', len(major_df[student_id_col].unique()), '(Number of records: ', len(major_df), ')')
+
+    def calculate_retention(group):
+        retained = group[flag_col].sum()
+        total_students = len(group)
+        retention = retained / total_students  # as a proportion
+        std_dev = np.sqrt(retention * (1 - retention) / total_students) * 100  # Convert the result to percentage
+        return pd.Series({'retention': retention * 100, 'std_dev': std_dev, 'total_students': total_students})
+
+    retention_stats = major_df.groupby(semester_col).apply(calculate_retention).reset_index()
+
+    # Plotting with error bars and a secondary axis for total students
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    ax1.errorbar(retention_stats[semester_col], retention_stats['retention'], yerr=retention_stats['std_dev'], fmt='o-', capsize=5, label='Retention Rate')
+    ax1.set_title(f'Cumulative {major} Major Retention Rate')
+    ax1.set_xlabel('Semester Number')
+    ax1.set_ylabel('Cumulative Retention Rate (%)', color='tab:blue')
+    ax1.tick_params(axis='y', labelcolor='tab:blue')
+    ax1.grid(True)
+
+    ax2 = ax1.twinx()
+    ax2.bar(retention_stats[semester_col], retention_stats['total_students'], alpha=0.3, color='grey', label='Total Students')
+    ax2.set_ylabel('Number of Students', color='grey')
+    ax2.tick_params(axis='y', labelcolor='grey')
+
+    fig.tight_layout()
+    fig.legend(loc='upper right', bbox_to_anchor=(1,1), bbox_transform=ax1.transAxes)
+    plt.show()
+
+# Example of how to use the function:
+# plot_major_retention_rate(cleaned_df, major='BIO')
 def major_retention(demographics_df, years, major_code, student_ids):
     """
     Calculate and analyze the retention and graduation metrics for students within a specific major over multiple academic years.
