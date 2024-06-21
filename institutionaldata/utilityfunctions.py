@@ -167,7 +167,336 @@ def clean_matriculation_term(demographics_df, student_id_col='student_ID', term_
 
     return cleaned_df
 
+def clean_and_adjust_matriculation(demographics_df, student_id_col='student_ID', term_col='term_matriculation',
+                                   demo_term_col='demographics_term', include_multiple_matriculations=0,
+                                   demographics_range_min=None):
+    """
+    Adjusts the matriculation term to the earliest available demographics term or the minimum
+    matriculation term for each student, ensuring inclusion of students who may start studies later.
+    """
+    # Filter students based on the count of unique matriculation terms, if required
+    matriculation_counts = demographics_df.groupby(student_id_col)[term_col].nunique()
+    if include_multiple_matriculations == 0:
+        valid_student_ids = matriculation_counts[matriculation_counts == 1].index
+        demographics_df = demographics_df[demographics_df[student_id_col].isin(valid_student_ids)]
 
+    # Get the minimum matriculation term for each student
+    min_matriculation_df = demographics_df.groupby(student_id_col)[term_col].min().reset_index()
+    min_matriculation_df.rename(columns={term_col: 'term_matriculation_min'}, inplace=True)
+    merged_df = pd.merge(demographics_df, min_matriculation_df, on=student_id_col, how='left')
+
+    # Apply demographics range filter if provided
+    if demographics_range_min:
+        merged_df = merged_df[merged_df['term_matriculation_min'] >= demographics_range_min]
+
+    # Determine the earliest demographics term for each student
+    earliest_demographics_df = merged_df.groupby(student_id_col)[demo_term_col].min().reset_index()
+    earliest_demographics_df.rename(columns={demo_term_col: 'earliest_demographics_term'}, inplace=True)
+    merged_df = pd.merge(merged_df, earliest_demographics_df, on=student_id_col, how='left')
+
+    # Assign the adjusted matriculation term
+    merged_df['term_matriculation_adjusted'] = merged_df.apply(
+        lambda x: x['term_matriculation_min'] if x['earliest_demographics_term'] == x['term_matriculation_min']
+        else x['earliest_demographics_term'], axis=1
+    )
+
+    return merged_df
+
+def clean_and_adjust_matriculation_old(demographics_df, student_id_col='student_ID', term_col='term_matriculation',
+                                   demo_term_col='demographics_term', include_multiple_matriculations=0,
+                                   demographics_range_min=None):
+    """
+    Cleans the DataFrame by adjusting the demographics to the first available term of study or the minimum
+    matriculation term for each student. This avoids selection bias by including students who may defer their
+    studies to a later term than their initial matriculation. Optionally excludes students with multiple
+    matriculation records and filters out students whose matriculation begins before a specified demographics term.
+
+    Parameters:
+    - demographics_df (pd.DataFrame): DataFrame containing demographics and student information.
+    - student_id_col (str): Column name for student ID.
+    - term_col (str): Column name for the term of matriculation.
+    - demo_term_col (str): Column name for the demographics term.
+    - include_multiple_matriculations (int): Flag to include students with multiple matriculation terms (1) or exclude them (0).
+    - demographics_range_min (int, optional): The earliest acceptable matriculation term for inclusion in the analysis.
+
+    Returns:
+    - pd.DataFrame: A cleaned DataFrame containing demographics from the earliest term or from the minimum
+      matriculation term for students without demographics from their first term, filtered based on the
+      number of matriculation terms and the specified range as specified.
+    """
+    # Step 1: Determine the unique count of 'term_matriculation' for each student
+    matriculation_counts = demographics_df.groupby(student_id_col)[term_col].nunique()
+
+    # Filter based on the include_multiple_matriculations flag
+    if include_multiple_matriculations == 0:
+        valid_student_ids = matriculation_counts[matriculation_counts == 1].index
+        demographics_df = demographics_df[demographics_df[student_id_col].isin(valid_student_ids)]
+
+    # Step 2: Determine the minimum 'term_matriculation' for each student
+    min_matriculation_df = demographics_df.groupby(student_id_col)[term_col].min().reset_index()
+    min_matriculation_df.rename(columns={term_col: 'term_matriculation_min'}, inplace=True)
+
+    # Step 3: Merge this minimum matriculation back with the original DataFrame
+    merged_df = pd.merge(demographics_df, min_matriculation_df, on=student_id_col, how='left')
+
+    # Step 4: Apply the demographic range minimum filter if specified
+    if demographics_range_min is not None:
+        merged_df = merged_df[merged_df['term_matriculation_min'] >= demographics_range_min]
+
+    # Step 5: Identify the earliest demographics term for each student
+    earliest_demographics_idx = merged_df.groupby(student_id_col)[demo_term_col].idxmin()
+    earliest_demographics_df = merged_df.loc[earliest_demographics_idx]
+
+    # Merge to ensure all students have the earliest available demographics
+    final_df = pd.merge(merged_df, earliest_demographics_df[[student_id_col, demo_term_col, 'SDSTUMAIN_TRANSFER_HOURS']], on=student_id_col, suffixes=('', '_earliest'))
+
+    return final_df
+
+# Example usage:
+# cleaned_df = clean_and_adjust_matriculation(demographics_df, demographics_range_min=202001)
+def clean_matriculation_term_2(demographics_df, student_id_col='student_ID', term_col='term_matriculation',
+                             demo_term_col='demographics_term'):
+    """
+    Cleans the DataFrame by identifying and keeping only rows for student_ID's that have a
+    demographics term associated with the minimum matriculation term. This avoids issues
+    that occur when a dataset for various years includes demographics but the dataset does not go
+    back far enough in time to get demographics associated with their first term.
+
+    Parameters:
+    - courses_df (pd.DataFrame): DataFrame containing course and student information.
+    - student_id_col (str): Column name for student ID.
+    - term_col (str): Column name for the term of matriculation.
+    - demo_term_col (str): Column name for the demographics term.
+
+    Returns:
+    - pd.DataFrame: A cleaned DataFrame containing only the rows where the demographics term
+      matches the minimum term of matriculation for each student and at least one valid match exists.
+    """
+    # Step 1: Determine the minimum 'term_matriculation' for each student
+    min_matriculation_df = demographics_df.groupby(student_id_col)[term_col].min().reset_index()
+
+    # Step 2: Merge this minimum matriculation back with the original DataFrame
+    merged_df = pd.merge(demographics_df, min_matriculation_df, on=student_id_col, suffixes=('', '_min')).copy()
+
+    # Step 3: Check for matching course terms
+    merged_df['is_valid'] = merged_df[demo_term_col] == merged_df[f'{term_col}_min']
+
+
+    ## Debugging checks (2024-06-19)
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201001)]['student_ID'].unique())) #1854 records
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201001) & (merged_df['term_matriculation'] > 201001)]['student_ID'].unique())) #57 records (3%)
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201001) & (merged_df['demographics_term'] == 201001) & (
+                merged_df['is_valid'] == 1)]['student_ID'].unique())) #1726 (93%)
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201001) & (merged_df['demographics_term'] == 201001)]['student_ID'].unique()))  # 1726 records
+    not_matched = merged_df[~((merged_df['term_matriculation_min'] == 201001) & (merged_df['demographics_term'] == 201001))]['student_ID'].unique()
+    print(len(not_matched))
+    matched = merged_df[((merged_df['term_matriculation_min'] == 201001) & (merged_df['demographics_term'] == 201001))]['student_ID'].unique()
+    print(len(matched))
+    not_matched_set = set(not_matched)
+    matched_set = set(matched)
+    intersection_count = len(not_matched_set & matched_set)
+    print(intersection_count)
+
+
+    print(merged_df[(merged_df['term_matriculation_min'] == 201001) & (merged_df['term_matriculation'] > 201001) & (merged_df['is_valid'] == 0) ][
+              'student_ID'].unique())
+
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201101)]['student_ID'].unique()))  # 1789 records
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201101) & (merged_df['term_matriculation'] > 201101)][
+                  'student_ID'].unique()))  #76 records(4%)
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201101) & (merged_df['term_matriculation'] > 201101) & (
+                merged_df['is_valid'] == 1)][
+                  'student_ID'].unique()))  # 0 records
+
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201201)]['student_ID'].unique()))  # 1761 records
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201201) & (merged_df['term_matriculation'] > 201201)][
+                  'student_ID'].unique()))  # 66 records(3.7%)
+    print(len(merged_df[(merged_df['term_matriculation_min'] == 201201) & (merged_df['term_matriculation'] > 201201) & (
+            merged_df['is_valid'] == 1)][
+                  'student_ID'].unique()))  # 0 records
+
+    print(len(merged_df[(merged_df['is_valid'] == 1) & (merged_df['term_matriculation_min'] == 201001)]['student_ID'].unique()))
+    print(len(merged_df[(merged_df['is_valid'] == 1) & (merged_df['term_matriculation_min'] == 201001) & (merged_df['demographics_term'] == 201001)]['student_ID'].unique()))
+    print(len(merged_df[(merged_df['is_valid'] == 0) & (merged_df['term_matriculation_min'] == 201001)]['student_ID'].unique()))
+    print(len(merged_df[(merged_df['is_valid'] == 0) & (merged_df['term_matriculation_min'] == 201001) & (merged_df['demographics_term'] == 201001)]['student_ID'].unique()))
+
+    # Step 4: Identify students with at least one valid course term match
+    valid_student_ids = merged_df[merged_df['is_valid']][student_id_col].unique()
+
+    # Step 5: Keep all rows in merged_df for students who have at least one valid match
+    cleaned_df = merged_df[merged_df[student_id_col].isin(valid_student_ids)]
+
+    return cleaned_df
+
+
+def clean_matriculation_term_3(demographics_df, student_id_col='student_ID', term_col='term_matriculation',
+                             demo_term_col='demographics_term'):
+    """
+    Cleans the DataFrame by identifying the minimum and maximum matriculation term for each student,
+    checks for matches with the demographics term, and identifies cases where no exact match is found
+    and where demographics term is always higher or matches the maximum term.
+
+    Parameters:
+    - demographics_df (pd.DataFrame): DataFrame containing student demographics and matriculation data.
+    - student_id_col (str): Column name for student IDs.
+    - term_col (str): Column name for matriculation terms.
+    - demo_term_col (str): Column name for demographics terms.
+
+    Returns:
+    - pd.DataFrame: Cleaned DataFrame with students filtered based on matching term_matriculation_min to demographics_term.
+    """
+    # Determine the minimum and maximum 'term_matriculation' for each student
+    min_matriculation_df = demographics_df.groupby(student_id_col)[term_col].min().reset_index()
+    max_matriculation_df = demographics_df.groupby(student_id_col)[term_col].max().reset_index()
+
+    # Merge minimum and maximum matriculation terms back with the original DataFrame
+    merged_df = pd.merge(demographics_df, min_matriculation_df.rename(columns={term_col: f'{term_col}_min'}),
+                         on=student_id_col)
+    merged_df = pd.merge(merged_df, max_matriculation_df.rename(columns={term_col: f'{term_col}_max'}),
+                         on=student_id_col)
+
+    # Check for matching course terms
+    merged_df['is_valid_min'] = merged_df[demo_term_col] == merged_df[f'{term_col}_min']
+    merged_df['is_valid_max'] = merged_df[demo_term_col] == merged_df[f'{term_col}_max']
+
+    # Identify groups
+    no_match_ids = merged_df[~merged_df['is_valid_min']][student_id_col].unique()
+    max_match_ids = merged_df[merged_df['is_valid_max']][student_id_col].unique()
+
+    # Extract unique term_matriculation for these groups and count frequencies
+    no_match_term_freq = merged_df[merged_df[student_id_col].isin(no_match_ids)][f'{term_col}_min'].value_counts().sort_index()
+    max_match_term_freq = merged_df[merged_df[student_id_col].isin(max_match_ids)][f'{term_col}_max'].value_counts().sort_index()
+
+    print("Frequencies of term_matriculation_min for no exact match:")
+    for term, count in no_match_term_freq.items():
+        print(f"Term {term}: {count} students")
+
+    print("Frequencies of term_matriculation_max for exact match to maximum term:")
+    for term, count in max_match_term_freq.items():
+        print(f"Term {term}: {count} students")
+
+    # Step 4: Identify students with at least one valid course term match
+    valid_student_ids = merged_df[merged_df['is_valid_min']][student_id_col].unique()
+
+    # Step 5: Keep all rows in merged_df for students who have at least one valid match
+    cleaned_df = merged_df[merged_df[student_id_col].isin(valid_student_ids)]
+
+    return cleaned_df
+
+# Example of how to use the function:
+# cleaned_df = clean_matriculation_term_3(demographics_df)
+
+def clean_matriculation_term_4(demographics_df, student_id_col='student_ID', term_col='term_matriculation',
+                               demo_term_col='demographics_term'):
+    """
+    Identifies and reports on students based on their minimum and maximum matriculation terms compared to their
+    demographics terms. It specifically checks for students without a match at their minimum matriculation term
+    but a match at their maximum matriculation term.
+
+    Parameters:
+    - demographics_df (pd.DataFrame): DataFrame containing student demographics and matriculation data.
+    - student_id_col (str): Column name for student IDs.
+    - term_col (str): Column name for matriculation terms.
+    - demo_term_col (str): Column name for demographics terms.
+
+    Returns:
+    - pd.DataFrame: Cleaned DataFrame with students filtered based on specific matriculation and demographics term conditions.
+    """
+    # Determine the minimum and maximum 'term_matriculation' for each student
+    min_matriculation_df = demographics_df.groupby(student_id_col)[term_col].min().reset_index()
+    max_matriculation_df = demographics_df.groupby(student_id_col)[term_col].max().reset_index()
+
+    # Merge minimum and maximum matriculation terms back with the original DataFrame
+    merged_df = pd.merge(demographics_df, min_matriculation_df.rename(columns={term_col: f'{term_col}_min'}),
+                         on=student_id_col)
+    merged_df = pd.merge(merged_df, max_matriculation_df.rename(columns={term_col: f'{term_col}_max'}),
+                         on=student_id_col)
+
+    # Check for matching course terms
+    merged_df['is_valid_min'] = merged_df[demo_term_col] == merged_df[f'{term_col}_min']
+    merged_df['is_valid_max'] = merged_df[demo_term_col] == merged_df[f'{term_col}_max']
+
+    # Filter for students with no match to min but match to max
+    filtered_df = merged_df[~merged_df['is_valid_min'] & merged_df['is_valid_max']]
+
+    # Calculate frequencies of term_matriculation_max for these students
+    match_max_freq = filtered_df[f'{term_col}_max'].value_counts().sort_index()
+
+    print("Frequencies of term_matriculation_max for students without a match to min but with a match to max:")
+    for term, count in match_max_freq.items():
+        print(f"Term {term}: {count} students")
+
+    # Keep all rows in merged_df for students who have at least one valid match
+    valid_student_ids = merged_df[merged_df['is_valid_min'] | merged_df['is_valid_max']][student_id_col].unique()
+    cleaned_df = merged_df[merged_df[student_id_col].isin(valid_student_ids)]
+
+    return cleaned_df
+
+# Example of how to use the function:
+# cleaned_df = clean_matriculation_term_4(demographics_df)
+
+
+def calculate_running_semester_number(demographics_df, student_ID_column='student_ID', term_column='demographics_term'):
+    """
+    Calculates the running semester number for each student based on their terms in ascending order.
+
+    Parameters:
+    - df (pd.DataFrame): DataFrame containing student data.
+    - student_id_col (str): Column name for student IDs.
+    - term_col (str): Column name for the term or semester.
+
+    Returns:
+    - pd.DataFrame: DataFrame with an additional column for semester numbers.
+    """
+    # Sort the DataFrame by 'student_ID' and 'demographics_term' in ascending order
+    sorted_df = demographics_df.sort_values(by=[student_ID_column, term_column])
+
+    # Calculate 'semester_number' for each student
+    sorted_df['semester_number'] = sorted_df.groupby(student_ID_column).cumcount() + 1
+
+    return sorted_df
+
+# Example usage of the function
+# updated_df = calculate_running_semester_number(cleaned_df)
+
+def map_matriculation_major(cleaned_df, student_ID_column='student_ID', demographics_term_column='demographics_term',
+                            matriculation_term_column='term_matriculation_min', major_column='major_term',
+                            new_column='major_matriculation', flag_column='flag_major_retention'):
+    """
+    Maps each student's major at the time of their matriculation by finding the earliest
+    demographics term that matches their matriculation term and assigning the corresponding major.
+    Additionally, calculates a flag indicating whether the student's current major matches the
+    major at matriculation.
+
+    Parameters:
+    - cleaned_df (pd.DataFrame): DataFrame that has been cleaned by ensuring each student's demographics term matches their minimum matriculation term. This can be performed
+      by applying utilityfunctions.clean_matriculation_term()
+    - student_ID_column (str): Column name for student ID.
+    - demographics_term_column (str): Column name for the demographics term.
+    - matriculation_term_column (str): Column name for the minimum term of matriculation.
+    - major_column (str): Column name for the major term.
+    - new_column (str): New column name where the mapped major will be stored.
+    - flag_column (str): New column name for the flag indicating if the current major matches the matriculation major.
+
+    Returns:
+    - pd.DataFrame: The input DataFrame with additional columns showing each student's major at matriculation and a retention flag.
+    """
+    # Filter rows where the demographics term matches the minimum matriculation term
+    filtered_df = cleaned_df[cleaned_df[demographics_term_column] == cleaned_df[matriculation_term_column]].copy()
+
+    # Create a map from student ID to major term at the time of matriculation
+    major_matriculation_map = filtered_df.set_index(student_ID_column)[major_column]
+
+    # Map the major matriculation back to the original cleaned DataFrame
+    cleaned_df.loc[:, new_column] = cleaned_df[student_ID_column].map(major_matriculation_map)
+
+    # Determine if the current major matches the matriculation major
+    cleaned_df.loc[:, flag_column] = (cleaned_df[major_column] == cleaned_df[new_column]).astype(int)
+
+    return cleaned_df
+
+# Example usage:
+# updated_df = map_matriculation_major(cleaned_df)
 
 #[Utility function]  adjust grad_term to give the ending month from a beginning of a grad_term 2023-07-12
 def adjust_grad_term(row):
@@ -1036,70 +1365,58 @@ def flatten_column_mapping(column_mapping):
                     flattened_mapping[name] = [project_name]
     return flattened_mapping
 
-def set_up_demographic_flags(df, peer = True, pell = True, first_generation = True, sex =True):
+## Created 2024-06-20 with ChatGPT to handle abbreviated or full text demographics_race; not sure if it works yet
+def set_up_demographic_flag(df, peer=True, pell=True, first_generation=True, sex=True):
     """
     Sets up demographic flags in the given DataFrame based on specified demographic criteria.
-
-    This function conditionally adds several columns to the DataFrame indicating demographic flags for
-    first-generation status, PELL grant eligibility, PEER group membership, and sex, based on the boolean
-    parameters provided.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        The DataFrame to which the demographic flags will be added. It is expected to have columns named
-        'demographics_race' and 'demographics_sex', among others, depending on the flags requested.
-    peer : bool, optional
-        If True, sets up the PEER group flag based on 'demographics_race'. Defaults to True.
-    pell : bool, optional
-        If True, sets up the PELL grant eligibility flag. Defaults to True.
-    gender : bool, optional
-        Placeholder for future implementation. Currently does not alter function behavior. Defaults to True.
-    first_generation : bool, optional
-        If True, sets up the first-generation student flag. Defaults to True.
-    sex : bool, optional
-        If True, sets up the sex flag based on 'demographics_sex'. Defaults to True.
-
-    Returns
-    -------
-    pandas.DataFrame
-        A copy of the input DataFrame with additional columns for each of the demographic flags requested.
-
-    Examples
-    --------
-    >>> df = pd.DataFrame({'demographics_race': ['Asian', 'Black or African American', 'White'],
-    ...                     'demographics_sex': ['Male', 'Female', np.nan],
-    ...                     'flag_first_generation': ['Y', 'N', np.nan]})
-    >>> set_up_demographic_flags(df)
+    This function adds several columns to the DataFrame indicating demographic flags for
+    PEER group membership based on race, PELL grant eligibility, first-generation status, and sex.
     """
+    # Mapping for full descriptions
+    full_peer_dict = {
+        'American Indian or Alaska Native': 1, 'Asian': 0, 'Black or African American': 1,
+        'More Than One Race Reported': 2, 'Not Reported': -1, 'White': 0, 'Pacific Islander':1
+    }
 
-    peer_dict = {'American Indian or Alaska Native': 1, 'Asian': 0, 'Black or African American': 1, 'More Than One Race Reported': 2, 'Not Reported': -1, 'White': 0}
-    sex_dict = {'Female': 1, 'Male': 0, 'F': 1, 'M': 0, np.nan: -1}
+    # Mapping for abbreviated race codes
+    abbrev_peer_dict = {
+        'B': 'Black or African American', 'W': 'White', 'Z': 'Asian',
+        'P': 'Pacific Islander', 'I': 'American Indian or Alaska Native',
+        'H': 'Hispanic', 'N': 'Not Reported', 'M': 'More Than One Race Reported'
+    }
 
-    dataframe_with_flags = df.copy()
+    # Convert abbreviations to full text using mapping
+    if peer:
+        # Initialize flag with default value for non-matches
+        df['flag_PEER'] = 0
+
+        # Function to determine PEER status
+        def determine_peer(race_str):
+            # Check for direct matches in full descriptions
+            if race_str in full_peer_dict:
+                return full_peer_dict[race_str]
+
+            # Handle abbreviations
+            if isinstance(race_str, str):
+                # Split multi-letter abbreviations and map each to the full description
+                matches = [full_peer_dict[abbrev_peer_dict[letter]] for letter in race_str if
+                           letter in abbrev_peer_dict]
+                # Decide PEER status based on matches
+                if matches:
+                    return max(matches)  # Assuming more inclusive criterion for PEER status
+            return 0  # Default for no matches or undefined behavior
+
+        # Apply the function to determine PEER status
+        df['flag_PEER'] = df['demographics_race'].apply(determine_peer)
+
+    if sex:
+        sex_dict = {'Female': 1, 'Male': 0, 'F': 1, 'M': 0}
+        df['flag_sex'] = df['demographics_sex'].map(sex_dict).fillna(-1)
 
     if first_generation:
-        dataframe_with_flags['flag_first_generation'].replace({'Y': 1, 'N':0, np.nan: 0}, inplace=True)
-    if pell == True:
-        dataframe_with_flags['flag_PELL'].replace({'Y': 1, 'N': 0, np.nan: 0}, inplace=True)
-        dataframe_with_flags['flag_PELL'] = dataframe_with_flags['flag_PELL'].astype('int')
-    if peer == True:
-        # Use regex to match specified races in a case-insensitive way
-        # Joining the races with '|', which works as an "OR" operator in regex
-        races_regex = "(?i)african american|black|american indian|hawaiian|alaska native|native american"
+        df['flag_first_generation'] = df['flag_first_generation'].replace({'Y': 1, 'N': 0, np.nan: 0})
 
-        # Default 'flag_PEER' to 0 to correctly handle 'White' and any other values not matching the regex
-        dataframe_with_flags['flag_PEER'] = 0
+    if pell:
+        df['flag_PELL'] = df['flag_PELL'].replace({'Y': 1, 'N': 0, np.nan: 0}).astype(int)
 
-        # Create a new column 'flag_PEER', set to 1 where 'demographics_race' matches the regex, 0 otherwise
-        dataframe_with_flags['flag_PEER'] = dataframe_with_flags['demographics_race'].str.contains(races_regex,
-                                                                                                   regex=True,
-                                                                                                  na=False).astype(int)
-        # Explicitly set specific situations
-        dataframe_with_flags.loc[dataframe_with_flags['demographics_race'] == 'Not Reported', 'flag_PEER'] = -1
-        dataframe_with_flags.loc[dataframe_with_flags['demographics_race'] == 'More Than One Race Reported', 'flag_PEER'] = 2
-
-    if sex == True:
-        dataframe_with_flags['flag_sex'] =  dataframe_with_flags['demographics_sex'].map(sex_dict).fillna(-1) # any values that don't have a corresponding key in sex_dict are coded to -1
-
-    return dataframe_with_flags
+    return df
