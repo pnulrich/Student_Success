@@ -5,6 +5,9 @@ import tkinter as tk
 import re
 import numpy as np
 
+# 2024-09-03 address upcoming changes for pandas 3 related to downcasting that occurred silently in pandas <3
+pd.set_option('future.no_silent_downcasting', True)
+
 #[Utility function] permit simple ciphering of Student_ID numbers; depending on input, returns either a dataframe or a string
 #working_df : dataframe where Student_ID is the column to be ciphered
 #cipher : a string of characters length of Student_ID; DON'T FORGET THIS AND DO NOT POST PUBLICALLY
@@ -424,7 +427,7 @@ def create_semesters(years, calendar_year = False):
         return semesters
 
 
-def get_nth_year_fall_term(term_series, years=3):
+def get_nth_year_fall_term(term_series, years=3, return_as_datetime=True):
     """
     Calculate the term code for the Fall semester of the N-th year based on the initial term code series.
 
@@ -434,23 +437,24 @@ def get_nth_year_fall_term(term_series, years=3):
         A Series of initial term codes in YYYYMM format or datetime format.
     years : int, optional
         The number of years after the initial term code to calculate the Fall term code for. Default is 3 years.
+    return_as_datetime : bool, optional
+        If True (default), return the Fall semester term as a datetime object. If False, return it as an integer in YYYYMM format.
 
     Returns
     -------
     pd.Series
-        A Series of term codes for the Fall semester of the N-th year in YYYYMM format.
+        A Series of term codes for the Fall semester of the N-th year in either datetime or YYYYMM format.
 
     Examples
     --------
     >>> sample_series_yyyymm = pd.Series([201008, 201101, 201105])
     >>> get_nth_year_fall_term(sample_series_yyyymm, years=3)
-    0    201308
-    1    201408
-    2    201408
-    dtype: int64
+    0   2013-08-01
+    1   2014-08-01
+    2   2014-08-01
+    dtype: datetime64[ns]
 
-    >>> sample_series_datetime = pd.to_datetime(['2010-08-01', '2011-01-01', '2011-05-01'])
-    >>> get_nth_year_fall_term(sample_series_datetime, years=3)
+    >>> get_nth_year_fall_term(sample_series_yyyymm, years=3, return_as_datetime=False)
     0    201308
     1    201408
     2    201408
@@ -478,7 +482,14 @@ def get_nth_year_fall_term(term_series, years=3):
     # Construct the term code for the Fall semester of the N-th year
     nth_year_fall_term_code = nth_year_fall_year * 100 + 8
 
-    return pd.Series(nth_year_fall_term_code, index=term_series.index if isinstance(term_series, pd.Series) else None)
+    if return_as_datetime: #default behavior returns datetime and avoid dtype incompatibility issues when used
+        # Return as datetime object
+        return pd.to_datetime(nth_year_fall_term_code.astype(str), format='%Y%m')
+
+    else:
+        # Return as int64 (YYYYMM format)
+        return pd.Series(nth_year_fall_term_code,
+                         index=term_series.index if isinstance(term_series, pd.Series) else None)
 
 #[Utility function] produce a list of semesters given a list of a year or years (created 2023-07-13; updated 2023-07-17)
 #defaults to academic semester codes, but calendar_year flag can be set to True as alternative
