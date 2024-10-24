@@ -4,6 +4,7 @@ from tkinter import filedialog as fd
 import tkinter as tk
 import re
 import numpy as np
+from datetime import datetime
 
 # 2024-09-03 address upcoming changes for pandas 3 related to downcasting that occurred silently in pandas <3
 pd.set_option('future.no_silent_downcasting', True)
@@ -170,7 +171,7 @@ def clean_matriculation_term(demographics_df, student_id_col='student_ID', term_
 
     return cleaned_df
 
-def clean_and_adjust_matriculation(demographics_df, student_id_col='student_ID', term_col='term_matriculation',
+def clean_and_adjust_matriculation(demographics_df, student_id_col='student_ID', matriculation_term_col='matriculation_term',
                                    demo_term_col='demographics_term', include_multiple_matriculations=0,
                                    demographics_range_min=None):
     """
@@ -178,28 +179,32 @@ def clean_and_adjust_matriculation(demographics_df, student_id_col='student_ID',
     matriculation term for each student, ensuring inclusion of students who may start studies later.
     """
     # Filter students based on the count of unique matriculation terms, if required
-    matriculation_counts = demographics_df.groupby(student_id_col)[term_col].nunique()
+    matriculation_counts = demographics_df.groupby(student_id_col)[matriculation_term_col].nunique()
     if include_multiple_matriculations == 0:
         valid_student_ids = matriculation_counts[matriculation_counts == 1].index
         demographics_df = demographics_df[demographics_df[student_id_col].isin(valid_student_ids)]
 
     # Get the minimum matriculation term for each student
-    min_matriculation_df = demographics_df.groupby(student_id_col)[term_col].min().reset_index()
-    min_matriculation_df.rename(columns={term_col: 'term_matriculation_min'}, inplace=True)
+    min_matriculation_df = demographics_df.groupby(student_id_col)[matriculation_term_col].min().reset_index()
+    min_matriculation_df.rename(columns={matriculation_term_col: 'matriculation_term_min'}, inplace=True)
     merged_df = pd.merge(demographics_df, min_matriculation_df, on=student_id_col, how='left')
+    print(list(merged_df))
 
-    # Apply demographics range filter if provided
+    # If a minimum term is indicated for demographics_range_min, then filter out rows where matriculation occurred
+    # before dmographics_range_min
     if demographics_range_min:
-        merged_df = merged_df[merged_df['term_matriculation_min'] >= demographics_range_min]
+        merged_df = merged_df[merged_df['matriculation_term_min'] >= demographics_range_min]
+        # merged_df is now the filtered dataset
 
-    # Determine the earliest demographics term for each student
+    # Determine the earliest demographics term for each student and add new column to merged_df
     earliest_demographics_df = merged_df.groupby(student_id_col)[demo_term_col].min().reset_index()
     earliest_demographics_df.rename(columns={demo_term_col: 'earliest_demographics_term'}, inplace=True)
     merged_df = pd.merge(merged_df, earliest_demographics_df, on=student_id_col, how='left')
+    print(list(merged_df))
 
     # Assign the adjusted matriculation term
-    merged_df['term_matriculation_adjusted'] = merged_df.apply(
-        lambda x: x['term_matriculation_min'] if x['earliest_demographics_term'] == x['term_matriculation_min']
+    merged_df['matriculation_term_adjusted'] = merged_df.apply(
+        lambda x: x['matriculation_term_min'] if x['earliest_demographics_term'] == x['matriculation_term_min']
         else x['earliest_demographics_term'], axis=1
     )
 
@@ -268,7 +273,7 @@ def calculate_running_semester_number(demographics_df, student_ID_column='studen
     - term_col (str): Column name for the term or semester.
 
     Returns:
-    - pd.DataFrame: DataFrame with an additional column for semester numbers.
+    - pd.DataFrame: DaditaFrame with an additional column for semester numbers.
     """
     # Sort the DataFrame by 'student_ID' and 'demographics_term' in ascending order
     sorted_df = demographics_df.sort_values(by=[student_ID_column, term_column])
@@ -282,7 +287,7 @@ def calculate_running_semester_number(demographics_df, student_ID_column='studen
 # updated_df = calculate_running_semester_number(cleaned_df)
 
 def map_matriculation_major(cleaned_df, student_ID_column='student_ID', demographics_term_column='demographics_term',
-                            matriculation_term_column='term_matriculation_min', major_column='major_term',
+                            matriculation_term_column='matriculation_term_min', major_column='major_term',
                             new_column='major_matriculation', flag_column='flag_major_retention'):
     """
     Maps each student's major at the time of their matriculation by finding the earliest
@@ -426,6 +431,47 @@ def create_semesters(years, calendar_year = False):
             semesters.sort()
         return semesters
 
+def get_academic_year(term_code):
+        """
+        Get the academic year for a given term code (YYYYMM).
+
+        Parameters
+        ----------
+        term_code : int or datetime
+            The term code representing the year and month (YYYYMM).
+
+        Returns
+        -------
+        int
+            The academic year corresponding to the given term code.
+
+        Notes
+        -----
+        The academic year starts in the fall of the previous calendar year (August, YYYY08)
+        and ends in the summer of the following year (May, YYYY05).
+        For example, the academic year 2006 includes fall 200508, spring 200601, and summer 200605.
+
+        Developed with ChatGPT4o, 2024-10-14 (PNU)
+        """
+
+        # If term_code is a datetime, extract year and month
+        if isinstance(term_code, pd.Timestamp) or isinstance(term_code, datetime):
+            year = term_code.year
+            month = term_code.month
+        elif isinstance(term_code, int):
+            # Extract year and month from YYYYMM format
+            year = term_code // 100
+            month = term_code % 100
+        else:
+            raise ValueError("term_code must be either an int in YYYYMM format or a datetime object")
+
+        # Determine academic year based on the month of the term code
+        if month == 8:  # Fall term
+            return year + 1
+        elif month == 1 or month == 5:  # Spring or Summer term
+            return year
+        else:
+            raise ValueError("term_code must represent a valid academic month (01, 05, 08)")
 
 def get_nth_year_fall_term(term_series, years=3, return_as_datetime=True):
     """
@@ -1252,17 +1298,62 @@ def flatten_column_mapping(column_mapping):
                     flattened_mapping[name] = [project_name]
     return flattened_mapping
 
-## Created 2024-06-20 with ChatGPT to handle abbreviated or full text demographics_race; not sure if it works yet
-def set_up_demographic_flag_old(df, peer=True, pell=True, first_generation=True, sex=True):
+# Created 2024-06-20 with ChatGPT to handle abbreviated or full text demographics_race; modified 2024-10-01
+# with option to incorporate hispanic status into PEER
+def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_generation=True, sex=True):
     """
     Sets up demographic flags in the given DataFrame based on specified demographic criteria.
-    This function adds several columns to the DataFrame indicating demographic flags for
-    PEER group membership based on race, PELL grant eligibility, first-generation status, and sex.
+
+    This function adds several columns to the DataFrame indicating demographic flags for:
+    - PEER group membership based on race and ethnicity (Hispanic)
+    - PELL grant eligibility
+    - First-generation status
+    - Sex
+
+    Each of these flags is binary (1 or 0) where applicable, and the function allows for
+    customization of which flags to generate.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The input DataFrame that contains student demographic data, including fields for
+        race, Hispanic ethnicity, PELL grant eligibility, first-generation status, and sex.
+    peer : bool, optional
+        If True, adds a 'flag_PEER' column based on the racial and ethnic background of the student.
+        PEER status is determined using a combination of race and Hispanic ethnicity (default is True).
+    hispanic : bool, optional
+        If True, adds a 'flag_hispanic' column based on whether the student is Hispanic (default is True).
+        The 'flag_PEER' column is also influenced by this flag when it is set.
+    pell : bool, optional
+        If True, adds a 'flag_PELL' column indicating whether the student has received a PELL grant
+        (default is True).
+    first_generation : bool, optional
+        If True, adds a 'flag_first_generation' column indicating whether the student is
+        a first-generation college student (default is True).
+    sex : bool, optional
+        If True, adds a 'flag_sex' column based on the student's sex (default is True).
+
+    Returns
+    -------
+    pandas.DataFrame
+        The input DataFrame with additional columns for the demographic flags as specified
+        by the function's parameters.
+
+    Notes
+    -----
+    - The 'flag_PEER' column is determined based on racial and ethnic classifications:
+      - 'American Indian or Alaska Native', 'Black or African American', and 'Hispanic'
+        students are flagged as PEER (underrepresented minority).
+      - Students with 'More Than One Race Reported' may also be flagged as PEER.
+    - If `hispanic` is set to True, students flagged as Hispanic will automatically have `flag_PEER` set to 1
+      even if their race is marked as 'Not Reported' or 'More Than One Race Reported'.
     """
+
     # Mapping for full descriptions
     full_peer_dict = {
         'American Indian or Alaska Native': 1, 'Asian': 0, 'Black or African American': 1,
-        'More Than One Race Reported': 2, 'Not Reported': -1, 'White': 0, 'Pacific Islander':1
+        'More Than One Race Reported': 2, 'Not Reported': -1, 'White': 0, 'Pacific Islander':1,
+        'Native Hawaiian or Pacific Islander':1
     }
 
     # Mapping for abbreviated race codes
@@ -1271,6 +1362,16 @@ def set_up_demographic_flag_old(df, peer=True, pell=True, first_generation=True,
         'P': 'Pacific Islander', 'I': 'American Indian or Alaska Native',
         'H': 'Hispanic', 'N': 'Not Reported', 'M': 'More Than One Race Reported'
     }
+
+    if hispanic:
+        if 'demographics_hispanic' in df.columns:
+            df['flag_hispanic'] = 0
+            hispanic_dict = {'Non-Hispanic': 0, 'Hispanic': 1}
+            df['flag_hispanic'] = df['demographics_hispanic'].map(hispanic_dict).fillna(0).astype(int)
+
+        elif 'demographics_ethnicity' in df.columns:
+            df['flag_hispanic'] = 0
+            df['flag_hispanic'] = df['demographics_ethnicity'].map({1:0, 2:1}).fillna(0).astype(int)
 
     # Convert abbreviations to full text using mapping
     if peer:
@@ -1296,63 +1397,13 @@ def set_up_demographic_flag_old(df, peer=True, pell=True, first_generation=True,
         # Apply the function to determine PEER status
         df['flag_PEER'] = df['demographics_race'].apply(determine_peer)
 
-    if sex:
-        sex_dict = {'Female': 1, 'Male': 0, 'F': 1, 'M': 0}
-        df['flag_sex'] = df['demographics_sex'].map(sex_dict).fillna(-1)
-
-    if first_generation:
-        df['flag_first_generation'] = df['flag_first_generation'].replace({'Y': 1, 'N': 0, np.nan: 0})
-
-    if pell:
-        df['flag_PELL'] = df['flag_PELL'].replace({'Y': 1, 'N': 0, np.nan: 0}).astype(int)
-
-    return df
-
-
-# Created 2024-06-20 with ChatGPT to handle abbreviated or full text demographics_race; not sure if it works yet
-def set_up_demographic_flags(df, peer=True, pell=True, first_generation=True, sex=True):
-    """
-    Sets up demographic flags in the given DataFrame based on specified demographic criteria.
-    This function adds several columns to the DataFrame indicating demographic flags for
-    PEER group membership based on race, PELL grant eligibility, first-generation status, and sex.
-    """
-    # Mapping for full descriptions
-    full_peer_dict = {
-        'American Indian or Alaska Native': 1, 'Asian': 0, 'Black or African American': 1,
-        'More Than One Race Reported': 2, 'Not Reported': -1, 'White': 0, 'Pacific Islander':1
-    }
-
-    # Mapping for abbreviated race codes
-    abbrev_peer_dict = {
-        'B': 'Black or African American', 'W': 'White', 'Z': 'Asian',
-        'P': 'Pacific Islander', 'I': 'American Indian or Alaska Native',
-        'H': 'Hispanic', 'N': 'Not Reported', 'M': 'More Than One Race Reported'
-    }
-
-    # Convert abbreviations to full text using mapping
-    if peer:
-        # Initialize flag with default value for non-matches
-        df['flag_PEER'] = 0
-
-        # Function to determine PEER status
-        def determine_peer(race_str):
-            # Check for direct matches in full descriptions
-            if race_str in full_peer_dict:
-                return full_peer_dict[race_str]
-
-            # Handle abbreviations
-            if isinstance(race_str, str):
-                # Split multi-letter abbreviations and map each to the full description
-                matches = [full_peer_dict[abbrev_peer_dict[letter]] for letter in race_str if
-                           letter in abbrev_peer_dict]
-                # Decide PEER status based on matches
-                if matches:
-                    return max(matches)  # Assuming more inclusive criterion for PEER status
-            return 0  # Default for no matches or undefined behavior
-
-        # Apply the function to determine PEER status
-        df['flag_PEER'] = df['demographics_race'].apply(determine_peer)
-
+        # In many cases, a student's ethnicity may be indicated as Hispanic but race was not indicative of PEER status
+        # when function calls for hispanic flag to be applied, then the 'demographics_hispanic' is used to create the flag
+        # and 'flag_PEER' assignment takes into account both race and ethnicity.
+        if hispanic:
+            df['flag_PEER'] = df.apply(
+                    lambda row: 1 if row['flag_hispanic'] == 1 and row['flag_PEER'] in [0,-1, 2] else row['flag_PEER'],
+                    axis=1)
     if sex:
         sex_dict = {'Female': 1, 'Male': 0, 'F': 1, 'M': 0}
         df['flag_sex'] = df['demographics_sex'].map(sex_dict).fillna(-1)
@@ -1363,4 +1414,99 @@ def set_up_demographic_flags(df, peer=True, pell=True, first_generation=True, se
     if pell:
         df['flag_PELL'] = df['flag_PELL'].replace({'Y': 1, 'N': 0, np.nan: 0}).astype(int)
 
-    return df
+    return
+
+def lookup_major_name(major):
+    """
+        Look up the full name of a major based on its abbreviation.
+
+        This function takes a major abbreviation as input and returns the corresponding
+        full name of the major using a predefined dictionary `majors_dict`. If the
+        abbreviation is not found in the dictionary, the function returns 'Other'.
+        If the input is missing (NaN), it returns NaN.
+
+        Parameters:
+        -----------
+        major : str or NaN
+            The abbreviation of the major (e.g., 'BIO', 'CSC', etc.).
+
+        Returns:
+        --------
+        str or NaN
+            The full name of the major corresponding to the abbreviation. Possible
+            return values include the full names like 'Biology', 'Computer Science',
+            'Psychology', 'Other', or NaN (for missing values).
+    """
+
+    # dictionary map for major abbreviations
+    majors_dict = {
+        'BNUR': 'Nursing',
+        'BIO': 'Biology',
+        'EXS': 'Exercise Science',
+        'IDS': 'Interdisciplinary Studies',
+        'NEUR': 'Neuroscience',
+        'CHM': 'Chemistry',
+        'PHY': 'Physics',
+        'GEOS': 'Geosciences',
+        'MTH': 'Mathematics',
+        'GLY': 'Geology',
+        'GEO': 'Geosciences',
+        'GEOL': 'Geology',
+        'GEOP': 'Geology',
+        'CSC': 'Computer Science',
+        'CSCI': 'Computer Science',
+        'PSY': 'Psychology'
+    }
+
+    if pd.isna(major):
+        return np.nan  # Return NaN for missing values
+    elif major in majors_dict:
+        return majors_dict[major]
+    else:
+        return 'Other'
+def classify_discipline(major):
+    """
+      Categorize majors into disciplines based on a predefined mapping.
+
+      This function takes a major abbreviation as input and returns the corresponding
+      discipline category. The function uses a dictionary `discipline_dict` to map
+      certain major codes (e.g., 'BIO', 'BNUR') to their respective disciplines
+      (e.g., 'Biology', 'STEM-Related', 'Other STEM'). If the major is not found in
+      the dictionary, it categorizes the major as 'Non-STEM'. If the major is missing
+      (NaN), it returns NaN.
+
+      Parameters:
+      -----------
+      major : str or NaN
+          The major abbreviation code to be categorized (e.g., 'BIO', 'CSC', etc.).
+
+      Returns:
+      --------
+      str or NaN
+          The discipline category based on the mapping. Possible return values include:
+          'Biology', 'STEM-Related', 'Other STEM', 'Non-STEM', or NaN (for missing values).
+      """
+    discipline_dict = {
+        'BNUR': 'STEM-Related',
+        'BIO': 'Biology',
+        'EXS': 'Other STEM',
+        'IDS': 'Interdisciplinary Studies',
+        'NEUR': 'Other STEM',
+        'CHM': 'Other STEM',
+        'PHY': 'Other STEM',
+        'GEOS': 'Other STEM',
+        'MTH': 'Other STEM',
+        'GLY': 'Other STEM',
+        'GEO': 'Other STEM',
+        'GEOL': 'Other STEM',
+        'GEOP': 'Other STEM',
+        'CSC': 'Other STEM',
+        'CSCI': 'Other STEM',
+        'PSY': 'STEM-Related'
+    }
+    if pd.isna(major):
+        return np.nan  # Return NaN for missing values
+    elif major in discipline_dict:
+        return discipline_dict[major]
+    else:
+        return 'Non-STEM'
