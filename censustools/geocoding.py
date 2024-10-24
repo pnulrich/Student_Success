@@ -136,7 +136,7 @@ def batch_geocode_matriculation_address(input_address_dataframe, vintage, benchm
     output_geocode_dataFrame = pandas.DataFrame(
         columns=[
             "student_ID",
-            "term_matriculation",
+            "matriculation_term",
             "vintage",
             "tigerlineid",
             "statefp",
@@ -146,11 +146,11 @@ def batch_geocode_matriculation_address(input_address_dataframe, vintage, benchm
         ]
     )
 
-    input_address_dataframe = input_address_dataframe.sort_values(by=['student_ID', 'term_matriculation']).groupby(
+    input_address_dataframe = input_address_dataframe.sort_values(by=['student_ID', 'matriculation_term']).groupby(
         'student_ID').first().reset_index()
-    print('# of rows in input_address_dataframe after filtering:, ', len(input_address_dataframe))
-    print('# of unique students  in input_address_dataframe after filtering:, ', len(input_address_dataframe['student_ID'].unique()))
-    working_address_df = input_address_dataframe.drop(['term_matriculation'], axis=1) #term column is not expected by API so must be dropped; we have stored term variable already as "term" so it is not lost
+    print('# of rows in input_address_dataframe after filtering: ', len(input_address_dataframe))
+    print('# of unique students  in input_address_dataframe after filtering: ', len(input_address_dataframe['student_ID'].unique()))
+    working_address_df = input_address_dataframe.drop(['matriculation_term'], axis=1) #term column is not expected by API so must be dropped; we have stored term variable already as "term" so it is not lost
     working_address_df = working_address_df[['student_ID', 'address_street', 'address_city', 'address_state', 'address_zipcode']]
     print('# of rows in working_address_df', len(working_address_df))
 
@@ -167,7 +167,6 @@ def batch_geocode_matriculation_address(input_address_dataframe, vintage, benchm
         working_address_df[start_index:end_index].to_csv(temp_output_filepath, encoding="utf-8", index=False,
                                                          header=None)
 
-        #TODO : adjust vintage to parameter passed by user
         result = census_geocode.addressbatch(temp_output_filepath, vintage=vintage, benchmark = benchmark)  # store the result
 
         try:
@@ -181,7 +180,7 @@ def batch_geocode_matriculation_address(input_address_dataframe, vintage, benchm
 
                 geocodeDict = {
                     "student_ID": student_ID,
-                    "term_matriculation": input_address_dataframe[input_address_dataframe['student_ID'] == student_ID]['term_matriculation'].iloc[0],
+                    "matriculation_term": input_address_dataframe[input_address_dataframe['student_ID'] == student_ID]['matriculation_term'].iloc[0],
                     "vintage": census_geocode.vintage,
                     "benchmark": census_geocode.benchmark,
                     "tigerlineid": tigerlineid,
