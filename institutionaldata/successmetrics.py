@@ -16,121 +16,6 @@ import pygraphviz as pgv
 import statsmodels.api as sm
 from matplotlib.backends.backend_pdf import PdfPages
 
-#Determine the number of students who were retained in a major since the semester of matriculation
-#major_code : 'BIO', 'CHM', etc
-#years : four digit calendar year such as 2024
-#ftfy : "first time first year" argument; when True, only those students with 0 transfer credits will be in the output
-#2023-07-12 developed using ChatGPT 4.0 with Code Interpreter
-# def major_retention_v1(student_df, major_code, years, ftfy = True):
-#     semester_codes = utilityfunctions.create_semesters(years)
-#     print(semester_codes)
-#
-#     # Import the dataset
-#     working_df = student_df.copy()
-#     #working_df['Grad_term'] = working_df['Grad_term'].apply(utilityfunctions.adjust_grad_term)
-#     #semesters = list()
-#
-#     #First time, first year argument ftfy defaults to True to in function. However, if we want to catch all students who matriculated in a time frame, the dataframe must not drop those with transfer credit
-#     if ftfy == False:
-#         working_df = working_df[
-#             (working_df['SDSTUMAIN_MATRIC_TERM'].isin(semester_codes)) &
-#             (working_df['SDSTUMAIN_MAJOR'] == major_code) &
-#             (working_df['SDSTUMAIN_MATRIC_TERM'] == working_df['SDSTUDEMOG_TERM'])
-#             ]
-#         print(working_df)
-#
-#     #If only FTFY students are desired (default behavior), dataframe should have 0 transfer hours
-#     else:
-#         working_df = working_df[
-#             (working_df['SDSTUMAIN_MATRIC_TERM'].isin(semester_codes)) &
-#             (working_df['SDSTUMAIN_MAJOR'] == major_code) &
-#             (working_df['SDSTUMAIN_MATRIC_TERM'] == working_df['SDSTUDEMOG_TERM']) &
-#             (working_df['SDSTUMAIN_TRANSFER_HOURS'].isna() | (
-#                     working_df['SDSTUMAIN_TRANSFER_HOURS'] == 0))
-#             ]
-#         print(working_df)
-#
-#
-#     # Compute the new column
-#     working_df['SDSTUMAIN_MATRIC_TERM'] = pd.to_datetime(working_df['SDSTUMAIN_MATRIC_TERM'], format='%Y%m')
-#     working_df['Grad_term'] = pd.to_datetime(working_df['Grad_term'], format='%Y%m')
-#     working_df['Grad_term_end'] = working_df['Grad_term'].apply(utilityfunctions.adjust_grad_term)
-#     working_df['Months_Between'] = (working_df['Grad_term_end'].dt.year - working_df[
-#         'SDSTUMAIN_MATRIC_TERM'].dt.year) * 12 + working_df['Grad_term_end'].dt.month - working_df[
-#                                        'SDSTUMAIN_MATRIC_TERM'].dt.month
-#
-#     #Provide boolean flag to simplify various measures
-#     working_df['grad_flag'] = working_df['Grad_term'].notnull().astype(int)
-#     major_retention_flag = 'major_retention' + major_code
-#     working_df[major_retention_flag] = 0
-#     working_df.loc[(working_df['Grad_term'].notnull()) & (working_df['Major'] == major_code), major_retention_flag] = 1
-#     # Compute the summary statistics
-#     total_students = working_df.shape[0]
-#     non_graduates = working_df['Grad_term'].isna().sum()
-#     graduates = total_students - non_graduates
-#     major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)].shape[0]
-#     non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)].shape[0]
-#
-#
-#     #Compute time till graduation for different segments
-#     average_months_all = working_df['Months_Between'].mean()
-#     std_dev_months_all = working_df['Months_Between'].std()
-#     average_years_non_graduates = working_df[working_df['Grad_term'].isna()]['Months_Between'].mean()/12  # Should be NaN
-#     std_dev_years_non_graduates = working_df[working_df['Grad_term'].isna()]['Months_Between'].std()/12  # Should be NaN
-#     average_years_graduates = working_df[working_df['Grad_term'].notna()]['Months_Between'].mean()/12
-#     std_dev_years_graduates = working_df[working_df['Grad_term'].notna()]['Months_Between'].std()/12
-#
-#     average_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)]['Months_Between'].mean() / 12
-#     std_dev_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)][
-#         'Months_Between'].std()/12
-#
-#     average_years_non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)][
-#                                       'Months_Between'].mean() / 12
-#     std_dev_years_non_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] != major_code)][
-#                                       'Months_Between'].std() / 12
-#
-#     #Compute institutional GPA at graduation for graduates in the specific major or different major
-#
-#     #average_years_major_code_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == major_code)]['Months_Between'].mean() / 12
-#     #std_dev_years_bio_graduates = working_df[(working_df['Grad_term'].notna()) & (working_df['Major'] == 'BIO')][
-#     #                                  'Months_Between'].std() / 12
-#
-#     #Need to pull in demog data from demographics of last semester because graduation purge report does not include GPA
-#     #gpa_all_graduates = working_df[(working_df['Grad_term'].notna())[]
-#     #gpa_bio_graduates =
-#     #gpa_non_bio_graduates
-#
-#     # Create the summary DataFrame
-#     summary_df = pd.DataFrame(
-#         columns=['Category', 'Count', 'Percentage', 'Avg Years to Graduation', 'Std Dev Years to Graduation'])
-#
-#     rows_list = [
-#         {'Category': 'Total Students', 'Count': total_students, 'Percentage': 100, 'Avg Years to Graduation': None,
-#          'Std Dev Years to Graduation': None},
-#         {'Category': 'Non-Graduates', 'Count': non_graduates, 'Percentage': non_graduates / total_students * 100,
-#          'Avg Years to Graduation': average_years_non_graduates,
-#          'Std Dev Years to Graduation': std_dev_years_non_graduates},
-#         {'Category': 'Graduates', 'Count': graduates, 'Percentage': graduates / total_students * 100,
-#          'Avg Years to Graduation': average_years_graduates, 'Std Dev Years to Graduation': std_dev_years_graduates},
-#         {'Category': 'Graduates Retained within Major', 'Count': major_code_graduates, 'Percentage': major_code_graduates / total_students * 100,
-#          'Avg Years to Graduation': average_years_major_code_graduates,
-#          'Std Dev Years to Graduation': std_dev_years_major_code_graduates},
-#         {'Category': 'Graduates who Left Major', 'Count': graduates - major_code_graduates,
-#          'Percentage': (graduates - major_code_graduates) / total_students * 100,
-#          'Avg Years to Graduation': average_years_non_major_code_graduates,
-#          'Std Dev Years to Graduation': std_dev_years_non_major_code_graduates}
-#     ]
-#
-#     summary_df = pd.concat([summary_df, pd.DataFrame(rows_list)], ignore_index=True)
-#
-#     # Return the result
-#     return(summary_df, working_df)
-
-#Calculate the number of math courses taken by a subset of students
-#major code: major (e.g. 'BIO', 'CHM', 'PSY')
-#ftfy : "first time first year" argument; when True, only those students with 0 transfer credits will be in the output
-#grade_options: a list of the letter grades for which you want specifics such as 'D', 'F', or 'W'; NOTE: this needs to be ironed out more (20230724, PNU)
-#math_grades_df: Pandas dataframe including the grades; default is None; if no dataframe is provided as argument, user prompted with dialog to select file
 def num_math_courses(demographics_df, major_code, years, math_grades_df = None, ftfy = True, grade_options = None):
     # Load the math course grades
     if math_grades_df is None:
@@ -355,31 +240,6 @@ def plot_grades(grades_df, letterGrades = False, title = 'Frequency Diagram of G
         plt.title(title)  # Set the title of the plot
         plt.show()
 
-    # else:
-    #     custom_bins = [-1.1, -0.001, 1, 1.669, 2.669, 3.669, 4.334]
-    #     custom_bins.sort()
-    #
-    #     # Convert the 'NumGrade' column to categorical data with custom bins
-    #     grades_df['grade_bins'] = pd.cut(grades_df['NumGrade'], bins=custom_bins, right=False, labels=False)
-    #
-    #     # Get the unique categories from the 'grade_bins' column
-    #     categories = grades_df['grade_bins'].unique().tolist()
-    #
-    #     # Create the histogram using the 'grade_bins' column and the number of categories
-    #     plt.hist(grades_df['grade_bins'], bins= custom_bins, edgecolor='black')
-    #
-    #     plt.xticks(custom_bins, custom_bins)  # Set the x-axis labels
-    #     plt.xlim(custom_bins[0], custom_bins[-1])  # Set the x-axis limits
-    #     plt.ylabel('Frequency')  # Set the y-axis label
-    #     plt.title(title)  # Set the title of the plot
-    #     plt.show()
-
-        # # Create the histogram using the 'New_Column' and the defined bins
-        # plt.hist(grades_df['NumGrade'], bins=custom_bins, edgecolor='black')
-        # plt.xticks(custom_bins)  # Set the x-axis labels
-        # plt.ylabel('Frequency')  # Set the y-axis label
-        # plt.title(title)  # Set the title of the plot
-        # plt.show()
 
 def calculate_retention_rates(input_df, stem_majors=[], major_list=[], stem = True, student_id_col='student_ID',
                               major_col='major_term', semester_col='semester_number'):
@@ -2127,7 +1987,7 @@ def plot_proportions_by_course(df, proportions_to_plot, pdf_filename=None, save_
         pdf.close()
 
 
-def create_sankey_plot(data, major, output_filename, plot_title="sankey plot default title"):
+def create_sankey_plot(data, major, plot_title, output_filename = None):
     """
     Creates and displays a Sankey diagram to visualize the flow of students across disciplines and graduation outcomes.
 
@@ -2203,7 +2063,7 @@ def create_sankey_plot(data, major, output_filename, plot_title="sankey plot def
                 return 'Graduated Other'
         # Handle cases where the student is considered inactive (left college)
         elif row['semester_number'] == student_last_semester_number[row['student_ID']] and \
-                ((maximum_dataset_term - student_last_semester[row['student_ID']]) > 3):
+                ((maximum_dataset_term - student_last_semester[row['student_ID']]) > 4):
             return 'Left College'
         # Return the discipline (or handle cases where 'discipline' might be NaN)
         else:
@@ -2249,7 +2109,7 @@ def create_sankey_plot(data, major, output_filename, plot_title="sankey plot def
 
     # Define end_status categories and corresponding colors
     end_statuses = [f"Graduated {major}", "Graduated Other", "Left College"]
-    end_status_colors = ["#332288", "#CC6677", "#882255"]  # Example colors for each end status
+    end_status_colors = ["#332288", "#882255", "#CC6677"]  # Example colors for each end status
 
     # Define discipline categories and corresponding colors
     disciplines = [f"{major}", "Other STEM", "STEM-Related", "Non-STEM", "Interdisciplinary Studies"]
