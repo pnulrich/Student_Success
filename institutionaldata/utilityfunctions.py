@@ -70,6 +70,7 @@ def scramble_ID(input_data, cipher):
             results_df["student_ID"] = (
                 results_df["student_ID"]
                 .astype(str)
+                .str.lstrip('0')  # Remove leading zeros correctly with .str
                 .replace(scrambleDict, regex=True)
             )
             return results_df
@@ -77,7 +78,8 @@ def scramble_ID(input_data, cipher):
         # Check if the input is a string (assuming it's a Student_ID)
         elif isinstance(input_data, str):
             # Scramble ID for a single Student_ID string
-            scrambled_id = ''.join(scrambleDict.get(char, char) for char in input_data)
+            stripped_id = input_data.lstrip('0')  # Remove leading zeros for a single ID
+            scrambled_id = ''.join(scrambleDict.get(char, char) for char in stripped_id)
             return scrambled_id
 
         else:
@@ -709,7 +711,9 @@ def letter_grade_simplify(dataframe, c_minus_flag = True):
             "UF": "F",
             "W*": "W",
             "-W": "W",
-            "WM": "W"
+            "WM": "W",
+            "PW": "W"
+            #GP = grade pending (typically during dishonesty charge process)
             #WM = military withdrawal
             #V = audit
             #N = continuing education grade (Perimeter College, legacy grade?)
@@ -739,9 +743,12 @@ def letter_grade_simplify(dataframe, c_minus_flag = True):
             "IF*": "F",
             "IF": "F",
             "UF": "F",
+            "W": "W",
             "W*": "W",
             "-W": "W",
-            "WM": "W"
+            "WM": "W",
+            "PW": "W"
+            # GP = grade pending (typically during dishonesty charge process)
             # WM = military withdrawal
             # V = audit
             # N = continuing education grade (Perimeter College, legacy grade?)
@@ -755,6 +762,33 @@ def letter_grade_simplify(dataframe, c_minus_flag = True):
     df_copy['course_grade_letter_simp'] = df_copy['course_grade_letter_simp'].map(grade_mapping).fillna(df_copy['course_grade_letter_simp'])
 
     return df_copy
+
+
+#Utility function: eliminates various distinctions in letter grades but retains plus/minus
+# developed 20241206
+def letter_grade_clean(dataframe):
+    """
+    "Purify" the letter grades by eliminating eliminating distinctions and various grade indicators.
+
+    Parameters
+    ----------
+    dataframe : pandas.DataFrame
+        The DataFrame containing the column 'course_grade_letter' with letter grades to be simplified.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A copy of the input DataFrame with cleaned up letter grades.
+
+    Notes
+    -----
+    Developed 2024-12-06 by Paul Ulrich because grades were being missed in calculus analyses if a student did repeat to replace or had some other not grade distinction
+    listed. This was creating problems with ordered categories.
+    """
+    df_copy = dataframe.copy()
+    df_copy['course_grade_letter'] = df_copy['course_grade_letter'].apply(lambda grade: re.sub(r'[%\^R#@*]', '', str(grade)))
+    return df_copy
+
 
 #Utility function: gets user input on which CSV grades reports files to load and returns as a pandas dataframe
 def load_grades():
@@ -1349,6 +1383,8 @@ def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_gene
       even if their race is marked as 'Not Reported' or 'More Than One Race Reported'.
     """
 
+    df = df.copy() # avoid changing altering the origianl dataframe
+
     # Mapping for full descriptions
     full_peer_dict = {
         'American Indian or Alaska Native': 1, 'Asian': 0, 'Black or African American': 1,
@@ -1406,7 +1442,7 @@ def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_gene
                     axis=1)
     if sex:
         sex_dict = {'Female': 1, 'Male': 0, 'F': 1, 'M': 0}
-        df['flag_sex'] = df['demographics_sex'].map(sex_dict).fillna(-1)
+        df['flag_sex'] = df['demographics_sex'].map(sex_dict).fillna(-1).astype(int)
 
     if first_generation:
         df['flag_first_generation'] = df['flag_first_generation'].replace({'Y': 1, 'N': 0, np.nan: 0}).astype(int)
@@ -1414,7 +1450,7 @@ def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_gene
     if pell:
         df['flag_PELL'] = df['flag_PELL'].replace({'Y': 1, 'N': 0, np.nan: 0}).astype(int)
 
-    return
+    return df
 
 def lookup_major_name(major):
     """
@@ -1464,6 +1500,114 @@ def lookup_major_name(major):
         return majors_dict[major]
     else:
         return 'Other'
+
+
+# Define function to combine spring/summer based on presence of both terms
+def combine_spring_summer_terms(df, remove_original = False):
+    """
+    Combines spring (YYYY01) and summer (YYYY05) terms into a single term per year for each student,
+    while retaining all original columns in the dataframe. New combined rows are created with
+    `demographics_term` set to a unique code (`YYYY04.xx`) and appended to the dataframe without
+    removing the original spring or summer rows.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A dataframe containing at least the following columns:
+        - 'student_ID' : Identifier for each student.
+        - 'demographics_term' : Term codes in YYYYMM integer format (e.g., 202301 for spring 2023).
+        - Any additional columns representing demographic data that will be included in combined rows.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The original dataframe with additional rows for each combined spring-summer term.
+        Each new row will contain:
+        - 'student_ID' : Same as in the original rows.
+        - 'demographics_term' : Set to a combined code based on available terms:
+            - YYYY04.11 if both spring and summer terms are present.
+            - YYYY04.10 if only the spring term is present.
+            - YYYY04.01 if only the summer term is present.
+            - The decimal format can be interpreted as binary indicators, where the first decimal
+              position represents the presence of the spring term and the second position indicates
+              the summer term.
+        - Other columns will contain values from either the spring or summer row based on precedence.
+
+    Precedence Rules
+    ----------------
+    - If both spring (YYYY01) and summer (YYYY05) terms exist for a `student_ID` in a given year,
+      the values for columns other than 'demographics_term' in the new combined row are copied from
+      the summer term row (i.e., summer takes precedence).
+    - If only the spring term exists, the new row's values are copied from the spring term row.
+    - If only the summer term exists, the new row's values are copied from the summer term row.
+
+    Notes
+    -----
+    - This function assumes that `demographics_term` is in integer format.
+    - A temporary column 'year' is added and then dropped at the end to facilitate grouping by year.
+    - Original rows are not modified or removed, allowing flexible filtering of combined and original terms.
+
+    Example
+    -------
+    >>> df = pd.DataFrame({
+    ...     'student_ID': ['AA', 'AA', 'BB', 'BB', 'BB', 'BB'],
+    ...     'demographics_term': [202301, 202305, 202308, 202401, 202405, 202408],
+    ...     'major_term': ['BIO', 'CHM', 'PDa', 'POT', 'FAR', 'BIO']
+    ... })
+    >>> df_combined = combine_spring_summer_terms(df)
+    >>> print(df_combined)
+    """
+
+    df = df.copy()
+    combined_rows = []
+
+    # Extract year and create spring and summer term masks
+    df['year'] = df['demographics_term'] // 100
+    spring_mask = df['demographics_term'] % 100 == 1
+    summer_mask = df['demographics_term'] % 100 == 5
+
+    # Group by student and year, then determine combined term row values
+    for (student_id, year), group in df.groupby(['student_ID', 'year']):
+        # Check for the existence of spring and summer terms
+        has_spring = spring_mask[group.index].any()
+        has_summer = summer_mask[group.index].any()
+
+        if has_spring and has_summer:
+            # Combined term for both spring and summer; summer takes precedence for other values
+            combined_code = year * 100 + 4.11
+            combined_row = group[summer_mask[group.index]].iloc[0].copy()
+            combined_row['demographics_term'] = combined_code
+            combined_rows.append(combined_row)
+        elif has_spring:
+            # Only spring term exists
+            combined_code = year * 100 + 4.10
+            combined_row = group[spring_mask[group.index]].iloc[0].copy()
+            combined_row['demographics_term'] = combined_code
+            combined_rows.append(combined_row)
+        elif has_summer:
+            # Only summer term exists
+            combined_code = year * 100 + 4.01
+            combined_row = group[summer_mask[group.index]].iloc[0].copy()
+            combined_row['demographics_term'] = combined_code
+            combined_rows.append(combined_row)
+
+    # Concatenate the combined rows as a new DataFrame and append in bulk
+    combined_df = pd.DataFrame(combined_rows)
+    result_df = pd.concat([df, combined_df], ignore_index=True)
+
+
+    # Optional removal of original spring/summer terms
+    if remove_original:
+        result_df = result_df[~result_df['demographics_term'].isin(df[spring_mask | summer_mask]['demographics_term'])]
+
+    result_df = result_df.sort_values(by=['student_ID', 'demographics_term']).reset_index(drop=True)
+
+    # Drop the temporary 'year' column for a clean return
+    result_df.drop(columns=['year'], inplace=True)
+
+    return result_df
+
+
 def classify_discipline(major):
     """
       Categorize majors into disciplines based on a predefined mapping.
