@@ -581,45 +581,51 @@ def num_grade_institutional(grade):
     ----------
     grade : str or float
         The grade value to be processed. This can include standard letter grades
-        (e.g., "A", "B+"), special grades (e.g., "IP", "WM"), or values with suffixes
+        (e.g., "A", "B+"), special grades (e.g., "IP", "WM", "S", "U"), or values with suffixes
         (e.g., "A%", "C*"). Missing values or NaN are also supported.
 
     Returns
     -------
     float
         The numeric value corresponding to the grade. Possible return values include:
-        - Positive numeric values (e.g., 4.0 for "A", 3.33 for "B+")
+        - Positive numeric values (e.g., 4.33 for "A+", 3.33 for "B+")
         - -1 for withdrawals or unrecognized grades
-        - -2 for special cases like "IP", "GH", "GP", or grades with specific suffixes
+        - -2 for special cases such as:
+            * Grades with specific suffixes like "%", "@", "*", "^R", "#"
+            * Grades like "IP", "GH", "GP", "I" (e.g., in-progress or incomplete)
+            * Military withdrawals ("WM")
         - -2 for audits and continuing education ("V" or "N" in the grade)
-        - -2 for military withdrawals ("WM")
+        - -3 for pass/fail course grades ("S" or "U")
 
     Notes
     -----
     - The function handles both standard and non-standard grades, including:
-        * Withdrawals ("W", "WF", "W%") are coded as -1.
-        * Military withdrawals ("WM") are coded as -2.
-        * Audits and continuing education ("V" or "N" in the grade) are coded as -2.
+        * Withdrawals ("W", "WF", "W%") are coded as -1, except "WM" (military withdrawal), which is coded as -2.
+        * Pass/fail grades ("S", "U") are coded as -3.
         * Special characters (% # @ ^R *) are removed before processing the grade.
     - Missing or null values (NaN, None) are returned as -1.
+    - Letter grades with valid numeric equivalents (e.g., "A", "B+", "C") are mapped directly.
 
     Examples
     --------
-    >>> num_grade_institutional("A")
-    4.0
-    >>> num_grade_institutional("B+")
-    3.33
+    >>> num_grade_institutional("A+")
+    4.33
+    >>> num_grade_institutional("B-")
+    2.67
     >>> num_grade_institutional("W")
     -1
     >>> num_grade_institutional("WM")
     -2
+    >>> num_grade_institutional("S")
+    -3
     >>> num_grade_institutional(None)
     -1
-    >>> num_grade_institutional("A%")
-    4.0
+    >>> num_grade_institutional("C*")
+    2.0
 
     """
 
+    # by default, unknown or missing situations will be coded as -1
     simp = -1
     #grade = grade.replace("^R", "")  # Remove the ^R suffix from the grade; At Georgia State University ^R indicates this grade that was replaced later when a student repeated the course and earned a higher grade
 
@@ -635,6 +641,10 @@ def num_grade_institutional(grade):
     # code audits and continuing ed as a miscellaneous category (-2)
     if 'V' in grade or 'N' in grade:
         return -2
+
+    # code pass/fail course grades as -3
+    if 'S' in grade or 'U' in grade:
+            return -3
 
     # Manage situations where the transfer indicator (%), academic renewal indicator (#), dishonesty indicator (@), repeat to replace indicator (^R) and asterisk (*)are present
     if re.search(r'[#%*@^R]', grade):
