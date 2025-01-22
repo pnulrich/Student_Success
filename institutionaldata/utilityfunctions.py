@@ -574,14 +574,67 @@ def increment_semester(semester_input):
 # [Utility function] Converts letter grade to numeric value; adjust GPA values to match institution
 #ported from R utility_functions_v2 using ChatCPT 3.5
 def num_grade_institutional(grade):
+    """
+    Converts a grade string into its corresponding numeric value based on institutional grading policies.
+
+    Parameters
+    ----------
+    grade : str or float
+        The grade value to be processed. This can include standard letter grades
+        (e.g., "A", "B+"), special grades (e.g., "IP", "WM"), or values with suffixes
+        (e.g., "A%", "C*"). Missing values or NaN are also supported.
+
+    Returns
+    -------
+    float
+        The numeric value corresponding to the grade. Possible return values include:
+        - Positive numeric values (e.g., 4.0 for "A", 3.33 for "B+")
+        - -1 for withdrawals or unrecognized grades
+        - -2 for special cases like "IP", "GH", "GP", or grades with specific suffixes
+        - -2 for audits and continuing education ("V" or "N" in the grade)
+        - -2 for military withdrawals ("WM")
+
+    Notes
+    -----
+    - The function handles both standard and non-standard grades, including:
+        * Withdrawals ("W", "WF", "W%") are coded as -1.
+        * Military withdrawals ("WM") are coded as -2.
+        * Audits and continuing education ("V" or "N" in the grade) are coded as -2.
+        * Special characters (% # @ ^R *) are removed before processing the grade.
+    - Missing or null values (NaN, None) are returned as -1.
+
+    Examples
+    --------
+    >>> num_grade_institutional("A")
+    4.0
+    >>> num_grade_institutional("B+")
+    3.33
+    >>> num_grade_institutional("W")
+    -1
+    >>> num_grade_institutional("WM")
+    -2
+    >>> num_grade_institutional(None)
+    -1
+    >>> num_grade_institutional("A%")
+    4.0
+
+    """
+
     simp = -1
     #grade = grade.replace("^R", "")  # Remove the ^R suffix from the grade; At Georgia State University ^R indicates this grade that was replaced later when a student repeated the course and earned a higher grade
 
-    if grade is None:
+    if pd.isnull(grade):
         return simp
-    # Code all types of withdrawals as -1
+
+    # Code all types of withdrawals as -1 except military withdrawals
+    if grade == 'WM':
+        return -2
     if 'W' in grade:
         return simp
+
+    # code audits and continuing ed as a miscellaneous category (-2)
+    if 'V' in grade or 'N' in grade:
+        return -2
 
     # Manage situations where the transfer indicator (%), academic renewal indicator (#), dishonesty indicator (@), repeat to replace indicator (^R) and asterisk (*)are present
     if re.search(r'[#%*@^R]', grade):
