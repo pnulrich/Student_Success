@@ -6,8 +6,8 @@ from bokeh.models import ColumnDataSource, ColorBar
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Viridis256
 from institutionaldata.utilityfunctions import get_academic_year
-
-
+from scipy.optimize import curve_fit
+import numpy as np
 
 def prepare_hazard_data(df,
                         target_major,
@@ -195,10 +195,10 @@ def calculate_semester_gap(current_term, max_term):
     return semesters_missed
 
 
-def assign_semester_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
+def assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
                                max_demographics_term):
     """
-    Assign a semester indicator based on a student's term history.
+    Assign a outcome indicator based on a student's term history.
 
     This function assigns an indicator representing a student's academic
     status in a given term based on their academic history. It considers
@@ -222,7 +222,7 @@ def assign_semester_indicators(row, prev_major_term, term_earliest, first_major,
     Returns
     -------
     int
-        Semester indicator code:
+        outcome indicator code:
         - -1 : No change from the previous term
         - 1  : Left the university
         - 2  : Graduated in the first major
@@ -243,7 +243,7 @@ def assign_semester_indicators(row, prev_major_term, term_earliest, first_major,
     ...     'flag_graduation_term': 1,
     ...     'major_graduation': 'BIO'
     ... }
-    >>> assign_semester_indicators(row, 202208, 202001, 'BIO', True, 202401)
+    >>> assign_outcome_indicators(row, 202208, 202001, 'BIO', True, 202401)
     2
     """
 
@@ -291,10 +291,10 @@ def assign_semester_indicators(row, prev_major_term, term_earliest, first_major,
 # Process each student's data
 def process_student_data(student_df, max_demographics_term):
     """
-    Process a student's academic data and assign semester indicators.
+    Process a student's academic data and assign outcome indicators.
 
     This function processes a DataFrame containing a student's academic records,
-    assigning a semester indicator for each term based on enrollment history,
+    assigning a outcome indicator for each term based on enrollment history,
     major changes, graduation status, and enrollment gaps.
 
     Parameters
@@ -313,7 +313,7 @@ def process_student_data(student_df, max_demographics_term):
     Returns
     -------
     list of int
-        A list of assigned semester indicators for each row in `student_df`.
+        A list of assigned outcome indicators for each row in `student_df`.
 
     Notes
     -----
@@ -347,7 +347,7 @@ def process_student_data(student_df, max_demographics_term):
     indicators = []
     for i, row in student_df.iterrows():
         is_last_semester = row['semester_number'] == last_semester_number
-        indicator = assign_semester_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
+        indicator = assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
                                                max_demographics_term)
         indicators.append(indicator)
         prev_major_term = row['major_term']
@@ -424,7 +424,7 @@ def prepare_and_process_data(student_major_data_df,
         - 'demographics_term': Term of demographic data.
         - 'major_term': Current major for the term.
         - 'major_graduation': Graduation status or term.
-        - 'semester_number': Sequential semester indicator.
+        - 'semester_number': Sequential outcome indicator.
         - 'term_earliest': Earliest term of enrollment.
 
     coursework_df : pandas.DataFrame
@@ -457,7 +457,7 @@ def prepare_and_process_data(student_major_data_df,
     -------
     tuple
         - filtered_df (pandas.DataFrame): Filtered and processed student data
-          with added semester indicators and course load information.
+          with added outcome indicators and course load information.
         - target_major_courseload_df (pandas.DataFrame): Summary statistics
           of target major course load by semester, including mean and standard
           deviation for course credits and course counts.
@@ -465,7 +465,7 @@ def prepare_and_process_data(student_major_data_df,
     Notes
     -----
     - Filters students based on target major, transfer credit limits, and fall-term starts.
-    - Assigns semester indicators to track progression, major changes, gaps in enrollment,
+    - Assigns outcome indicators to track progression, major changes, gaps in enrollment,
       and graduation status. Only the first major change is flagged.
     - Aggregates course load data for the target major, calculating:
       - Number of courses taken per semester.
@@ -499,35 +499,35 @@ def prepare_and_process_data(student_major_data_df,
     # Identify the latest term in the dataset for reference in processing
     max_demographics_term = filtered_df['demographics_term'].max()
 
-    # Assign semester indicators to track student status by semester
-    semester_indicators_dict = (
+    # Assign outcome indicators to track student status by semester
+    outcome_indicators_dict = (
         filtered_df.groupby('student_ID')
         .apply(lambda x: process_student_data(x.sort_values('semester_number'), max_demographics_term))
         .to_dict()  # Convert the grouped results into a dictionary
     )
 
-    # Map semester indicators back to the main DataFrame
+    # Map outcome indicators back to the main DataFrame
     indicators = []
     for _, row in filtered_df.iterrows():
         student_id = row['student_ID']
         student_group = filtered_df[filtered_df['student_ID'] == student_id]  # Group data by student
         student_group_sorted = student_group.sort_values('semester_number')  # Sort by semester
         row_index = student_group_sorted.index.get_loc(_)  # Find the row index for the current term
-        indicator = semester_indicators_dict[student_id][row_index]  # Retrieve the indicator
+        indicator = outcome_indicators_dict[student_id][row_index]  # Retrieve the indicator
         indicators.append(indicator)
 
-    # Add the computed semester indicators to the DataFrame
-    filtered_df['semester_indicator'] = indicators
+    # Add the computed outcome indicators to the DataFrame
+    filtered_df['outcome_indicator'] = indicators
 
     # Ensure only the first major change is flagged as 4
     # Identify the earliest major change for each student and set all subsequent major changes to -1
     filtered_df['earliest_major_change'] = (
-        filtered_df[filtered_df['semester_indicator'] == 4]
+        filtered_df[filtered_df['outcome_indicator'] == 4]
         .groupby('student_ID')['semester_number']
         .transform('min')
     )
-    filtered_df['semester_indicator'] = filtered_df.apply(
-        lambda current_row: -1 if current_row['semester_indicator'] == 4 and current_row['semester_number'] != current_row['earliest_major_change'] else current_row['semester_indicator'],
+    filtered_df['outcome_indicator'] = filtered_df.apply(
+        lambda current_row: -1 if current_row['outcome_indicator'] == 4 and current_row['semester_number'] != current_row['earliest_major_change'] else current_row['outcome_indicator'],
         axis=1
     )
     # Drop helper column
@@ -552,7 +552,7 @@ def prepare_and_process_data(student_major_data_df,
     # Calculate descriptive statistics for credit hours by semester
     credits_stats = (
         filtered_df[
-            (filtered_df['semester_indicator'] == -1) &  # Focus on active students
+            (filtered_df['outcome_indicator'] == -1) &  # Focus on active students
             (filtered_df['major_term'] == target_major)  # Students still in the target major
         ]
         .groupby('semester_number')
@@ -566,7 +566,7 @@ def prepare_and_process_data(student_major_data_df,
     # Calculate descriptive statistics for course counts by semester
     courses_stats = (
         filtered_df[
-            (filtered_df['semester_indicator'] == -1) &  # Focus on active students
+            (filtered_df['outcome_indicator'] == -1) &  # Focus on active students
             (filtered_df['major_term'] == target_major)  # Students still in the target major
         ]
         .groupby('semester_number')
@@ -589,17 +589,17 @@ def calculate_probabilities(input_df):
     Calculate proportions, cumulative probabilities, and active student counts by semester.
 
     This function computes:
-    1. Proportions of students by `semester_indicator` for each semester.
+    1. Proportions of students by `outcome_indicator` for each semester.
     2. Cumulative probabilities of various outcomes, adjusted for the active population.
     3. Total active student counts per semester.
-    4. A filtered DataFrame (`masked_df`) excluding rows with inactive status (`semester_indicator == -1`).
+    4. A filtered DataFrame (`masked_df`) excluding rows with inactive status (`outcome_indicator == -1`).
 
     Parameters
     ----------
     input_df : pandas.DataFrame
         A DataFrame containing student data with the following required columns:
         - 'semester_number': Identifier for the semester.
-        - 'semester_indicator': Outcome indicator for each student.
+        - 'outcome_indicator': Outcome indicator for each student.
         - 'student_ID': Unique identifier for students.
 
     Returns
@@ -607,17 +607,17 @@ def calculate_probabilities(input_df):
     dict
         A dictionary containing:
         - "proportions_df": pandas.DataFrame
-            Proportions of each outcome (`semester_indicator`) by semester.
+            Proportions of each outcome (`outcome_indicator`) by semester.
         - "cumulative_df": pandas.DataFrame
             Cumulative probabilities for each outcome by semester.
         - "active_student_counts": pandas.Series
             Total number of active students per semester.
         - "masked_df": pandas.DataFrame
-            Filtered DataFrame excluding rows with `semester_indicator == -1`.
+            Filtered DataFrame excluding rows with `outcome_indicator == -1`.
 
     Notes
     -----
-    - The function assumes that outcomes are represented by specific values of `semester_indicator`.
+    - The function assumes that outcomes are represented by specific values of `outcome_indicator`.
     - Cumulative probabilities are calculated for each outcome in the following order:
       1 (Left College), 4 (Changed Major), 2 (Graduated in Target Major), 3 (Graduated Other).
     - Active student counts are used to normalize proportions.
@@ -632,7 +632,7 @@ def calculate_probabilities(input_df):
     """
     # Calculate the proportions of active students by semester and status
     proportions_df = (
-        input_df.groupby("semester_number")["semester_indicator"]
+        input_df.groupby("semester_number")["outcome_indicator"]
         .value_counts(normalize=True)
         .unstack(fill_value=0)
         .reset_index()
@@ -672,6 +672,43 @@ def calculate_probabilities(input_df):
         "cumulative_df": cumulative_df,
         "active_student_counts": active_student_counts
 }
+
+def extract_logistic_features(outcome_indicator, semester_numbers, cumulative_probabilities):
+    """
+    Fit a logistic model and extract features.
+
+    Parameters
+    ----------
+    outcome_indicator : int
+        outcome indicator code
+        - -1 : No change from the previous term
+        - 1  : Left university
+        - 2  : Graduated in first major
+        - 3  : Graduated in different major
+        - 4  : Changed to different major (still active)
+    semester_numbers : array-like
+        The semester numbers.
+    cumulative_probabilities : array-like
+        The cumulative probabilities for a given outcome.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the logistic model parameters:
+        - "K": Maximum cumulative probability
+        - "r": Growth rate
+        - "t_half": Half-max semester number
+    """
+    def logistic_function(t, K, r, t_half):
+        return K / (1 + np.exp(-r * (t - t_half)))
+
+    # Fit the logistic model
+    params, _ = curve_fit(logistic_function, semester_numbers, cumulative_probabilities, maxfev=10000)
+
+    # Extract parameters
+    K, r, t_half = params
+    return {"Outcome": outcome_indicator, "K": K, "r": r, "t_half": t_half}
+
 
 def plot_hazard_ratio(proportions_df,
                         active_student_counts,
