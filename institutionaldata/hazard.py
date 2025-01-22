@@ -357,6 +357,44 @@ def process_student_data(student_df, max_demographics_term):
 
 # convert major_graduation to a tuple (WHY DID I ENCODE major_graduation as a string in the first place?)
 def safe_eval(value):
+    """
+    Safely evaluate a string containing a Python literal expression.
+
+    This function attempts to evaluate a string representation of a Python literal (e.g., lists, dictionaries,
+    integers, floats, booleans). If the input is not a string, it is returned unchanged. If evaluation fails due to
+    invalid syntax or a value error, the function returns `None`.
+
+    Parameters
+    ----------
+    value : str or any
+        The input value to be evaluated. If `value` is a string containing a valid Python literal expression, it is
+        evaluated using `ast.literal_eval`. Non-string inputs are returned as is.
+
+    Returns
+    -------
+    any
+        The evaluated Python object if the input is a valid Python literal string. Non-string inputs are returned
+        unchanged. If evaluation fails, `None` is returned.
+
+    Notes
+    -----
+    - This function uses `ast.literal_eval`, which is safer than `eval` as it only evaluates Python literal expressions.
+    - Common use cases include converting strings like "{'key': 'value'}" or "[1, 2, 3]" into Python objects.
+
+    Examples
+    --------
+    >>> safe_eval("{'key': 'value'}")
+    {'key': 'value'}
+
+    >>> safe_eval("[1, 2, 3]")
+    [1, 2, 3]
+
+    >>> safe_eval(42)
+    42  # Non-string input is returned as is
+
+    >>> safe_eval("invalid syntax")
+    None  # Invalid string returns None
+    """
     try:
         return ast.literal_eval(value) if isinstance(value, str) else value
     except (ValueError, SyntaxError):
@@ -818,11 +856,18 @@ def plot_course_heatmap(filtered_df, target_major, transfer_credit_hour_minimum,
     )
 
     # Create Heatmap DataFrame
-    heatmap_df = top_courses_df.pivot(index='course_list', columns='semester_number', values='active_student_proportion').fillna(0)
+    proportions_pivot = top_courses_df.pivot(index='course_list', columns='semester_number', values='active_student_proportion').fillna(0)
+    frequencies_pivot = top_courses_df.pivot(index='course_list', columns='semester_number', values='frequency').fillna(0)
 
-    # Prepare data for Bokeh heatmap
-    heatmap_df = heatmap_df.stack().reset_index()
+    # Stack both proportions and frequencies into a single DataFrame
+    heatmap_proportions = proportions_pivot.stack().reset_index()
+    heatmap_frequencies = frequencies_pivot.stack().reset_index(drop=True)  # Drop index to align with proportions
+
+    # Combine into a single DataFrame
+    heatmap_df = heatmap_proportions.copy()
     heatmap_df.columns = ['course_list', 'semester_number', 'proportion']
+    heatmap_df['frequency'] = heatmap_frequencies.values
+
     heatmap_df['semester_number'] = heatmap_df['semester_number'].astype(str)
     heatmap_df['course_list'] = heatmap_df['course_list'].astype(str)
 
@@ -845,7 +890,7 @@ def plot_course_heatmap(filtered_df, target_major, transfer_credit_hour_minimum,
         x_range=x_range,
         y_range=y_range,
         width=800, height=400,
-        tools="hover", tooltips=[("Proportion", "@proportion{0.00}")]
+        tools="hover", tooltips=[("Proportion", "@proportion{0.00}"), ("# of students", "@frequency{0}")]
     )
 
     # Add heatmap rectangles
