@@ -5,6 +5,8 @@ import tkinter as tk
 import re
 import numpy as np
 from datetime import datetime
+import string
+import os
 
 # 2024-09-03 address upcoming changes for pandas 3 related to downcasting that occurred silently in pandas <3
 pd.set_option('future.no_silent_downcasting', True)
@@ -433,47 +435,53 @@ def create_semesters(years, calendar_year = False):
             semesters.sort()
         return semesters
 
+import pandas as pd
+import numpy as np
+from datetime import datetime
+
 def get_academic_year(term_code):
-        """
-        Get the academic year for a given term code (YYYYMM).
+    """
+    Get the academic year for a given term code (YYYYMM).
 
-        Parameters
-        ----------
-        term_code : int or datetime
-            The term code representing the year and month (YYYYMM).
+    Parameters
+    ----------
+    term_code : int, numpy integer, or datetime
+        The term code representing the year and month (YYYYMM).
 
-        Returns
-        -------
-        int
-            The academic year corresponding to the given term code.
+    Returns
+    -------
+    int
+        The academic year corresponding to the given term code.
 
-        Notes
-        -----
-        The academic year starts in the fall of the previous calendar year (August, YYYY08)
-        and ends in the summer of the following year (May, YYYY05).
-        For example, the academic year 2006 includes fall 200508, spring 200601, and summer 200605.
+    Notes
+    -----
+    The academic year starts in the fall of the previous calendar year (August, YYYY08)
+    and ends in the summer of the following year (May, YYYY05).
+    For example, the academic year 2006 includes fall 200508, spring 200601, and summer 200605.
 
-        Developed with ChatGPT4o, 2024-10-14 (PNU)
-        """
+    Developed with ChatGPT4o, 2024-10-14 (PNU)
+    """
 
-        # If term_code is a datetime, extract year and month
-        if isinstance(term_code, pd.Timestamp) or isinstance(term_code, datetime):
-            year = term_code.year
-            month = term_code.month
-        elif isinstance(term_code, int):
-            # Extract year and month from YYYYMM format
-            year = term_code // 100
-            month = term_code % 100
-        else:
-            raise ValueError("term_code must be either an int in YYYYMM format or a datetime object")
+    # If term_code is a datetime, extract year and month
+    if isinstance(term_code, (pd.Timestamp, datetime)):
+        year = term_code.year
+        month = term_code.month
+    elif isinstance(term_code, (int, np.integer)):  # Handle both Python int and NumPy int
+        # Extract year and month from YYYYMM format
+        year = int(term_code) // 100  # Ensure conversion to Python int
+        month = int(term_code) % 100
+    else:
+        raise ValueError("term_code must be an int in YYYYMM format, a NumPy integer, or a datetime object")
 
-        # Determine academic year based on the month of the term code
-        if month == 8:  # Fall term
-            return year + 1
-        elif month == 1 or month == 5:  # Spring or Summer term
-            return year
-        else:
-            raise ValueError("term_code must represent a valid academic month (01, 05, 08)")
+    # Determine academic year based on the month of the term code
+    if month == 8:  # Fall term
+        return year + 1
+    elif month in {1, 5}:  # Spring or Summer term
+        return year
+    else:
+        raise ValueError("term_code must represent a valid academic month (01, 05, 08)")
+
+
 
 def get_nth_year_fall_term(term_series, years=3, return_as_datetime=True):
     """
@@ -1717,3 +1725,189 @@ def classify_discipline(major):
         return discipline_dict[major]
     else:
         return 'Non-STEM'
+
+
+
+def filter_and_calculate_crosslisted_grade_distribution(input_df=None, grade_columns=None, flag=None,
+                                                        min_students_threshold=None, scramble_instructor_id = True):
+    """
+    Filters and calculates grade distributions for cross-listed course sections.
+
+    Parameters:
+    - input_df (pd.DataFrame): Input DataFrame with course data (required).
+    - grade_columns (list): List of grade columns (e.g., ['A', 'B', 'C', 'D', 'F']). If not provided, default is used.
+    - flag (str): Column name used to split subgroups (e.g., 'flag_first_generation'). If None, flag-based filtering is skipped.
+    - min_students_threshold (int): Minimum number of students required in each subgroup. If None, no threshold is applied.
+
+    Returns:
+    - pd.DataFrame: DataFrame with grade distributions (proportions) for valid cross-listed sections, including the total
+                    number of students for each row.
+
+    NOTES: created by Paul Ulrich (2025-01-27; base function extended with assistance from ChatGPT4o). Note the XLIST column provided by BANNER is unreliable.
+    Crosslisted combined ID should be comprised unambiguously prior to running this function, which may involve concatenation of course name, semester, day, and time
+    """
+
+    # Generate alphanumeric codes (e.g., A-Z, AA-ZZ, etc.) for instructor codes
+    def generate_alphanumeric_codes(n):
+        """Generate a list of alphanumeric codes to accommodate n unique values."""
+        alphabet = list(string.ascii_uppercase)  # A-Z
+        codes = []
+
+        # Single letters
+        codes.extend(alphabet)
+
+        # Multi-letter combinations (AA, AB, ..., ZZ)
+        i = 2
+
+        while len(codes) < n:
+            # Create combinations of `i` letters
+            codes.extend([''.join(x) for x in pd.MultiIndex.from_product([alphabet] * i)])
+            i += 1
+
+        return codes[:n]
+
+
+    # Validate input DataFrame
+    if input_df is None or not isinstance(input_df, pd.DataFrame):
+        raise TypeError("input_df is a required argument and must be a pandas DataFrame.")
+
+    # Use default grade columns if none are provided
+    if grade_columns is None:
+        grade_columns = ['A', 'B', 'C', 'D', 'F']
+
+    dataset_df = input_df.copy()
+
+    # If flag is not provided, calculate distributions without subgrouping
+    if flag is None:
+        print("No flag provided. Calculating overall grade distributions for cross-listed sections.")
+
+        # Calculate grade proportions
+        proportions_df = (
+            dataset_df.groupby(['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id'])[
+                'course_grade_letter_simp']
+            .value_counts(normalize=True)
+            .unstack(fill_value=0)
+            .reindex(columns=grade_columns, fill_value=0)  # Ensure all grade columns exist
+            .reset_index()
+        )
+
+        # Rename grade columns for clarity (e.g., A -> pA, B -> pB)
+        proportions_df.rename(columns={grade: f'p{grade}' for grade in grade_columns}, inplace=True)
+
+        # Calculate total number of students
+        total_students_df = (
+            dataset_df.groupby(['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id'])[
+                'course_grade_letter_simp']
+            .count()
+            .reset_index(name='total_students')
+        )
+
+        # Merge total student counts into proportions_df
+        proportions_df = pd.merge(proportions_df, total_students_df,
+                                  on=['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id'])
+
+        # Reorder columns: total_students should come before proportions
+        proportions_df = proportions_df[
+            ['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id', 'total_students'] +
+            [f'p{grade}' for grade in grade_columns]
+        ]
+
+        # Use factorize to assign a unique numeric index to each instructor and map to instructors
+        proportions_df['instructor_full_name'] = proportions_df['PROFESSOR_LAST_NAME'] + "_" + proportions_df[
+            'PROFESSOR_FIRST_NAME'] # Combine last and first names to ensure uniqueness
+        codes, uniques = pd.factorize(proportions_df['instructor_full_name'])
+        alphanumeric_codes = generate_alphanumeric_codes(len(uniques))
+        proportions_df['instructor_code'] = [alphanumeric_codes[code] for code in codes]
+
+        if scramble_instructor_id:
+            proportions_df['course_instructor_id'] = proportions_df['course_instructor_id'].apply(
+                lambda x: scramble_ID(str(round(x)), cipher=os.environ['STUDENT_SUCCESS_CIPHER'])
+            )
+
+        return proportions_df
+
+    # Count grades per cross-listed group and aggregate by flag
+    counts_df = (
+        dataset_df.groupby(['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id', flag])[
+            'course_grade_letter_simp']
+        .value_counts()
+        .unstack(fill_value=0)
+    )
+
+
+    # Aggregate student counts per flag
+    total_students_per_flag = counts_df.sum(axis=1).unstack(fill_value=0)
+
+    if min_students_threshold is not None:
+        # Filter valid pairs where both subgroups meet the threshold
+        valid_crosslisted_ids = total_students_per_flag[
+            # (total_students_per_flag[0] >= min_students_threshold) &
+            # (total_students_per_flag[1] >= min_students_threshold)
+            # using .get() addresses situations where a course may have no one who meets one of the flag states
+            (total_students_per_flag.get(0, 0) >= min_students_threshold) &
+            (total_students_per_flag.get(1, 0) >= min_students_threshold)
+
+        ].index
+
+        #print(
+        #    f"{len(valid_crosslisted_ids)} course sections taught by {valid_crosslisted_ids.get_level_values('PROFESSOR_LAST_NAME').nunique()} unique instructors have at least {min_students_threshold} in each {flag} subgroup.\n")
+
+        # Get valid crosslisted_combined_IDs
+        crosslisted_combined_IDs = valid_crosslisted_ids.get_level_values('crosslisted_combined_ID').unique()
+        crosslisted_combined_IDs_list = crosslisted_combined_IDs.tolist()
+
+        # print("Length of crosslisted_combined_IDs:", len(crosslisted_combined_IDs))
+        # print("Valid crosslisted_combined_IDs extracted:", crosslisted_combined_IDs_list[:10])
+        # print("Unique count:", len(crosslisted_combined_IDs_list))
+
+        # Filter dataset to valid cross-listed sections
+        filtered_dataset_df = dataset_df[dataset_df['crosslisted_combined_ID'].isin(crosslisted_combined_IDs_list)]
+        # print(f"There are {filtered_dataset_df['crosslisted_combined_ID'].nunique()} sections in filtered_dataset_df.")
+    else:
+        # If no minimum threshold, use the full dataset
+        print("No minimum student threshold provided. Using all cross-listed sections for analysis.")
+        filtered_dataset_df = dataset_df
+
+    # Calculate grade proportions for valid cross-listed sections
+    proportions_df = (
+        filtered_dataset_df.groupby(['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id', flag])[
+            'course_grade_letter_simp']
+        .value_counts(normalize=True)
+        .unstack(fill_value=0)
+        .reindex(columns=grade_columns, fill_value=0)  # Ensure all grade columns exist
+        .reset_index()
+    )
+
+    # Add clarity to column names
+    proportions_df.columns = (['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id', flag] +
+                              [f'p{grade}' for grade in grade_columns]
+                              )
+
+    # Add total student counts
+    total_counts_df = (
+        filtered_dataset_df.groupby(['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id', flag])[
+            'course_grade_letter_simp']
+        .count()
+        .reset_index(name='total_students')
+    )
+
+    # Merge total student counts into proportions_df
+    proportions_df = pd.merge(proportions_df, total_counts_df, on=['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id', flag])
+    proportions_df = proportions_df[
+        ['course_term', 'crosslisted_combined_ID', 'PROFESSOR_LAST_NAME', 'PROFESSOR_FIRST_NAME', 'course_instructor_id', flag, 'total_students'] +
+        [f'p{grade}' for grade in grade_columns]
+        ]
+
+    # Use factorize to assign a unique numeric index to each instructor and map to instructors
+    proportions_df['instructor_full_name'] = proportions_df['PROFESSOR_LAST_NAME'] + "_" + proportions_df[
+        'PROFESSOR_FIRST_NAME']  # Combine last and first names to ensure uniqueness
+    codes, uniques = pd.factorize(proportions_df['instructor_full_name'])
+    alphanumeric_codes = generate_alphanumeric_codes(len(uniques))
+    proportions_df['instructor_code'] = [alphanumeric_codes[code] for code in codes]
+
+    if scramble_instructor_id:
+        proportions_df['course_instructor_id'] = proportions_df['course_instructor_id'].apply(
+            lambda x: scramble_ID(str(round(x)), cipher=os.environ['STUDENT_SUCCESS_CIPHER'])
+        )
+
+    return proportions_df
