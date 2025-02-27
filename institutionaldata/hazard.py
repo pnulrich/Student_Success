@@ -87,7 +87,7 @@ def prepare_hazard_data(df,
 
     # Filter students based on criteria
     student_list = df[
-        (df['major_term_earliest'] == target_major) &
+        (df['major_term_earliest'] == target_major) & # this only looks at those students starting as target_major
         (df['transfer_hours_term'].between(transfer_credit_hour_minimum, transfer_credit_cutoff, inclusive='both')) &
         (df['demographics_term'] == df['term_earliest']) &
         ((academic_year_min is None) | (df['academic_year'] >= academic_year_min)) &
@@ -493,6 +493,10 @@ def prepare_and_process_data(student_major_data_df,
         academic_year_max = academic_year_max
     )
 
+    filtered_df = filtered_df[filtered_df['major_term'] == target_major].copy()
+
+    print(filtered_df['major_term'].unique())
+
     # Convert 'major_graduation' strings to Python objects (e.g., tuples) for processing
     filtered_df['major_graduation'] = filtered_df['major_graduation'].apply(safe_eval)
 
@@ -646,7 +650,7 @@ def calculate_probabilities(input_df):
     for idx, row in proportions_df.iterrows():
         # Update cumulative probabilities based on remaining active population
         for col in [1, 4, 2, 3]:
-            current_prob = row[col] * active_population
+            current_prob = row.get(col, 0) * active_population
             if idx == 0:
                 cumulative_outcomes[col].append(current_prob)
             else:
@@ -654,7 +658,7 @@ def calculate_probabilities(input_df):
                     cumulative_outcomes[col][-1] + current_prob
                 )
         # Update active population based on -1 (active) + 4 (changed major)
-        active_population *= (row[-1] + row[4])
+        active_population *= (row.get(-1,0) + row.get(4,0)) # avoids errors that occur when no one is in category -1 or 4
 
     # Calculate -1 as the remaining active population
     cumulative_outcomes[-1] = [
@@ -866,6 +870,12 @@ def plot_course_heatmap(filtered_df, target_major, transfer_credit_hour_minimum,
     --------
     >>> plot_course_heatmap(filtered_df, "BIO", 0, 30, 2010, 2024, 5)
     """
+    # Ensure the academic year filtering is applied
+    filtered_df = filtered_df[(
+        (filtered_df['academic_year'] >= min_academic_year) &
+        (filtered_df['academic_year'] <= max_academic_year))
+    ]
+
     # Ensure course_list is properly formatted
     filtered_df['course_list'] = filtered_df['course_list'].fillna("").apply(lambda x: x if isinstance(x, list) else [])
 
@@ -874,6 +884,11 @@ def plot_course_heatmap(filtered_df, target_major, transfer_credit_hour_minimum,
 
     # Group by semester_number and course_list to count occurrences
     course_frequencies = exploded_courses_df.groupby(['semester_number', 'course_list']).size().reset_index(name='frequency')
+    course_frequencies = (
+        exploded_courses_df.groupby(['semester_number', 'course_list'])['student_ID']
+        .nunique()
+        .reset_index(name='frequency')
+    )
 
     # Determine how many students are active by semester and calculate proportions
     active_student_count_by_semester = filtered_df.groupby('semester_number')['student_ID'].nunique().reset_index()
