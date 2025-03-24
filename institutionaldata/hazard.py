@@ -493,7 +493,8 @@ def prepare_and_process_data(student_major_data_df,
         academic_year_max = academic_year_max
     )
 
-    filtered_df = filtered_df[filtered_df['major_term'] == target_major].copy()
+
+    # filtered_df = fil`tered_df[filtered_df['major_term'] == target_major].copy()
 
     print(filtered_df['major_term'].unique())
 
@@ -537,15 +538,23 @@ def prepare_and_process_data(student_major_data_df,
     # Drop helper column
     filtered_df.drop(columns=['earliest_major_change'], inplace=True)
 
+
+
     # Calculate course load statistics for the target major
+    filtered_coursework_df = coursework_df.copy()
+
     # Filter coursework to include only courses in the target major
-    filtered_coursework_df = coursework_df[coursework_df['course_prefix'] == target_major_course_prefix].copy()
+    filtered_coursework_df = filtered_coursework_df[filtered_coursework_df['course_prefix'] == target_major_course_prefix].copy()
+
+    # create full course number codes
+    filtered_coursework_df['course_fullcode'] = filtered_coursework_df['course_prefix'] + filtered_coursework_df['course_number'].astype(
+        str) + filtered_coursework_df['course_suffix'].fillna('')
 
     # Aggregate course load metrics (number of courses, total credits, course list) by semester
     result = filtered_coursework_df.groupby(['student_ID', 'demographics_term']).agg(
         semester_courses_target_major=('course_prefix', 'count'),
         semester_credits_target_major=('course_credits', 'sum'),
-        course_list=('course_number', list)  # Collect a list of courses taken
+        course_list=('course_fullcode', list)  # Collect a list of courses taken
     ).reset_index()
 
     # Merge course load data into the filtered student DataFrame
@@ -875,6 +884,12 @@ def plot_course_heatmap(filtered_df, target_major, transfer_credit_hour_minimum,
         (filtered_df['academic_year'] >= min_academic_year) &
         (filtered_df['academic_year'] <= max_academic_year))
     ]
+
+    # 2025-03-24 Look only at students have been retained in the target_major. We are curious which classes
+    # that students who remain active in a major are taking, not the entire population in said classes.
+    # print(filtered_df['major_term'].unique())
+    filtered_df = filtered_df[filtered_df['major_term'] == target_major]
+    # print(filtered_df['major_term'].unique())
 
     # Ensure course_list is properly formatted
     filtered_df['course_list'] = filtered_df['course_list'].fillna("").apply(lambda x: x if isinstance(x, list) else [])
