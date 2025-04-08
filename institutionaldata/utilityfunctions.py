@@ -945,7 +945,7 @@ def demographics_first_semester(df, transfer = 0, return_dataframe = 1):
 
 
 """""
-Function Name: descriptive_course_stats
+Function Name: descriptive_course_stats_OLD
 Author: Paul Ulrich
 Date: 2024/01/29
 
@@ -982,7 +982,7 @@ Example Usage:
     )
     print(results)
 """
-def descriptive_course_stats(df, courses=None, majors= None, all_attempts=False, start_semester=None, end_semester=None, associates = False, exclude_honors = True, return_dataframe = True):
+def descriptive_course_stats_OLD(df, courses=None, majors= None, all_attempts=False, start_semester=None, end_semester=None, associates = False, exclude_honors = True, return_dataframe = True):
     """
       Generate descriptive statistics for student performance in specified courses while providing the option to exclude honors courses and filter by course, major, semester, and other criteria. This function also allows specifying whether to consider all course attempts or only the first attempt for each student and whether to include courses taken as part of associate degree programs.
 
@@ -1116,6 +1116,157 @@ def descriptive_course_stats(df, courses=None, majors= None, all_attempts=False,
 
     if return_dataframe: return results, df
     else: return results
+
+
+def descriptive_course_stats(df, courses=None, majors= None, all_attempts=False, start_semester=None, end_semester=None, exclude_honors = True, return_dataframe = True):
+    """
+      Generate descriptive statistics for student performance in specified courses while providing the option to exclude honors courses and filter by course, major, semester, and other criteria. This function also allows specifying whether to consider all course attempts or only the first attempt for each student and whether to include courses taken as part of associate degree programs.
+
+      Parameters
+      ----------
+      df : pandas.DataFrame
+          DataFrame containing student course data.
+      courses : list of str, optional
+          Course codes to include in the analysis. Analyzes all courses if None.
+      majors : list of str, optional
+          Major codes to filter the data. Includes all majors if None.
+      all_attempts : bool, optional
+          True to include all attempts; considers only the first attempt if False or None.
+      start_semester : int, optional
+          The starting semester code (YYYYMM format) for filtering data. Uses the minimum available semester if None.
+      end_semester : int, optional
+          The ending semester code (YYYYMM format) for filtering data. Uses the maximum available semester if None.
+      associates : bool, optional
+          True to include associate courses; excludes them if False.
+      exclude_honors : bool, optional
+          True to exclude honors courses based on titles starting with 'HON' or 'hon'; includes all courses if False.
+
+      Returns
+      -------
+      pandas.DataFrame
+          A DataFrame with descriptive statistics for each course, including counts, proportions, average grades, demographic information, course titles, and the sampling period.
+
+      Examples
+      --------
+      >>> stats_df = descriptive_course_stats(df=student_df, courses=['CHEM1211K', 'CHEM1212K'], majors=['BIO', 'CHM'], start_semester=202201, end_semester=202205)
+      >>> print(stats_df)
+      """
+
+    df = df.copy()
+
+    # default behavior excludes honors courses from analysis
+    if exclude_honors == True:
+        honors_regex = "(?i)HON"
+        mask = ~df['course_title'].str.contains(honors_regex,regex=True,na=False)
+        df = df[mask]
+
+    # Set sampling period if not provided.
+    if start_semester is None:
+        start_semester = df['course_term'].min()
+    if end_semester is None:
+        end_semester = df['course_term'].max()
+
+    # create full course number codes
+    df['course_fullcode'] = df['course_prefix'] + df['course_number'].astype(str) + df['course_suffix'].fillna('')
+    if courses is None:
+        courses = df['course_fullcode'].unique()
+
+    if not all_attempts:
+        # Keep only the first attempt for each student_ID
+        df.sort_values(by=['student_ID', 'course_term'], inplace=True)
+        df = df.drop_duplicates(subset=['student_ID', 'course_fullcode'], keep='first')
+
+    # create a dataframe to hold the descriptive results
+    results = pd.DataFrame(columns=['course', 'course_fullcode', 'major_term', 'sample_size'])
+
+    # filter the dataframe for majors and time range
+    if majors:
+        df = df[df['major_term'].isin(majors)]
+    if start_semester:
+        df = df[df['course_term'] >= start_semester]
+    if end_semester:
+        df = df[df['course_term'] <= end_semester]
+
+    # calculate descriptives for each of the courses in the dataframe
+    for course in courses:
+        course_df = df[df['course_fullcode'] == course].copy()
+        course_prefix = course_df['course_prefix'].iloc[0]
+        course_number = course_df['course_number'].iloc[0]
+        course_suffix = course_df['course_suffix'].iloc[0]
+
+        # if  no students are in the dataframe, skip this course
+        if course_df.empty:
+            continue
+
+        # Add 'course_title' to 'major_counts' by getting the first 'course_title' for the current 'course_fullcode'
+        course_title = course_df['course_title'].iloc[0]  # Assumes that all 'course_title' associate with the same 'course_fullcode' are synonymous
+
+        for semester in course_df['course_term'].unique():
+            semester_df = course_df[course_df['course_term'] == semester].copy()
+
+            # Tabulate absolute numbers of students by major during the term the student took the course
+            major_counts = semester_df.groupby('major_term').size().reset_index(name='sample_size')
+
+            # Count unique sections (crosslisted_combined_ID) per major_term
+            # TODO: this is problematic because crosslisted_combined_ID msut be carefully constructed; need to check on creation of this
+            section_counts = semester_df.groupby('major_term')['crosslisted_combined_ID'].nunique().reset_index(
+                name='total_crosslisted_sections')
+            major_counts = major_counts.merge(section_counts, on='major_term', how = 'left')
+
+            major_counts['course_term'] = semester  # Add sampling period to the DataFrame
+            major_counts['course_fullcode'] = course
+            major_counts['course_prefix'] = course_prefix
+            major_counts['course_number'] = course_number
+            major_counts['course_suffix'] = course_suffix
+
+            if len(majors) > 1:
+                major_counts['Proportion_Total'] = (
+                            major_counts['sample_size'] / major_counts['sample_size'].sum()).round(2)
+
+            # Average grade
+            valid_grades = semester_df[semester_df['course_grade_numeric'] >= 0].copy()
+            avg_grade = valid_grades.groupby('major_term')['course_grade_numeric'].mean().round(2).reset_index(
+                name='course_grade_average')
+            major_counts = major_counts.merge(avg_grade, on='major_term', how='left')
+
+            # First-gen proportion
+            proportion_first_gen = semester_df.groupby('major_term')['flag_first_generation'].mean().round(
+                2).reset_index(name='proportion_first_gen')
+            major_counts = major_counts.merge(proportion_first_gen, on='major_term', how='left')
+
+            # Female proportion
+            proportion_female = semester_df[~(semester_df['flag_sex'] < 0)]
+            proportion_female = proportion_female.groupby('major_term')['flag_sex'].mean().round(2).reset_index(
+                name='proportion_female')
+            major_counts = major_counts.merge(proportion_female, on='major_term', how='left')
+
+            # Pell proportion
+            proportion_pell_eligible = semester_df.groupby('major_term')['flag_PELL'].mean().round(2).reset_index(
+                name='proportion_pell_eligible')
+            major_counts = major_counts.merge(proportion_pell_eligible, on='major_term', how='left')
+
+            # PEER proportion
+            proportion_PEER = semester_df[semester_df['flag_PEER'].isin([0, 1])]
+            proportion_PEER = proportion_PEER.groupby('major_term')['flag_PEER'].mean().round(2).reset_index(
+                name='proportion_PEER (undefined, more than one race not included)')
+            major_counts = major_counts.merge(proportion_PEER, on='major_term', how='left')
+
+            # DFW rate
+            proportion_DFW = semester_df.groupby('major_term')['course_grade_letter_simp'].apply(
+                lambda x: (x.isin(['D', 'F', 'W']).sum()) / len(x)
+            ).round(2).reset_index(name='proportion_DFW')
+            major_counts = major_counts.merge(proportion_DFW, on='major_term', how='left')
+
+            major_counts['course'] = course_title
+            major_counts = major_counts.sort_values(by='sample_size', ascending=False)
+            results = pd.concat([results, major_counts])
+
+
+    results['course_term'] = results['course_term'].astype('Int64')
+    results['course_number'] = results['course_number'].astype('Int64')
+    if return_dataframe: return results, df
+    else: return results
+
 
 def calculate_deltas(df):
     """
