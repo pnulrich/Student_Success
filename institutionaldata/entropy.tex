@@ -1,0 +1,132 @@
+\documentclass{article}
+\usepackage[amsmath, letterpaper, left=1in, right=1in, top=1in, bottom=1in]{geometry}
+
+\begin{document}
+
+\title{Weighted and Unweighted Shannon Entropy}
+\author{Paul Ulrich}
+\date{2025 January 29}
+\maketitle
+
+
+\section{Summary}
+
+Shannon entropy (\(H\)) quantifies  uncertainty in a probability distribution, and I apply this in entropy.py to assess letter grade distributions in courses. When probabilities of letter grade categories are distributed evenly, the amount of information needed to describe that distribution is increased. That is, an even distribution has greater disorder or entropy. In contrast, a probability distribution that is highly skewed toward certain letter grade categories has lower disorder and a correspondingly lower entropy value. At the extreme where all letter grades fall in one category (e.g. every student earned an A) Shannon entropy is 0.
+
+Shannon entropy is agnostic about the order of probabilities in a set of \( i \) categories. Consider the following where \( i \) represents the grade category and \( p_i \) represents the corresponding probabilities. In both cases, the entropy value would be identical.
+
+\[
+i = \{A, B, C, D, F\}
+\]
+\[
+P = \{ p_A, p_B, p_C, p_D, p_F \} = \{0.40, 0.20, 0.20, 0.20, 0.00\}
+\]
+\[
+P = \{ p_A, p_B, p_C, p_D, p_F \} = \{0.00, 0.20, 0.20, 0.20, 0.40\}
+\]
+
+\section{Shannon Entropy}
+For a discrete probability distribution
+\( P = \{p_1, p_2, ..., p_n\} \), where each \( p_i \) represents the probability of a grade being in one of the letter grade categories, the unweighted Shannon entropy is given by:
+
+\begin{equation}
+H = - \sum_{i=1}^{n} p_i \log_b p_i
+\end{equation}
+
+where:
+\begin{itemize}
+    \item \( p_i \) are the probabilities of each event, satisfying \( \sum p_i = 1 \).
+    \item \( b \) is the logarithm base, commonly 2 (bits), \( e \) (natural units), or 10.
+\end{itemize}
+
+Entropy is maximized when the distribution is uniform (i.e., all probabilities are equal), representing the highest uncertainty. Again, unweighted entropy is lowest when all grades fall within a single category (regardless of which category captures all of the grades). Unweighted entropy indicates how unbalanced a grade distribution is - it does not indicate which direction or categories are skewed.
+
+\section{Weighted Shannon Entropy}
+
+I have modified Shannon entropy to provide insight on the direction of skew in a letter grade distribution by introducing a weight to each probability \( w_i \) that reflects the academic significance of different categories:
+
+\begin{equation}
+H_w = - \sum_{i=1}^{n} w_i p_i \log_b p_i
+\end{equation}
+
+where:
+\begin{itemize}
+    \item \( w_i \) represents the weight assigned to probability of a letter grade category \( p_i \).
+    \item Weighted probabilities may be normalized in order to constrain sum of \( p_i \) to 1.
+\end{itemize}
+
+Normalization ensures that weights do not distort entropy magnitudes but instead affect how different categories contribute to the total entropy. With normalization, weighted probabilities are scaled such that:
+
+\begin{equation}
+\tilde{p_i} = \frac{w_i p_i}{\sum_{j=1}^{n} w_j p_j}
+\end{equation}
+
+and the weighted entropy formula becomes:
+
+\begin{equation}
+H_w = - \sum_{i=1}^{n} \tilde{p_i} \log_b p_i
+\end{equation}
+
+
+
+\section{Comparison of Weighted and Unweighted Entropy}
+
+\begin{itemize}
+    \item \textbf{Unweighted entropy} measures the overall uncertainty in grade distribution.
+    \item \textbf{Weighted entropy} permits entropy to reflect relative importance of different grade categories.
+    \item If all weights are equal, weighted entropy reduces to standard Shannon entropy.
+\end{itemize}
+
+\subsection{Entropy Calculated with Example Proportions}
+To illustrate the differences between weighted and unweighted Shannon entropy, we use a test probability distribution representing letter grade proportions:
+
+\[
+P = \{ p_A, p_B, p_C, p_W, p_D, p_F \} = \{0.294, 0.059, 0.118, 0.059, 0.471, 0.000\}
+\]
+
+Weights can vary depending on analytical aims, but I choose weights where passing grades contribute more information to the probability distribution than withdrawals or grades.
+
+\[
+W = \{ w_A, w_B, w_C, w_W, w_D, w_F \} = \{ 10, 10, 10, 5, 3, 1 \}
+\]
+
+Applying the entropy formulas for the original data and comparison to calculations when probabilities between categories with different weights, I obtain:
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lcc}
+        \hline
+        \textbf{Scenario} & \textbf{Weighted Entropy} & \textbf{Unweighted Entropy} \\
+        \hline
+        Original Proportions & 2.056 & 2.217 \\
+        Swapping \( p_B \) and \( p_D \) & 2.142 & 2.217 \\
+        Swapping \( p_B \) and \( p_F \) & 2.356 & 2.217 \\
+        \hline
+    \end{tabular}
+    \caption{Comparison of weighted and unweighted Shannon entropy under different probability distributions.}
+    \label{tab:entropy_comparison}
+\end{table}
+
+\subsection{Interpretation of Example Calculation}
+
+Note that unweighted entropy remains constant at 2.217 regardless of proportion order. Swapping does not have an effect. Weighted entropy, however, does change when probabilities are exchanged between higher- and lower-weighted grade categories.
+
+\begin{itemize}
+    \item Original Proportions: Weighted entropy is slightly lower than unweighted entropy because grade distribution is skewed towards passing (A, B, C) and withdrawals (W).
+    \item Exchanging \( p_B \) and \( p_D \): Weighted entropy increases as a higher-weight category (\( p_B \)) is replaced with a lower-weight one (\( p_D \)).
+    \item Exchanging \( p_B \) and \( p_F \): Weighted entropy is high, since a high-weight category (\( p_B \)) is replaced with the lowest-weight category (\( p_F \)), emphasizing the impact of failing outcomes.
+\end{itemize}
+
+
+\section{Implementation in entropy.py}
+
+My Python function implements:
+
+\begin{itemize}
+    \item \textbf{Unweighted Shannon entropy} when no weights are provided.
+    \item \textbf{Weighted entropy} when weights are assigned, optionally normalizing the weighted probabilities.
+    \item \textbf{Flexible base} for computing entropy in bits (\( b=2 \)), natural units (\( b=e \)), or decimal (\( b=10 \)).
+    \item \textbf{Error handling} to ensure probability sums are valid.
+\end{itemize}
+
+\end{document}
