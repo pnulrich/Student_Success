@@ -1900,35 +1900,36 @@ def glm_effect_of_taking_classes_simultaneously(input_df, dependent_course_prefi
     # return first_attempt_df
 
 
-"""
-Plots stacked bar charts of specified proportions by course and major.
 
-This function iterates through each course and creates a stacked bar chart
-for each specified proportion within the course. Each bar represents a major,
-and the stacks represent the specified proportions within that major.
-The charts can be saved to a multi-page PDF if desired.
-
-Args:
-    df (DataFrame): The DataFrame containing the course data.
-    proportions_to_plot (list of str): The list of proportion column names to be plotted.
-    pdf_filename (str, optional): The filename for the output PDF. If None, the charts
-                                  will not be saved to a PDF. Default is None.
-    save_as_pdf (bool, optional): If True, and a pdf_filename is provided, the charts will
-                                  be saved to a multi-page PDF. If False, the charts will
-                                  be displayed on screen. Default is False.
-
-Returns:
-    None: The function does not return a value. It either saves the charts to a PDF or displays them on screen.
-
-Example:
-    plot_proportions_by_course(
-        df=my_dataframe,
-        proportions_to_plot=['Proportion_Female', 'Proportion_Male'],
-        pdf_filename='course_proportions.pdf',
-        save_as_pdf=True
-    )
-"""
 def plot_proportions_by_course(df, proportions_to_plot, pdf_filename=None, save_as_pdf=False):
+    """
+    Plots stacked bar charts of specified proportions by course and major.
+
+    This function iterates through each course and creates a stacked bar chart
+    for each specified proportion within the course. Each bar represents a major,
+    and the stacks represent the specified proportions within that major.
+    The charts can be saved to a multi-page PDF if desired.
+
+    Args:
+        df (DataFrame): The DataFrame containing the course data.
+        proportions_to_plot (list of str): The list of proportion column names to be plotted.
+        pdf_filename (str, optional): The filename for the output PDF. If None, the charts
+                                      will not be saved to a PDF. Default is None.
+        save_as_pdf (bool, optional): If True, and a pdf_filename is provided, the charts will
+                                      be saved to a multi-page PDF. If False, the charts will
+                                      be displayed on screen. Default is False.
+
+    Returns:
+        None: The function does not return a value. It either saves the charts to a PDF or displays them on screen.
+
+    Example:
+        plot_proportions_by_course(
+            df=my_dataframe,
+            proportions_to_plot=['Proportion_Female', 'Proportion_Male'],
+            pdf_filename='course_proportions.pdf',
+            save_as_pdf=True
+        )
+    """
     unique_courses = df['COURSE'].unique()
     unique_courses.sort()
     num_courses = len(unique_courses)
