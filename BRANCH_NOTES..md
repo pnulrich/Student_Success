@@ -1,5 +1,3 @@
-# Branch: utilityfunctions-legacy
+# Branch: utility_refactor
 
-This branch contains the pre-refactor version of `utilityfunctions.py`, last known good state for Jupyter notebooks written before April 8, 2025.
-
-Checkout this branch in order to use Jupyter notebook content prior to this point.
+This branch (initiated 2025-04-08) will be used for a major restructuring of my code for a well-designed python package.
