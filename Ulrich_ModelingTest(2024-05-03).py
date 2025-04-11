@@ -6,8 +6,8 @@ def my_func():
     import numpy as np
     import sys
     sys.path.append('../../')
-    import institutionaldata.successmetrics
-    import institutionaldata.utilityfunctions
+    import student_success.successmetrics
+    import student_success.utilityfunctions
     import importlib
     import statsmodels.api as sm
     import statsmodels.formula.api as smf
@@ -21,11 +21,11 @@ def my_func():
     #Rename columns to standardized names
     column_mapping_file_path = r'C:\Research\Research Projects\GSU\HHMI_IE3\Analyses\HHMI_Student_Success\institutionaldata\column_mapping.tsv'
     courses_df = pd.read_csv(r'C:\Research\Research Projects\GSU\HHMI_IE3\Analyses\Datasets\Bio_Major_Courses (Elaine, 2024-04-22)\HHMI 4.22.csv')
-    courses_df = institutionaldata.utilityfunctions.rename_columns_in_bulk(courses_df, column_mapping_filepath = column_mapping_file_path)
+    courses_df = student_success.utilityfunctions.rename_columns_in_bulk(courses_df, column_mapping_filepath = column_mapping_file_path)
 
     #Deidentify student IDs and create demographic flags
-    courses_df = institutionaldata.utilityfunctions.scramble_ID(courses_df, cipher=os.environ['STUDENT_SUCCESS_CIPHER'])
-    courses_df = institutionaldata.utilityfunctions.set_up_demographic_flags(df = courses_df)
+    courses_df = student_success.utilityfunctions.scramble_ID(courses_df, cipher=os.environ['STUDENT_SUCCESS_CIPHER'])
+    courses_df = student_success.utilityfunctions.set_up_demographic_flags(df = courses_df)
 
     # Remove leading and trailing spaces from values in the 'course_title' column
     courses_df.loc[:,'course_title'] = courses_df['course_title'].str.strip()
@@ -37,10 +37,10 @@ def my_func():
 
     # Calculate numerical grade from letter grade
     courses_df.loc[:,'course_grade_letter'] = courses_df['course_grade_letter'].astype(str)
-    courses_df.loc[:,'course_grade_numeric'] = courses_df['course_grade_letter'].apply(institutionaldata.utilityfunctions.num_grade_institutional)
+    courses_df.loc[:,'course_grade_numeric'] = courses_df['course_grade_letter'].apply(student_success.utilityfunctions.num_grade_institutional)
 
     # Simplify letter grades for ease of filtering to get DFW
-    courses_df = institutionaldata.utilityfunctions.letter_grade_simplify(dataframe = courses_df, c_minus_flag= False)
+    courses_df = student_success.utilityfunctions.letter_grade_simplify(dataframe = courses_df, c_minus_flag= False)
 
     # Create  flag for a given course being taken at PC (associates level)
     courses_df.loc[:, 'flag_course_PC'] = (courses_df['course_college'] == 'PC').astype(int)
