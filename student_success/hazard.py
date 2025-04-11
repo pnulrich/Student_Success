@@ -5,7 +5,7 @@ from bokeh.plotting import figure, show
 from bokeh.models import ColumnDataSource, ColorBar
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Viridis256
-from institutionaldata.utilityfunctions import get_academic_year
+from student_success.utils.validation import validate_columns
 from scipy.optimize import curve_fit
 import numpy as np
 
@@ -85,6 +85,12 @@ def prepare_hazard_data(df,
     Number of unique students in BIO with transfer credits from 10 to as many as 30 with Fall start: 75
     """
 
+    #  Confirm that essential fields are present in the input dataframe
+    required_cols = ['major_term_earliest', 'transfer_hours_term', 'demographics_term', 'term_earliest',
+                         'academic_year', 'student_ID']
+    validate_columns(df.columns, required_cols)
+
+
     # Filter students based on criteria
     student_list = df[
         (df['major_term_earliest'] == target_major) & # this only looks at those students starting as target_major
@@ -109,42 +115,43 @@ def prepare_hazard_data(df,
     return filtered_df
 
 
-def calculate_semester_gap(current_term, max_term):
+def calculate_semester_interval(current_term, max_term):
     """
-    Calculate the number of consecutive semesters missed between two terms.
+    Calculate the number of academic semesters between current_term and max_term.
 
-    This function calculates how many semesters were missed between `current_term`
-    and `max_term`, considering academic year sequences: Fall (08), Spring (01),
-    and Summer (05). The academic year rolls over after Fall.
+    This function assumes a forward academic sequence: Spring (01), Summer (05), Fall (08).
+    It raises an error if current_term is after max_term.
 
     Parameters
     ----------
     current_term : int
-        The current term code in the format YYYYMM, where MM is the semester code.
+        The starting term code in format YYYYMM.
     max_term : int
-        The maximum term code in the format YYYYMM, where MM is the semester code.
+        The ending term code in format YYYYMM.
 
     Returns
     -------
     int
-        The number of consecutive semesters missed.
+        The number of semesters between current_term and max_term.
 
-    Notes
-    -----
-    - Academic year order: Fall (08) < Spring (01) < Summer (05)
-    - Term code examples:
-        - Term 202308 -> Academic Year 2024 (Fall)
-        - Term 202401 -> Academic Year 2024 (Spring)
-        - Term 202405 -> Academic Year 2024 (Summer)
-    - The calculation assumes year adjustments if Fall (08) is encountered.
+    Raises
+    ------
+    ValueError
+        If current_term is later than max_term.
 
     Examples
     --------
-    >>> calculate_semester_gap(202308, 202401)
+    >>> calculate_semester_interval(202308, 202401)
     1
-    >>> calculate_semester_gap(202308, 202405)
+    >>> calculate_semester_interval(202308, 202405)
     2
+    >>> calculate_semester_interval(202308, 202305)
+    ValueError: current_term (202308) must not be after max_term (202305)
     """
+
+    if current_term > max_term:
+        raise ValueError(f"current_term ({current_term}) must not be after max_term ({max_term})")
+
 
     # Semester sequence within academic year: Fall (08), Spring (01), Summer (05)
     semester_sequence = ['08', '01', '05']
@@ -235,6 +242,9 @@ def assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, 
     - Gaps longer than 2 terms are considered long absences.
     - Graduation is determined based on the `flag_graduation_term` and
       `major_graduation` fields.
+    - 'first_major' is extracted from the earliest term and represents the student's original, declared major.
+    - This function should be used within 'process_student_data()'. This ensures that 'first_major' is correctly derived.
+
 
     Examples
     --------
@@ -249,7 +259,7 @@ def assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, 
 
     # Check if the student has missed multiple consecutive semesters
     def has_long_gap(current_term, max_term, gap_threshold=2):
-        return calculate_semester_gap(current_term, max_term) >= gap_threshold
+        return calculate_semester_interval(current_term, max_term) >= gap_threshold
 
     # Check if this is the last semester in the available data
     is_last_available_semester = row['demographics_term'] == max_demographics_term
@@ -338,6 +348,10 @@ def process_student_data(student_df, max_demographics_term):
     >>> process_student_data(student_data_df, 202008)
     [-1, -1, 4]
     """
+
+    required_student_cols = ['major_term_earliest', 'term_earliest', 'semester_number', 'major_term', 'demographics_term']
+    validate_columns(student_df, required_student_cols)
+
     first_major = student_df.iloc[0]['major_term_earliest']  # First major
     term_earliest = student_df['term_earliest'].min()  # earliest semester code
     last_semester_number = student_df['semester_number'].max()  # Last semester number
@@ -483,6 +497,31 @@ def prepare_and_process_data(student_major_data_df,
     >>> print(filtered_data_df.head())
     >>> print(stats_df)
     """
+
+    required_student_cols = [
+        'major_term_earliest',
+        'transfer_hours_term',
+        'demographics_term',
+        'term_earliest',
+        'academic_year',
+        'student_ID',
+        'major_term',
+        'major_graduation',
+        'semester_number'
+    ]
+
+    required_coursework_cols = [
+        'student_ID',
+        'course_prefix',
+        'course_credits',
+        'course_number',
+        'course_suffix',
+        'demographics_term'
+    ]
+
+    validate_columns(student_major_data_df.columns, required_student_cols)
+    validate_columns(coursework_df.columns, required_coursework_cols)
+
     # Filter student data based on arguments passed to function
     filtered_df = prepare_hazard_data(
         df=student_major_data_df,
@@ -643,6 +682,11 @@ def calculate_probabilities(input_df):
     >>> print(result["active_student_counts"])
     >>> print(result["masked_df"].head())
     """
+
+    required_input_cols = ['semester_number', 'outcome_indicator', 'student_ID']
+    validate_columns(required_input_cols, required_input_cols)
+
+
     # Calculate the proportions of active students by semester and status
     proportions_df = (
         input_df.groupby("semester_number")["outcome_indicator"]

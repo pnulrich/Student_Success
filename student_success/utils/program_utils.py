@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from institutionaldata.utils.constants import MAJORS_DICT, DISCIPLINE_DICT
+from student_success.utils.constants import MAJORS_DICT, DISCIPLINE_DICT
 
 
 def classify_discipline(major):

@@ -2,8 +2,8 @@ import pandas
 import pandas as pd
 import numpy as np
 
-import institutionaldata.utilityfunctions
-import institutionaldata.utilityfunctions as utilityfunctions
+import student_success.utilityfunctions
+import student_success.utilityfunctions as utilityfunctions
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import plotly.graph_objects as go
@@ -12,7 +12,7 @@ from tkinter import filedialog as fd
 import tkinter as tk
 import datetime
 import pydot
-import pygraphviz as pgv
+# import pygraphviz as pgv
 import statsmodels.api as sm
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -526,7 +526,7 @@ def major_retention(demographics_df, years, major_code, student_ids):
     Notes:
     -----
     - The analysis excludes students who earn two degrees to simplify the analysis. This exclusion is noted on 2023-08-14.
-    - Student IDs can be generated via list(df['Student_ID'].unique()) or using institutionaldata.utilityfunctions.ftfy(df) for 'ftfy' students.
+    - Student IDs can be generated via list(df['Student_ID'].unique()) or using student_success.utilityfunctions.ftfy(df) for 'ftfy' students.
 
     Examples:
     --------
@@ -722,12 +722,12 @@ def course_performance(course_list, major_code_list, years, demographics_df):
 
     for course_input in course_list:
         for major_code_input in major_code_list:
-            testresults = institutionaldata.successmetrics.time_before_math_course(
+            testresults = student_success.successmetrics.time_before_math_course(
                 demographics_df, course=course_input, math_grades_df=math_grades_df, major_code=major_code_input,
                 years=years, ftfy=True)
 
             testresults['Num_GRDE'] = testresults['Final_GRDE'].apply(
-                institutionaldata.utilityfunctions.num_grade_institutional)
+                student_success.utilityfunctions.num_grade_institutional)
             filtered_testresults = testresults[testresults['Num_GRDE'] != -1]
 
             bins = [0, 1, 2, 3, float('inf')]
@@ -808,7 +808,7 @@ def combine_course_grades_with_demographics(input_demographics_df):
                        'SDSTUDEMOG_TERM', 'SDSTUDEMOG_SEX', 'SDSTUMAIN_MATRIC_TERM', 'Major', 'Grad_term']
     merged_df_clean = merged_df[columns_to_keep]
     merged_df_clean = merged_df_clean.sort_values(by=['Student_ID', 'Reg_Term'])
-    merged_df_clean = institutionaldata.utilityfunctions.letter_grade_simplify(merged_df_clean, c_minus_flag=1)
+    merged_df_clean = student_success.utilityfunctions.letter_grade_simplify(merged_df_clean, c_minus_flag=1)
     first_attempts = merged_df_clean.drop_duplicates(subset=['Student_ID', 'Reg_Crse_Title'], keep='first')
     #print("# of first attempts: ", len(first_attempts))  # 31033
     first_attempts_DFW = first_attempts[first_attempts['Final_GRDE_Simp'].isin(['D', 'F', 'W'])]  # 7579
@@ -2083,7 +2083,7 @@ def create_sankey_plot(data, major, plot_title, output_filename = None):
     student_last_semester_number = data.groupby('student_ID')['semester_number'].max().to_dict()
     student_last_semester = data.groupby('student_ID')['demographics_term'].max().to_dict()
 
-    data['discipline'] = data['major_term'].apply(institutionaldata.utilityfunctions.classify_discipline)
+    data['discipline'] = data['major_term'].apply(student_success.utilityfunctions.classify_discipline)
 
     data['end_status'] = data.apply(
         lambda row: classify_end_status(row, target_major_name=major,

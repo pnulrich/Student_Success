@@ -1,5 +1,5 @@
 import numpy as np
-from institutionaldata.utils.program_utils import classify_discipline, lookup_major_name
+from student_success.utils.program_utils import classify_discipline, lookup_major_name
 
 def test_classify_discipline_known():
     assert classify_discipline('BIO') == 'Biology'

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from institutionaldata.utils.constants import PEER_ABBREVIATION_DICT, PEER_DESCRIPTION_DICT, SEX_DICT
-from institutionaldata.utils.validation import validate_columns
+from student_success.utils.constants import PEER_ABBREVIATION_DICT, PEER_DESCRIPTION_DICT, SEX_DICT
+from student_success.utils.validation import validate_columns
 
 
 def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_generation=True, sex=True):
@@ -44,7 +44,7 @@ def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_gene
         * If `hispanic=True`, students marked as Hispanic override PEER status if their race
           would otherwise result in exclusion.
     - Sex flag uses values from `SEX_DICT`, which maps both 'F'/'M' and 'Female'/'Male'.
-    - Sex and race taxonomy can be updated in institutionaldata.utils.constants.py as needed
+    - Sex and race taxonomy can be updated in student_success.utils.constants.py as needed
     - Missing or unrecognized values default to 0 or -1 where appropriate.
     """
 

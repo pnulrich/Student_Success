@@ -1,5 +1,5 @@
 """
-Utility functions for data wrangling and processing in institutionaldata.
+Utility functions for data wrangling and processing in student_success.
 
 Submodules included:
 - io_utils: Tools for file I/O, including column renaming from codebooks.

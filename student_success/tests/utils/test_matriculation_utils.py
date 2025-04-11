@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from institutionaldata.utils.matriculation_utils import (
+from student_success.utils.matriculation_utils import (
     filter_by_valid_matriculation_term,
     clean_and_adjust_matriculation
 )

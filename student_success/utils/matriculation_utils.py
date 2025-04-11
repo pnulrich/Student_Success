@@ -1,5 +1,5 @@
 import pandas as pd
-from institutionaldata.utils.validation import validate_columns
+from student_success.utils.validation import validate_columns
 
 #  CAUTION: BANNER may not reliably report 'matriculation_term' do to wide variations in timing and programs in an institution
 #  If you are using matriculation term values derived from BANNER, ensure that values match what you expect. Be diligent

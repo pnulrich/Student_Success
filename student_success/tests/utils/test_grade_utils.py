@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 import numpy as np
 
-from institutionaldata.utils.grade_utils import (
+from student_success.utils.grade_utils import (
     strip_grade_suffixes,
     num_grade_institutional,
     num_grade_normalized,

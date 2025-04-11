@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from institutionaldata.utils.demographics_utils import (
+from student_success.utils.demographics_utils import (
     validate_columns,
     set_up_demographic_flags,
     demographics_first_semester

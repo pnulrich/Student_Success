@@ -1,5 +1,5 @@
 import pandas as pd
-from institutionaldata import utilityfunctions as uf
+from student_success import utilityfunctions as uf
 def test_set_up_demographic_flags_basic():
     # Setup: create a simple DataFrame
     df = pd.DataFrame({

@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from institutionaldata.utils.time_utils import (
+from student_success.utils.time_utils import (
     adjust_grad_term, create_semesters, get_academic_year,
     get_nth_year_fall_term, increment_semester, calculate_running_semester_number
 )

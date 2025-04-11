@@ -1896,6 +1896,8 @@ def filter_and_calculate_crosslisted_grade_distribution(input_df=None, grade_col
 
     NOTES: created by Paul Ulrich (2025-01-27; base function extended with assistance from ChatGPT4o). Note the XLIST column provided by BANNER is unreliable.
     Crosslisted combined ID should be comprised unambiguously prior to running this function, which may involve concatenation of course name, semester, day, and time
+
+    2025-04-08 DEPRECATED FUNCTION. Be cautious in using XL column values from BANNER as these do not seem reliable in identifying cross-listed sections of the same offering in a term.
     """
 
     # Generate alphanumeric codes (e.g., A-Z, AA-ZZ, etc.) for instructor codes
