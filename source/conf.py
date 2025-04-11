@@ -3,7 +3,7 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 # to update the docs, run the following two commands:
-# sphinx-apidoc -o source ../HHMI_Student_Success/institutionaldata
+# sphinx-apidoc -o source ../HHMI_Student_Success/student_success
 # sphinx-build -E -b html source build
 
 import os
@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.abspath('../'))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-import institutionaldata.successmetrics
-import institutionaldata.utilityfunctions
+import student_success.successmetrics
+import student_success.utilityfunctions
 
 
 project = 'HHMI Student Success - Project B'
