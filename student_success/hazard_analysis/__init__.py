@@ -1,3 +1,12 @@
+"""
+Tools for performing and visualizing hazard analysis.
+
+Submodules included:
+- hazard_utils: Functions for filtering, assigning outcomes (graduated, not graduated, left major, ect), probability, and calculating K, r, and t1/2 from logistic data
+- hazard_plots: Functions for plotting hazard ratio, cumulative probability, and curricular heatmaps
+
+"""
+
 from .hazard_utils import (
     prepare_and_process_data,
     process_student_data,
