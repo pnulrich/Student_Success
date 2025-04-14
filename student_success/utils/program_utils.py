@@ -1,39 +1,25 @@
 import pandas as pd
 import numpy as np
-from student_success.utils.constants import MAJORS_DICT, DISCIPLINE_DICT
+from student_success.utils.constants import MAJOR_ABBREV_TO_LABEL, MAJOR_TO_DISCIPLINE_DICT
 
 
 def classify_discipline(major):
     """
-    Map major abbreviations to discipline categories.
+    Map major abbreviations to discipline categories using MAJOR_TO_DISCIPLINE_DICT.
 
-    This function takes a major abbreviation as input and returns the corresponding
-    discipline category. The function uses a dictionary `discipline_dict` to map
-    certain major codes (e.g., 'BIO', 'BNUR') to their respective disciplines
-    (e.g., 'Biology', 'STEM-Related', 'Other STEM'). If the major is not found in
-    the dictionary, it categorizes the major as 'Non-STEM'. If the major is missing
-    (NaN), it returns NaN.
-
-    Parameters:
-    -----------
+    Parameters
+    ----------
     major : str or NaN
-        The major abbreviation code to be categorized (e.g., 'BIO', 'CSC', etc.).
+        Abbreviation of the major (e.g., 'BIO', 'CSC', etc.).
 
-    Returns:
-    --------
+    Returns
+    -------
     str or NaN
-          The discipline category based on the mapping. Possible return values include:
-          'Biology', 'STEM-Related', 'Other STEM', 'Non-STEM', or NaN (for missing values).
-
-      Notes
-      -----
-      The classification is determined by the `DISCIPLINE_DICT` dictionary.
-      You may customize or expand this dictionary to reflect the categories used at your institution.
-      """
-
+        Discipline group: 'bio_sci', 'phy_sci', 'eng_CS', 'other_STEM', 'undeclared', or 'non_STEM'.
+    """
     if pd.isna(major):
-        return np.nan  # Return NaN for missing values
-    return DISCIPLINE_DICT.get(major, 'Non-STEM')
+        return np.nan
+    return MAJOR_TO_DISCIPLINE_DICT.get(major, 'non_STEM')
 
 
 def lookup_major_name(major):
@@ -58,10 +44,10 @@ def lookup_major_name(major):
         'Psychology', 'Other', or NaN (for missing values).
     Notes:
     --------
-    Full names are determined by the `MAJORS_DICT` dictionary.
+    Full names are determined by the `MAJOR_ABBREV_LABEL` dictionary.
     This dictionary can be modified to reflect your institution's specific majors.
     """
 
     if pd.isna(major):
         return np.nan  # Return NaN for missing values
-    return MAJORS_DICT.get(major, 'Other')
+    return MAJOR_ABBREV_TO_LABEL.get(major, 'Other')
