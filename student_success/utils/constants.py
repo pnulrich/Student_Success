@@ -111,3 +111,24 @@ MAJOR_ABBREV_TO_LABEL = {
     'CSCI': 'Computer Science',
     'PSY': 'Psychology'
 }
+
+# -------------------------------------------------------------------
+# Retention Outcome Classification
+# -------------------------------------------------------------------
+
+RETENTION_OUTCOME_LABELS = [
+    'still_enrolled',    # 0: Active in original major
+    'left_major',        # 1: Changed major
+    'left_university',   # 2: Inactive and not graduated
+    'graduated'          # 3: Completed degree
+]
+
+RETENTION_OUTCOME_CODE_DICT = {
+    'still_enrolled': 0,
+    'left_major': 1,
+    'left_university': 2,
+    'graduated': 3
+}
+
+RETENTION_OUTCOME_LABEL_DICT = {v: k for k, v in RETENTION_OUTCOME_CODE_DICT.items()}
+
