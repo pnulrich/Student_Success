@@ -12,7 +12,7 @@ from tkinter import filedialog as fd
 import tkinter as tk
 import datetime
 import pydot
-import pygraphviz as pgv
+# import pygraphviz as pgv
 import statsmodels.api as sm
 from matplotlib.backends.backend_pdf import PdfPages
 
