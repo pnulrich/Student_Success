@@ -1,2 +1,3 @@
 from .retention_flags import generate_STEM_major_retention_flag
 from .retention_analysis import major_retention
+from .retention_plots import plot_major_retention_rate, plot_cumulative_retention_rate
