@@ -1,8 +1,9 @@
 import pandas as pd
 import matplotlib as plt
 import numpy as np
-# from student_success import utils as uf
 from student_success.utils.constants import STEM_CORE_MAJORS
+
+# TODO: reduce redundancy with hazard_analysis functions and refactor accordingly
 
 def generate_STEM_major_retention_flag(input_df, major_list=[], stem=True, major_col='major_term'):
     """
