@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def analyze_course(course_name, df, major_matriculation, prerequisite_course=False, node_pie=False):
+def analyze_course(course_name, df, major_matriculation_column = 'major_term_earliest', target_major_code = None, prerequisite_course=False, node_pie=False):
     """
     Analyze student performance and attempt statistics for a given course.
 
@@ -11,9 +11,11 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course=Fal
         Name of the course to analyze (e.g., 'Principles of Chemistry I')
     df : pandas.DataFrame
         Input DataFrame containing course data.
-    major_matriculation : str
-        Major for which the analysis is conducted. (e.g., 'CHM')
-    prerequisite_course : str, optional
+    major_matriculation_column : str
+        Name of the column in df that holds the student's earliest major (default is 'major_term_earliest')
+    target_major_code : str, optional
+        Major code to filter analysis to a specific target major (e.g., 'BIO', 'CHM'). If None, includes all majors.
+    prerequisite_course : bool, optional
         Indicator for whether the course is a prerequisite (default is False).
     node_pie : bool, optional
         Indicator for whether to include pie charts for key demographics (default is False).
@@ -39,6 +41,7 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course=Fal
         print("DataFrame is empty.")
         return None
 
+    print("Current course is:", course_name)
     course_df_all_attempts = df[df['course_title'] == course_name]
     course_df_all_attempts = course_df_all_attempts.sort_values(by=['student_ID', 'course_term'])
     print(f"Total attempts for {course_name}: {len(course_df_all_attempts)}")
@@ -50,13 +53,19 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course=Fal
     course_df_first_attempts_all = course_df_all_attempts.drop_duplicates(subset=['student_ID'], keep='first')
     print(f"Number of unique students in first attempt of {course_name}: {len(course_df_first_attempts_all)}")
 
-    desired_major_students = course_df_first_attempts_all[
-        course_df_first_attempts_all['major_matriculation'] == major_matriculation
-    ]['student_ID'].unique()
-    print(f"Number of unique {major_matriculation} majors  : {len(desired_major_students)}")
+    if target_major_code:
+        desired_major_students = course_df_first_attempts_all[
+            course_df_first_attempts_all[major_matriculation_column] == target_major_code
+            ]['student_ID'].unique()
+        print(f"Number of unique {target_major_code} majors  : {len(desired_major_students)}")
+        course_df = course_df_all_attempts[course_df_all_attempts['student_ID'].isin(desired_major_students)]
+        course_df_first_attempts = course_df.drop_duplicates(subset=['student_ID'], keep='first')
+    else:
+        course_df = course_df_all_attempts
+        course_df_first_attempts = course_df.drop_duplicates(subset=['student_ID'], keep='first')
+        print(f"Number of unique students (no major filtering)  : {len(course_df_first_attempts_all['student_ID'].unique())}")
 
-    course_df = course_df_all_attempts[course_df_all_attempts['student_ID'].isin(desired_major_students)]
-    course_df_first_attempts = course_df.drop_duplicates(subset=['student_ID'], keep='first')
+
 
     print(course_df_first_attempts['course_grade_letter_simp'].unique())
     first_pass_number = len(course_df_first_attempts[course_df_first_attempts['course_grade_letter_simp'].isin(['A', 'B', 'C'])])
@@ -72,15 +81,13 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course=Fal
     print("Number of all repeats who did not pass the first time :", len(course_df_repeat_attempts_all))
     print("Number of all unique students who did not pass the first time :", len(course_df_repeat_attempts_all['student_ID'].unique()))
 
-    course_df_second_attempts = course_df_repeat_attempts_all[course_df_repeat_attempts_all.duplicated(subset=['student_ID'], keep='first')]
+    if target_major_code:
+        grouped_second_attempters_df = course_df_all_attempts[
+            course_df_all_attempts[major_matriculation_column] == target_major_code
+        ].groupby('student_ID').filter(lambda x: len(x) > 1)
+    else:
+        grouped_second_attempters_df = course_df_all_attempts.groupby('student_ID').filter(lambda x: len(x) > 1)
 
-    print("Current course is:", course_name)
-
-    grouped_second_attempters_df = course_df_all_attempts[
-        course_df_all_attempts['major_matriculation'] == major_matriculation
-    ].groupby('student_ID').filter(lambda x: len(x) > 1)
-
-    first_attempt_df = grouped_second_attempters_df.groupby('student_ID').nth(0)
     second_attempt_df = grouped_second_attempters_df.groupby('student_ID').nth(1)
 
     print("Length of first attempt majors:", len(course_df_first_attempts['student_ID'].unique()))
@@ -117,7 +124,7 @@ def analyze_course(course_name, df, major_matriculation, prerequisite_course=Fal
     return descriptives
 
 
-def calculate_progression_to_next_course(current_course, next_course, df, major_matriculation):
+def calculate_progression_to_next_course(current_course, next_course, df, target_major_code = None, major_matriculation_column = 'major_term_earliest'):
     """
     Calculate the progression of students from a current course to a next course.
 
@@ -129,17 +136,25 @@ def calculate_progression_to_next_course(current_course, next_course, df, major_
         The name of the next course.
     df : pandas DataFrame
         The DataFrame containing student enrollment data.
-    major_matriculation : str
-        The major matriculation of the students being considered.
+   target_major_code : str, optional
+        If provided, limits analysis to students with this major code.
+    major_matriculation_column : str, optional
+        Column name identifying the student's major at matriculation (default is 'major_term_earliest').
+
 
     Returns
     -------
-    tuple
-        A tuple containing the proportion and number of students who passed the current course but did not take the next course,
-        the proportion and number of students who passed the current course and took the next course, and a list of Student_IDs
-        who took the next course.
+    dict
+        Dictionary containing:
+            - 'proportion_not_taking_next'
+            - 'number_not_taking_next'
+            - 'proportion_taking_next'
+            - 'number_taking_next'
+            - 'students_who_did_take_next': list of student_IDs who took the next course
     """
-    df = df[df['major_matriculation'] == major_matriculation]
+
+    if target_major_code:
+        df = df[df[major_matriculation_column] == target_major_code]
 
     # Step 1: Get second attempt performance in current course
     filtered_df = df[df['course_title'] == current_course]
@@ -187,31 +202,36 @@ def calculate_progression_to_next_course(current_course, next_course, df, major_
     }
 
 
-def calculate_alternate_entry(current_course, prior_course, df, major_matriculation):
+def calculate_alternate_entry(current_course, prior_course, df, target_major_code = None, major_matriculation_column = 'major_term_earliest'):
     """
-    Identify students who entered a course without passing the expected prerequisite.
+    Identify students who enrolled in a course without passing the expected prerequisite.
 
     Parameters
     ----------
     current_course : str
-        The course students enter (e.g., 'PRINCIPLES OF CHEMISTRY II').
+        The course students entered (e.g., 'PRINCIPLES OF CHEMISTRY II').
     prior_course : str
         The expected prerequisite course (e.g., 'PRINCIPLES OF CHEMISTRY I').
-    df : pd.DataFrame
-        DataFrame containing student course history.
-    major_matriculation : str
-        The major matriculation filter to apply.
+    df : pandas.DataFrame
+        DataFrame containing course history. Must include 'student_ID', 'course_title', 'course_grade_letter_simp', and
+        the specified `major_matriculation_column`.
+    target_major_code : str, optional
+        If provided, limits analysis to students with this major code.
+    major_matriculation_column : str, optional
+        Column name indicating the student's major at matriculation (default is 'major_term_earliest').
 
     Returns
     -------
     dict
-        {
-            'n_total': total number of students in current_course,
-            'n_without_prior_pass': count who did not pass prior_course before taking current_course,
-            'pct_alternate_entry': percent of students in current_course who did not pass prior_course
-        }
+        Dictionary with:
+            - 'n_total': Total students in current course
+            - 'n_without_prior_pass': Count who did not pass the prior course
+            - 'pct_alternate_entry': Percentage who skipped or failed the prerequisite
+            - 'alt_entry_ids': List of student_IDs without prior pass
     """
-    df = df[df['major_matriculation'] == major_matriculation]
+
+    if target_major_code:
+        df = df[df[major_matriculation_column] == target_major_code]
 
     passed_prior = df[
         (df['course_title'] == prior_course) &
