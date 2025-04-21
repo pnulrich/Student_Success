@@ -30,7 +30,6 @@ def lookup_major_name(major):
     full name of the major using a predefined dictionary `majors_dict`. If the
     abbreviation is not found in the dictionary, the function returns 'Other'.
     If the input is missing (NaN), it returns NaN.
-
     Parameters:
     -----------
     major : str or NaN
