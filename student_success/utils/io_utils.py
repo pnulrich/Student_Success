@@ -1,6 +1,23 @@
 import pandas as pd
 from tkinter import filedialog as fd
 
+
+def concatenate_csv_files(filenames, low_memory=False):
+    # Create an empty list to hold each dataframe
+    dataframes = []
+
+    # Loop through the list of filenames
+    for file in filenames:
+        # Read each CSV file and append the dataframe to the list
+        df = pd.read_csv(file, low_memory=low_memory)
+        dataframes.append(df)
+
+    # Concatenate all dataframes into one
+    concatenated_df = pd.concat(dataframes, ignore_index=True)
+
+    return concatenated_df
+
+
 #Utility function: gets user input on which CSV grades reports files to load and returns as a pandas dataframe
 def load_grades():
     """

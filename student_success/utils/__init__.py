@@ -28,6 +28,7 @@ from .io_utils import (
     rename_columns_in_bulk,
     extract_column_mapping,
     flatten_column_mapping,
+    concatenate_csv_files
 )
 
 from .matriculation_utils import (
