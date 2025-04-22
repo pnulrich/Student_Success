@@ -268,3 +268,22 @@ def letter_grade_clean(dataframe):
     df_copy = dataframe.copy()
     df_copy['course_grade_letter'] = df_copy['course_grade_letter'].apply(strip_grade_suffixes)
     return df_copy
+
+
+def filter_valid_letter_grades(df: pd.DataFrame, grade_col: str = 'course_grade_letter_simp', valid_grades: list = ['A', 'B', 'C', 'D', 'F', 'W'] ) -> pd.DataFrame:
+    """
+    Filter rows to only include valid course grades.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing course attempts.
+    grade_col : str, optional
+        Name of the column with letter grades. Default is 'course_grade_letter_simp'.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame including only rows with valid grades.
+    """
+    return df[df[grade_col].isin(valid_grades)].copy()

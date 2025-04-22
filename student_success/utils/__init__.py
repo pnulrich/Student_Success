@@ -20,7 +20,8 @@ from .grade_utils import (
     num_grade_normalized,
     num_grade_institutional,
     letter_grade_clean,
-    letter_grade_simplify
+    letter_grade_simplify,
+    filter_valid_letter_grades
 )
 
 from .io_utils import (
