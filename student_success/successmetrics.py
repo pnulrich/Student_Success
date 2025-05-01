@@ -12,8 +12,7 @@ from tkinter import filedialog as fd
 import tkinter as tk
 import datetime
 import pydot
-# import pygraphviz as pgv
-import statsmodels.api as sm
+# import pygraphviz as pgv statsmodels.api as sm
 from matplotlib.backends.backend_pdf import PdfPages
 
 def num_math_courses(demographics_df, major_code, years, math_grades_df = None, ftfy = True, grade_options = None):
@@ -1991,406 +1990,406 @@ def plot_proportions_by_course(df, proportions_to_plot, pdf_filename=None, save_
         pdf.close()
 
 
-def create_sankey_plot(data, major, plot_title, output_filename = None):
-    """
-    Creates and displays a Sankey diagram to visualize the flow of students across disciplines and graduation outcomes.
-
-    This function generates a Sankey plot that visualizes student transitions across academic terms, disciplines,
-    and graduation statuses (e.g., 'Graduated Biology', 'Graduated Other', 'Left College'). The diagram is built
-    from data containing student records, and it shows the paths students take through various stages of their
-    academic journey.
-
-    Parameters:
-    -----------
-    data : pandas.DataFrame
-        A DataFrame containing student data. It should include columns such as 'student_ID', 'semester_number',
-        'demographics_term', 'major_term_name', 'discipline', 'flag_graduation', and 'major_term'.
-
-    major : str
-        The target major to focus on in the plot (e.g., 'Biology'). The plot will show graduation paths for this
-        major as well as other majors and student statuses.
-
-    output_filename : str, optional, default="sankey.html"
-        The filename where the generated Sankey diagram will be saved as an HTML file.
-
-    plot_title : str, optional, default="sankey plot default title"
-        The title of the Sankey plot displayed at the top of the figure.
-
-    Returns:
-    --------
-    None
-        Displays the Sankey diagram and saves it to the specified output file.
-
-    Additional Functionality:
-    -------------------------
-    1. **Classify End Statuses**:
-       A helper function `classify_end_status` categorizes students into 'Graduated [major]', 'Graduated Other',
-       or 'Left College' based on the student's last semester and whether more than three terms have passed since
-       their last enrollment.
-
-    2. **Custom Colors**:
-       Custom colors are assigned to different disciplines (e.g., 'Biology', 'Other STEM', 'Non-STEM') and graduation
-       statuses ('Graduated Biology', 'Graduated Other', 'Left College') to enhance the visual representation of flows.
-
-    3. **Nodes and Links**:
-       The function prepares nodes and links representing transitions between disciplines and statuses across semesters.
-       Each flow represents the number of students moving between stages (e.g., switching majors or graduating).
-
-    4. **Legend Creation**:
-       A legend is dynamically generated to explain the color coding of different disciplines and end statuses.
-
-    5. **Data Aggregation**:
-       Links between nodes are aggregated to summarize the flow of students across different stages. The plot ensures
-       accurate representation of student counts at each node, with hover information displaying the number of students
-       for each transition.
-
-    6. **Interactive Plot**:
-       The Sankey diagram is interactive, allowing users to hover over nodes and links to see detailed information.
-
-    Example:
-    --------
-    data = bio_major_df[bio_major_df['student_ID'].isin(specific_students)].copy()
-    create_sankey_plot(data, major='Biology', output_filename="biology_sankey.html", plot_title="Biology Student Flow")
-    """
-
-    # Function to convert hex color to RGBA with transparency
-    def hex_to_rgba(hex_color, alpha=0.4):
-        rgba = mcolors.to_rgba(hex_color, alpha=alpha)
-        return f"rgba({int(rgba[0] * 255)}, {int(rgba[1] * 255)}, {int(rgba[2] * 255)}, {rgba[3]})"
-    def classify_end_status(row, target_major_name, student_last_semester_number, student_last_semester,
-                            maximum_dataset_term):
-        # Handle cases where graduation status is flagged
-        if row['flag_graduation'] == 1:
-            if row['major_term_name'] == target_major_name:
-                return f'Graduated {target_major_name}'
-            else:
-                return 'Graduated Other'
-        # Handle cases where the student is considered inactive (left college)
-        elif row['semester_number'] == student_last_semester_number[row['student_ID']] and \
-                ((maximum_dataset_term - student_last_semester[row['student_ID']]) > 4):
-            return 'Left College'
-        # Return the discipline (or handle cases where 'discipline' might be NaN)
-        else:
-            return row['discipline'] if pd.notna(row['discipline']) else 'Unknown Discipline'
-
-    # Display the number of unique students
-    print(f"Unique Students: {len(data['student_ID'].unique())}")
-
-    # Define the categories (majors) in 'major_term_name' and add placeholders for end points
-    data['curriculum'] = pd.Categorical(data['major_term_name'], categories=[
-        'Biology', 'Psychology', 'Interdisciplinary Studies', 'Computer Science', 'Other',
-        'Exercise Science', 'Chemistry', 'Nursing', 'Neuroscience',
-        f'Graduated {major}', 'Graduated Other', 'Left College'], ordered=True)
-
-    # Determine each student's maximum semester number
-    student_last_semester_number = data.groupby('student_ID')['semester_number'].max().to_dict()
-    student_last_semester = data.groupby('student_ID')['demographics_term'].max().to_dict()
-
-    data['discipline'] = data['major_term'].apply(student_success.utilityfunctions.classify_discipline)
-
-    data['end_status'] = data.apply(
-        lambda row: classify_end_status(row, target_major_name=major,
-                                        student_last_semester_number=student_last_semester_number,
-                                        student_last_semester=student_last_semester,
-                                        maximum_dataset_term=data['demographics_term'].max()),
-        axis=1
-    )
-
-    # Sort the dataset by student_ID, then by semester
-    data = data.sort_values(by=['student_ID', 'semester_number', 'curriculum'])
-
-    # Define custom colors for the disciplines
-    custom_color_map = {
-        f'{major}': "#88CCEE",  # Light Blue
-        'Other STEM': "#DDCC77",  # Tan
-        'STEM-Related': "#117733",  # Dark Green
-        'Non-STEM': "#44AA99",  # Light Green
-        f'Graduated {major}': "#332288",  # Dark Blue
-        'Graduated Other': "#882255",  # Brown
-        'Left College': "#CC6677",  # Red
-        'Interdisciplinary Studies': "#888888",  # Medium Gray
-    }
-
-    # Define end_status categories and corresponding colors
-    end_statuses = [f"Graduated {major}", "Graduated Other", "Left College"]
-    end_status_colors = ["#332288", "#882255", "#CC6677"]  # Example colors for each end status
-
-    # Define discipline categories and corresponding colors
-    disciplines = [f"{major}", "Other STEM", "STEM-Related", "Non-STEM", "Interdisciplinary Studies"]
-    disciplines_colors = [
-        "#88CCEE",  # Light Blue, {major}
-        "#DDCC77",  # Tan, Other STEM
-        "#117733",  # Dark Green, STEM-Related
-        "#44AA99",  # Light Green, Non-STEM
-        "#888888",  # Medium Gray, IDS
-    ]
-
-    # Prepare the data for the Sankey diagram
-    unique_curriculum = data['discipline'].unique()
-    nodes = [f"Graduated {major}", f"Graduated Other", f"Left College"]
-
-    # Add semester nodes
-    for sem in data['semester_number'].unique():
-        for curr in unique_curriculum:
-            if curr not in [f'Graduated {major}', 'Graduated Other', 'Left College']:
-                nodes.append(f"{curr} - Sem {sem}")
-
-    # Prepare the links for the Sankey diagram
-    links = {
-        'source': [],
-        'target': [],
-        'value': [],
-        'color': [],  # Adding colors with transparency
-        'students': []
-    }
-
-    # Prepare the links for each transition between semesters
-    for student in data['student_ID'].unique():
-        student_data = data[data['student_ID'] == student]
-
-        for i in range(len(student_data) - 1):
-            # Get source and target
-            source_curriculum = student_data.iloc[i]['discipline']
-            target_curriculum = student_data.iloc[i + 1]['discipline']
-            source_sem = student_data.iloc[i]['semester_number']
-            target_sem = student_data.iloc[i + 1]['semester_number']
-
-            # Find index of source and target
-            source_node = nodes.index(f"{source_curriculum} - Sem {source_sem}")
-            target_node = nodes.index(f"{target_curriculum} - Sem {target_sem}")
-
-            # Handle final status transitions (if needed)
-            if i == len(student_data) - 2:  # For the last transition
-                target_curriculum = student_data.iloc[i + 1]['end_status']
-                if target_curriculum == f'Graduated {major}':
-                    target_node = nodes.index(f"Graduated {major}")
-                elif target_curriculum == 'Graduated Other':
-                    target_node = nodes.index("Graduated Other")
-                elif target_curriculum == 'Left College':
-                    target_node = nodes.index("Left College")
-
-            # Append to links
-            links['source'].append(source_node)
-            links['target'].append(target_node)
-            links['value'].append(1)  # Each flow is one student
-            links['students'].append(student)
-
-            # Assign the color based on the target node with transparency
-            target_label = nodes[target_node].split(' - ')[0]  # Get the target discipline
-            hex_color = custom_color_map.get(target_label, "#888888")  # Default to gray if not found
-            rgba_color = hex_to_rgba(hex_color, alpha=0.4)  # Set alpha to 0.4 for transparency
-            links['color'].append(rgba_color)
-
-    # Convert links to a DataFrame for easier aggregation
-    links_df = pd.DataFrame(links)
-
-    # Group by source and target to aggregate the flows
-    grouped_links = links_df.groupby(['source', 'target', 'color']).agg({'value': 'sum'}).reset_index
-
-    # Step 1: Calculate the actual number of unique students per node
-    node_counts = data.groupby(['discipline', 'semester_number'])['student_ID'].nunique().reset_index()
-
-    # Map the correct number of students to each node
-    node_value_map = dict(node_counts['student_ID'])
-
-    # Step 2: Prepare the links and ensure node values reflect the correct counts
-    nodes = [f"Graduated {major}", f"Graduated Other", f"Left College"]
-
-    # Add semester nodes
-    for sem in data['semester_number'].unique():
-        for curr in unique_curriculum:
-            if curr not in [f'Graduated {major}', 'Graduated Other', 'Left College']:
-                nodes.append(f"{curr} - Sem {sem}")
-
-    # Prepare the links for the Sankey diagram
-    links = {
-        'source': [],
-        'target': [],
-        'value': [],
-        'color': [],  # Adding colors with transparency
-        'students': []
-    }
-
-    # this set can be used to debug, to determine if certain students are lost in the flow processing
-    students_reaching_final_status = set()
-
-    # Prepare the links for each transition between semesters
-    for student in data['student_ID'].unique():
-        student_data = data[data['student_ID'] == student]
-
-        # Case 1: Student has only one term (no transitions)
-        if len(student_data) == 1:
-            # For students with a single term, directly append to target nodes as "Left College" or other end statuses
-            source_curriculum = student_data.iloc[0]['discipline']
-            source_sem = student_data.iloc[0]['semester_number']
-            end_status = student_data.iloc[0]['end_status']
-
-            # Find index of the source node
-            source_node = nodes.index(f"{source_curriculum} - Sem {source_sem}")
-
-            # Set the appropriate end status target node
-            if end_status == f'Graduated {major}':
-                target_node = nodes.index(f"Graduated {major}")
-            elif end_status == 'Graduated Other':
-                target_node = nodes.index("Graduated Other")
-            elif end_status == 'Left College':
-                target_node = nodes.index("Left College")
-            else:
-                continue  # Skip if the end status is not recognized
-
-            # Append to links
-            links['source'].append(source_node)
-            links['target'].append(target_node)
-            links['value'].append(1)  # Each flow is one student
-            links['students'].append(student)
-
-            # Assign the color based on the target node with transparency
-            target_label = nodes[target_node].split(' - ')[0]  # Get the target discipline
-            hex_color = custom_color_map.get(target_label, "#888888")  # Default to gray if not found
-            rgba_color = hex_to_rgba(hex_color, alpha=0.4)  # Set alpha to 0.4 for transparency
-            links['color'].append(rgba_color)
-
-        # Case 2: Student has more than one term (normal flow)
-        else:
-            for i in range(len(student_data) - 1):
-                # Get source and target
-                source_curriculum = student_data.iloc[i]['discipline']
-                target_curriculum = student_data.iloc[i + 1]['discipline']
-                source_sem = student_data.iloc[i]['semester_number']
-                target_sem = student_data.iloc[i + 1]['semester_number']
-
-                # Find index of source and target
-                source_node = nodes.index(f"{source_curriculum} - Sem {source_sem}")
-                target_node = nodes.index(f"{target_curriculum} - Sem {target_sem}")
-
-                # Handle final status transitions (if needed)
-                if i == len(student_data) - 2:  # For the last transition
-                    target_curriculum = student_data.iloc[i + 1]['end_status']
-                    if target_curriculum == f'Graduated {major}':
-                        target_node = nodes.index(f"Graduated {major}")
-                    elif target_curriculum == 'Graduated Other':
-                        target_node = nodes.index("Graduated Other")
-                    elif target_curriculum == 'Left College':
-                        target_node = nodes.index("Left College")
-
-                    # Students who continue to take classes up to end of dataset should not be excluded. Instead, I have them fall into categories based on their
-                    # active curriculum at that final term.
-                    else:
-                        # Dynamically add the end status as a target node if it's not recognized
-                        if target_curriculum not in nodes:
-                            nodes.append(target_curriculum)
-                        target_node = nodes.index(target_curriculum)
-
-                # Skip circular transitions
-                if source_node == target_node and target_node not in [nodes.index(f"Graduated {major}"),
-                                                                      nodes.index("Graduated Other"),
-                                                                      nodes.index("Left College")]:
-                    continue
-
-                # Append to links
-                links['source'].append(source_node)
-                links['target'].append(target_node)
-                links['value'].append(1)  # Each flow is one student
-                links['students'].append(student)
-
-                # Assign the color based on the target node with transparency
-                target_label = nodes[target_node].split(' - ')[0]  # Get the target discipline
-                hex_color = custom_color_map.get(target_label, "#888888")  # Default to gray if not found
-                rgba_color = hex_to_rgba(hex_color, alpha=0.4)  # Set alpha to 0.4 for transparency
-                links['color'].append(rgba_color)
-
-        # Inside the code for appending final status transitions. This is used for debugging and can be compared to lists of student_ID
-        # who are present in the first node.
-        if target_curriculum in [f'Graduated {major}', 'Graduated Other', 'Left College']:
-            students_reaching_final_status.add(student)
-
-    # Convert links to a DataFrame for easier aggregation
-    links_df = pd.DataFrame(links)
-
-    # Group by source and target to aggregate the flows
-    grouped_links = links_df.groupby(['source', 'target', 'color']).agg({'value': 'sum'}).reset_index()
-
-    # Step 3: Update the node hovertemplate to display the correct student counts from node_value_map
-    node_labels_with_values = [f"{node}: {node_value_map.get(node, '0')} students" for node in nodes]
-
-    # Adding customdata to store source and target labels for hovertemplate
-    grouped_links['custom_source_label'] = [nodes[src] for src in
-                                            grouped_links['source']]  # Get the label for each source node
-    grouped_links['custom_target_label'] = [nodes[tgt] for tgt in
-                                            grouped_links['target']]  # Get the label for each target node
-
-    # Create the Sankey diagram with aggregated flows
-    fig = go.Figure(go.Sankey(
-        node=dict(
-            pad=0,
-            thickness=20,
-            line=dict(color="black", width=1),
-            label=["" for node in nodes],  # hide labels in background graph
-            color=[custom_color_map.get(node.split(' - ')[0], "#888888") for node in nodes],  # Custom colors for nodes
-            hovertemplate="%{value}",  # Custom hover info for nodes
-            hoverlabel=dict(
-                bgcolor="white",  # Background color of hover label for nodes
-                font=dict(size=20)  # Set the font size of hover text
-            )
-        ),
-        link=dict(
-            source=grouped_links['source'],  # Aggregated source indices
-            target=grouped_links['target'],  # Aggregated target indices
-            value=grouped_links['value'],  # Aggregated flow values
-            color=grouped_links['color'],  # Flow colors with transparency
-            label=["" for node in nodes],  # hide labels in background graph
-            hovertemplate="%{value}",  # Custom hover info for nodes
-            hoverlabel=dict(
-                bgcolor="white",  # Background color of hover label for links
-                font=dict(size=20)  # Set the font size of hover text
-            )
-        )
-    ))
-
-    # Add invisible scatter points to create a legend for end statuses
-    for i, status in enumerate(end_statuses):
-        fig.add_trace(go.Scatter(
-            x=[None],  # Not showing on the x-axis
-            y=[None],  # Not showing on the y-axis
-            mode='markers',
-            marker=dict(size=100, color=end_status_colors[i]),  # Color corresponding to end_status
-            name=status  # Legend label
-        ))
-
-    # Add invisible scatter points to create a legend for disciplines
-    for i, discipline in enumerate(disciplines):
-        fig.add_trace(go.Scatter(
-            x=[None],  # Not showing on the x-axis
-            y=[None],  # Not showing on the y-axis
-            mode='markers',
-            marker=dict(size=100, color=disciplines_colors[i]),  # Color corresponding to discipline
-            name=discipline  # Legend label
-        ))
-
-    # Update layout to improve readability and include the legend below the figure
-    fig.update_layout(
-        title_text=plot_title,
-        font_size=20,
-        height=1000,  # Increase height to space out the diagram
-        showlegend=True,  # Enable the legend
-        legend=dict(
-            orientation="h",  # Horizontal orientation for the legend
-            yanchor="bottom",
-            x=0.2,  # Center the legend horizontally
-            xanchor="center",  # Set anchor to center
-            y=-0.2,  # Adjust the legend position further down
-            tracegroupgap=5,
-            itemwidth=70,
-            font=dict(size=24)
-        ),
-        yaxis=dict(showticklabels=False),  # Hide y-axis ticks and labels
-        xaxis=dict(showticklabels=False),  # Hide x-axis ticks and labels
-        annotations=[]  # Clear any default annotations
-    )
-
-    # Display the Sankey diagram
-    fig.show()
-
-    # Save the interactive Sankey diagram as an HTML file
-    if output_filename:
-        fig.write_html(output_filename)
+# def create_sankey_plot(data, major, plot_title, output_filename = None):
+#     """
+#     Creates and displays a Sankey diagram to visualize the flow of students across disciplines and graduation outcomes.
+#
+#     This function generates a Sankey plot that visualizes student transitions across academic terms, disciplines,
+#     and graduation statuses (e.g., 'Graduated Biology', 'Graduated Other', 'Left College'). The diagram is built
+#     from data containing student records, and it shows the paths students take through various stages of their
+#     academic journey.
+#
+#     Parameters:
+#     -----------
+#     data : pandas.DataFrame
+#         A DataFrame containing student data. It should include columns such as 'student_ID', 'semester_number',
+#         'demographics_term', 'major_term_name', 'discipline', 'flag_graduation', and 'major_term'.
+#
+#     major : str
+#         The target major to focus on in the plot (e.g., 'Biology'). The plot will show graduation paths for this
+#         major as well as other majors and student statuses.
+#
+#     output_filename : str, optional, default="sankey.html"
+#         The filename where the generated Sankey diagram will be saved as an HTML file.
+#
+#     plot_title : str, optional, default="sankey plot default title"
+#         The title of the Sankey plot displayed at the top of the figure.
+#
+#     Returns:
+#     --------
+#     None
+#         Displays the Sankey diagram and saves it to the specified output file.
+#
+#     Additional Functionality:
+#     -------------------------
+#     1. **Classify End Statuses**:
+#        A helper function `classify_end_status` categorizes students into 'Graduated [major]', 'Graduated Other',
+#        or 'Left College' based on the student's last semester and whether more than three terms have passed since
+#        their last enrollment.
+#
+#     2. **Custom Colors**:
+#        Custom colors are assigned to different disciplines (e.g., 'Biology', 'Other STEM', 'Non-STEM') and graduation
+#        statuses ('Graduated Biology', 'Graduated Other', 'Left College') to enhance the visual representation of flows.
+#
+#     3. **Nodes and Links**:
+#        The function prepares nodes and links representing transitions between disciplines and statuses across semesters.
+#        Each flow represents the number of students moving between stages (e.g., switching majors or graduating).
+#
+#     4. **Legend Creation**:
+#        A legend is dynamically generated to explain the color coding of different disciplines and end statuses.
+#
+#     5. **Data Aggregation**:
+#        Links between nodes are aggregated to summarize the flow of students across different stages. The plot ensures
+#        accurate representation of student counts at each node, with hover information displaying the number of students
+#        for each transition.
+#
+#     6. **Interactive Plot**:
+#        The Sankey diagram is interactive, allowing users to hover over nodes and links to see detailed information.
+#
+#     Example:
+#     --------
+#     data = bio_major_df[bio_major_df['student_ID'].isin(specific_students)].copy()
+#     create_sankey_plot(data, major='Biology', output_filename="biology_sankey.html", plot_title="Biology Student Flow")
+#     """
+#
+#     # Function to convert hex color to RGBA with transparency
+#     def hex_to_rgba(hex_color, alpha=0.4):
+#         rgba = mcolors.to_rgba(hex_color, alpha=alpha)
+#         return f"rgba({int(rgba[0] * 255)}, {int(rgba[1] * 255)}, {int(rgba[2] * 255)}, {rgba[3]})"
+#     def classify_end_status(row, target_major_name, student_last_semester_number, student_last_semester,
+#                             maximum_dataset_term):
+#         # Handle cases where graduation status is flagged
+#         if row['flag_graduation'] == 1:
+#             if row['major_term_name'] == target_major_name:
+#                 return f'Graduated {target_major_name}'
+#             else:
+#                 return 'Graduated Other'
+#         # Handle cases where the student is considered inactive (left college)
+#         elif row['semester_number'] == student_last_semester_number[row['student_ID']] and \
+#                 ((maximum_dataset_term - student_last_semester[row['student_ID']]) > 4):
+#             return 'Left College'
+#         # Return the discipline (or handle cases where 'discipline' might be NaN)
+#         else:
+#             return row['discipline'] if pd.notna(row['discipline']) else 'Unknown Discipline'
+#
+#     # Display the number of unique students
+#     print(f"Unique Students: {len(data['student_ID'].unique())}")
+#
+#     # Define the categories (majors) in 'major_term_name' and add placeholders for end points
+#     data['curriculum'] = pd.Categorical(data['major_term_name'], categories=[
+#         'Biology', 'Psychology', 'Interdisciplinary Studies', 'Computer Science', 'Other',
+#         'Exercise Science', 'Chemistry', 'Nursing', 'Neuroscience',
+#         f'Graduated {major}', 'Graduated Other', 'Left College'], ordered=True)
+#
+#     # Determine each student's maximum semester number
+#     student_last_semester_number = data.groupby('student_ID')['semester_number'].max().to_dict()
+#     student_last_semester = data.groupby('student_ID')['demographics_term'].max().to_dict()
+#
+#     data['discipline'] = data['major_term'].apply(student_success.utilityfunctions.classify_discipline)
+#
+#     data['end_status'] = data.apply(
+#         lambda row: classify_end_status(row, target_major_name=major,
+#                                         student_last_semester_number=student_last_semester_number,
+#                                         student_last_semester=student_last_semester,
+#                                         maximum_dataset_term=data['demographics_term'].max()),
+#         axis=1
+#     )
+#
+#     # Sort the dataset by student_ID, then by semester
+#     data = data.sort_values(by=['student_ID', 'semester_number', 'curriculum'])
+#
+#     # Define custom colors for the disciplines
+#     custom_color_map = {
+#         f'{major}': "#88CCEE",  # Light Blue
+#         'Other STEM': "#DDCC77",  # Tan
+#         'STEM-Related': "#117733",  # Dark Green
+#         'Non-STEM': "#44AA99",  # Light Green
+#         f'Graduated {major}': "#332288",  # Dark Blue
+#         'Graduated Other': "#882255",  # Brown
+#         'Left College': "#CC6677",  # Red
+#         'Interdisciplinary Studies': "#888888",  # Medium Gray
+#     }
+#
+#     # Define end_status categories and corresponding colors
+#     end_statuses = [f"Graduated {major}", "Graduated Other", "Left College"]
+#     end_status_colors = ["#332288", "#882255", "#CC6677"]  # Example colors for each end status
+#
+#     # Define discipline categories and corresponding colors
+#     disciplines = [f"{major}", "Other STEM", "STEM-Related", "Non-STEM", "Interdisciplinary Studies"]
+#     disciplines_colors = [
+#         "#88CCEE",  # Light Blue, {major}
+#         "#DDCC77",  # Tan, Other STEM
+#         "#117733",  # Dark Green, STEM-Related
+#         "#44AA99",  # Light Green, Non-STEM
+#         "#888888",  # Medium Gray, IDS
+#     ]
+#
+#     # Prepare the data for the Sankey diagram
+#     unique_curriculum = data['discipline'].unique()
+#     nodes = [f"Graduated {major}", f"Graduated Other", f"Left College"]
+#
+#     # Add semester nodes
+#     for sem in data['semester_number'].unique():
+#         for curr in unique_curriculum:
+#             if curr not in [f'Graduated {major}', 'Graduated Other', 'Left College']:
+#                 nodes.append(f"{curr} - Sem {sem}")
+#
+#     # Prepare the links for the Sankey diagram
+#     links = {
+#         'source': [],
+#         'target': [],
+#         'value': [],
+#         'color': [],  # Adding colors with transparency
+#         'students': []
+#     }
+#
+#     # Prepare the links for each transition between semesters
+#     for student in data['student_ID'].unique():
+#         student_data = data[data['student_ID'] == student]
+#
+#         for i in range(len(student_data) - 1):
+#             # Get source and target
+#             source_curriculum = student_data.iloc[i]['discipline']
+#             target_curriculum = student_data.iloc[i + 1]['discipline']
+#             source_sem = student_data.iloc[i]['semester_number']
+#             target_sem = student_data.iloc[i + 1]['semester_number']
+#
+#             # Find index of source and target
+#             source_node = nodes.index(f"{source_curriculum} - Sem {source_sem}")
+#             target_node = nodes.index(f"{target_curriculum} - Sem {target_sem}")
+#
+#             # Handle final status transitions (if needed)
+#             if i == len(student_data) - 2:  # For the last transition
+#                 target_curriculum = student_data.iloc[i + 1]['end_status']
+#                 if target_curriculum == f'Graduated {major}':
+#                     target_node = nodes.index(f"Graduated {major}")
+#                 elif target_curriculum == 'Graduated Other':
+#                     target_node = nodes.index("Graduated Other")
+#                 elif target_curriculum == 'Left College':
+#                     target_node = nodes.index("Left College")
+#
+#             # Append to links
+#             links['source'].append(source_node)
+#             links['target'].append(target_node)
+#             links['value'].append(1)  # Each flow is one student
+#             links['students'].append(student)
+#
+#             # Assign the color based on the target node with transparency
+#             target_label = nodes[target_node].split(' - ')[0]  # Get the target discipline
+#             hex_color = custom_color_map.get(target_label, "#888888")  # Default to gray if not found
+#             rgba_color = hex_to_rgba(hex_color, alpha=0.4)  # Set alpha to 0.4 for transparency
+#             links['color'].append(rgba_color)
+#
+#     # Convert links to a DataFrame for easier aggregation
+#     links_df = pd.DataFrame(links)
+#
+#     # Group by source and target to aggregate the flows
+#     grouped_links = links_df.groupby(['source', 'target', 'color']).agg({'value': 'sum'}).reset_index
+#
+#     # Step 1: Calculate the actual number of unique students per node
+#     node_counts = data.groupby(['discipline', 'semester_number'])['student_ID'].nunique().reset_index()
+#
+#     # Map the correct number of students to each node
+#     node_value_map = dict(node_counts['student_ID'])
+#
+#     # Step 2: Prepare the links and ensure node values reflect the correct counts
+#     nodes = [f"Graduated {major}", f"Graduated Other", f"Left College"]
+#
+#     # Add semester nodes
+#     for sem in data['semester_number'].unique():
+#         for curr in unique_curriculum:
+#             if curr not in [f'Graduated {major}', 'Graduated Other', 'Left College']:
+#                 nodes.append(f"{curr} - Sem {sem}")
+#
+#     # Prepare the links for the Sankey diagram
+#     links = {
+#         'source': [],
+#         'target': [],
+#         'value': [],
+#         'color': [],  # Adding colors with transparency
+#         'students': []
+#     }
+#
+#     # this set can be used to debug, to determine if certain students are lost in the flow processing
+#     students_reaching_final_status = set()
+#
+#     # Prepare the links for each transition between semesters
+#     for student in data['student_ID'].unique():
+#         student_data = data[data['student_ID'] == student]
+#
+#         # Case 1: Student has only one term (no transitions)
+#         if len(student_data) == 1:
+#             # For students with a single term, directly append to target nodes as "Left College" or other end statuses
+#             source_curriculum = student_data.iloc[0]['discipline']
+#             source_sem = student_data.iloc[0]['semester_number']
+#             end_status = student_data.iloc[0]['end_status']
+#
+#             # Find index of the source node
+#             source_node = nodes.index(f"{source_curriculum} - Sem {source_sem}")
+#
+#             # Set the appropriate end status target node
+#             if end_status == f'Graduated {major}':
+#                 target_node = nodes.index(f"Graduated {major}")
+#             elif end_status == 'Graduated Other':
+#                 target_node = nodes.index("Graduated Other")
+#             elif end_status == 'Left College':
+#                 target_node = nodes.index("Left College")
+#             else:
+#                 continue  # Skip if the end status is not recognized
+#
+#             # Append to links
+#             links['source'].append(source_node)
+#             links['target'].append(target_node)
+#             links['value'].append(1)  # Each flow is one student
+#             links['students'].append(student)
+#
+#             # Assign the color based on the target node with transparency
+#             target_label = nodes[target_node].split(' - ')[0]  # Get the target discipline
+#             hex_color = custom_color_map.get(target_label, "#888888")  # Default to gray if not found
+#             rgba_color = hex_to_rgba(hex_color, alpha=0.4)  # Set alpha to 0.4 for transparency
+#             links['color'].append(rgba_color)
+#
+#         # Case 2: Student has more than one term (normal flow)
+#         else:
+#             for i in range(len(student_data) - 1):
+#                 # Get source and target
+#                 source_curriculum = student_data.iloc[i]['discipline']
+#                 target_curriculum = student_data.iloc[i + 1]['discipline']
+#                 source_sem = student_data.iloc[i]['semester_number']
+#                 target_sem = student_data.iloc[i + 1]['semester_number']
+#
+#                 # Find index of source and target
+#                 source_node = nodes.index(f"{source_curriculum} - Sem {source_sem}")
+#                 target_node = nodes.index(f"{target_curriculum} - Sem {target_sem}")
+#
+#                 # Handle final status transitions (if needed)
+#                 if i == len(student_data) - 2:  # For the last transition
+#                     target_curriculum = student_data.iloc[i + 1]['end_status']
+#                     if target_curriculum == f'Graduated {major}':
+#                         target_node = nodes.index(f"Graduated {major}")
+#                     elif target_curriculum == 'Graduated Other':
+#                         target_node = nodes.index("Graduated Other")
+#                     elif target_curriculum == 'Left College':
+#                         target_node = nodes.index("Left College")
+#
+#                     # Students who continue to take classes up to end of dataset should not be excluded. Instead, I have them fall into categories based on their
+#                     # active curriculum at that final term.
+#                     else:
+#                         # Dynamically add the end status as a target node if it's not recognized
+#                         if target_curriculum not in nodes:
+#                             nodes.append(target_curriculum)
+#                         target_node = nodes.index(target_curriculum)
+#
+#                 # Skip circular transitions
+#                 if source_node == target_node and target_node not in [nodes.index(f"Graduated {major}"),
+#                                                                       nodes.index("Graduated Other"),
+#                                                                       nodes.index("Left College")]:
+#                     continue
+#
+#                 # Append to links
+#                 links['source'].append(source_node)
+#                 links['target'].append(target_node)
+#                 links['value'].append(1)  # Each flow is one student
+#                 links['students'].append(student)
+#
+#                 # Assign the color based on the target node with transparency
+#                 target_label = nodes[target_node].split(' - ')[0]  # Get the target discipline
+#                 hex_color = custom_color_map.get(target_label, "#888888")  # Default to gray if not found
+#                 rgba_color = hex_to_rgba(hex_color, alpha=0.4)  # Set alpha to 0.4 for transparency
+#                 links['color'].append(rgba_color)
+#
+#         # Inside the code for appending final status transitions. This is used for debugging and can be compared to lists of student_ID
+#         # who are present in the first node.
+#         if target_curriculum in [f'Graduated {major}', 'Graduated Other', 'Left College']:
+#             students_reaching_final_status.add(student)
+#
+#     # Convert links to a DataFrame for easier aggregation
+#     links_df = pd.DataFrame(links)
+#
+#     # Group by source and target to aggregate the flows
+#     grouped_links = links_df.groupby(['source', 'target', 'color']).agg({'value': 'sum'}).reset_index()
+#
+#     # Step 3: Update the node hovertemplate to display the correct student counts from node_value_map
+#     node_labels_with_values = [f"{node}: {node_value_map.get(node, '0')} students" for node in nodes]
+#
+#     # Adding customdata to store source and target labels for hovertemplate
+#     grouped_links['custom_source_label'] = [nodes[src] for src in
+#                                             grouped_links['source']]  # Get the label for each source node
+#     grouped_links['custom_target_label'] = [nodes[tgt] for tgt in
+#                                             grouped_links['target']]  # Get the label for each target node
+#
+#     # Create the Sankey diagram with aggregated flows
+#     fig = go.Figure(go.Sankey(
+#         node=dict(
+#             pad=0,
+#             thickness=20,
+#             line=dict(color="black", width=1),
+#             label=["" for node in nodes],  # hide labels in background graph
+#             color=[custom_color_map.get(node.split(' - ')[0], "#888888") for node in nodes],  # Custom colors for nodes
+#             hovertemplate="%{value}",  # Custom hover info for nodes
+#             hoverlabel=dict(
+#                 bgcolor="white",  # Background color of hover label for nodes
+#                 font=dict(size=20)  # Set the font size of hover text
+#             )
+#         ),
+#         link=dict(
+#             source=grouped_links['source'],  # Aggregated source indices
+#             target=grouped_links['target'],  # Aggregated target indices
+#             value=grouped_links['value'],  # Aggregated flow values
+#             color=grouped_links['color'],  # Flow colors with transparency
+#             label=["" for node in nodes],  # hide labels in background graph
+#             hovertemplate="%{value}",  # Custom hover info for nodes
+#             hoverlabel=dict(
+#                 bgcolor="white",  # Background color of hover label for links
+#                 font=dict(size=20)  # Set the font size of hover text
+#             )
+#         )
+#     ))
+#
+#     # Add invisible scatter points to create a legend for end statuses
+#     for i, status in enumerate(end_statuses):
+#         fig.add_trace(go.Scatter(
+#             x=[None],  # Not showing on the x-axis
+#             y=[None],  # Not showing on the y-axis
+#             mode='markers',
+#             marker=dict(size=100, color=end_status_colors[i]),  # Color corresponding to end_status
+#             name=status  # Legend label
+#         ))
+#
+#     # Add invisible scatter points to create a legend for disciplines
+#     for i, discipline in enumerate(disciplines):
+#         fig.add_trace(go.Scatter(
+#             x=[None],  # Not showing on the x-axis
+#             y=[None],  # Not showing on the y-axis
+#             mode='markers',
+#             marker=dict(size=100, color=disciplines_colors[i]),  # Color corresponding to discipline
+#             name=discipline  # Legend label
+#         ))
+#
+#     # Update layout to improve readability and include the legend below the figure
+#     fig.update_layout(
+#         title_text=plot_title,
+#         font_size=20,
+#         height=1000,  # Increase height to space out the diagram
+#         showlegend=True,  # Enable the legend
+#         legend=dict(
+#             orientation="h",  # Horizontal orientation for the legend
+#             yanchor="bottom",
+#             x=0.2,  # Center the legend horizontally
+#             xanchor="center",  # Set anchor to center
+#             y=-0.2,  # Adjust the legend position further down
+#             tracegroupgap=5,
+#             itemwidth=70,
+#             font=dict(size=24)
+#         ),
+#         yaxis=dict(showticklabels=False),  # Hide y-axis ticks and labels
+#         xaxis=dict(showticklabels=False),  # Hide x-axis ticks and labels
+#         annotations=[]  # Clear any default annotations
+#     )
+#
+#     # Display the Sankey diagram
+#     fig.show()
+#
+#     # Save the interactive Sankey diagram as an HTML file
+#     if output_filename:
+#         fig.write_html(output_filename)
