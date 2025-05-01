@@ -24,3 +24,7 @@ from .hazard_plots import (
     plot_course_heatmap,
     prepare_course_heatmap_data,
 )
+
+from .sankey import (
+    create_sankey_plot
+)
