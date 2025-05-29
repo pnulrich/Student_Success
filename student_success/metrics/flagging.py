@@ -39,7 +39,7 @@ def assign_retention_outcomes(df, major_col='major_term', reference_col='major_t
         ).astype(int)
     return df
 
-def classify_dropout_term(df, term_col='demographics_term', student_col='student_ID', student_level = 'US', graduation_flag_col='flag_graduation', threshold=3, graduation_target_level='B', graduation_level_col='graduation_level', status_col='graduation_status'):
+def classify_dropout_term(df, term_col='demographics_term', student_col='student_ID', graduation_flag_col='flag_graduation', threshold=3, program_target_level = 'US', graduation_target_level='B', graduation_level_col='graduation_level', graduation_status_col='graduation_status'):
     """
     Flags the last term of enrollment as the dropout point if the student has not graduated at the specified level and does not return for more than `threshold` terms.
 
@@ -57,11 +57,13 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
         pd.Series: Binary indicator per row where 1 = last active term before student dropped out, 0 = otherwise.
     """
     if graduation_flag_col not in df.columns:
-        df['flag_graduation'] = classify_graduation_status(df, grad_col=status_col, grad_level=graduation_level_col, target_level=graduation_target_level)
+        df['flag_graduation'] = classify_graduation_status(df, grad_col=graduation_status_col, level_col=graduation_level_col, target_level=graduation_target_level)
 
     df = df.sort_values(by=[student_col, term_col])
     df['term_gap'] = 0
-    df['dropout_flag'] = 0
+    df['flag_dropout_term'] = 0
+
+    max_term_overall = df[term_col].max()
 
     for student_id, group in df.groupby(student_col):
         if group[graduation_flag_col].max() == 1:
@@ -81,12 +83,21 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
             continue
 
         max_gap = max(deltas)
-        if max_gap > threshold:
+        if max_gap >= threshold:
             max_idx = deltas.index(max_gap)
             row_indices = group.iloc[[max_idx]].index
-            df.loc[row_indices, 'dropout_flag'] = 1
+            df.loc[row_indices, 'flag_dropout_term'] = 1
+        else:
+            last_term = terms[-1]
+            gap = max_term_overall - last_term
+            gap_years = gap // 100
+            gap_sem = gap % 100
+            future_gap = gap_years * 3 + (1 if gap_sem == 1 else 2 if gap_sem == 5 else 3 if gap_sem == 8 else 0)
+            if future_gap >= threshold:
+                df.loc[group.index[-1], 'flag_dropout_term'] = 1
 
-    return df['dropout_flag'].astype(int)
+    return df['flag_dropout_term'].astype(int)
+
 
 
 
