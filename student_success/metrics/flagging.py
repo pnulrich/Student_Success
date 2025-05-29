@@ -73,23 +73,25 @@ def classify_graduation_status(df, grad_col='graduation_status', level_col='grad
     """
     def interpret_and_check(row):
         try:
-            status_values = row[grad_col]
-            level_values = row[level_col]
+            statuses = row[grad_col]
+            levels = row[level_col]
 
-            # Ensure that status and level values are "tuplified" if stored as strings
-            if isinstance(status_values, str):
-                status_values = ast.literal_eval(status_values)
-            if isinstance(level_values, str):
-                level_values = ast.literal_eval(level_values)
+            if isinstance(statuses, str):
+                statuses = statuses.strip("() ").split(",")
+                statuses = [s.strip().strip("'") for s in statuses]
+            if isinstance(levels, str):
+                levels = levels.strip("() ").split(",")
+                levels = [l.strip().strip("'") for l in levels]
 
-            return any(
+            return int(any(
                 status == 'Awarded' and level == target_level
-                for status, level in zip(status_values, level_values)
-            )
+                for status, level in zip(statuses, levels)
+            ))
         except Exception:
-            return False
+            return 0
 
     return df.apply(interpret_and_check, axis=1).astype(int)
+
 
 def classify_graduation_term(df, grad_date_col='graduation_date', level_col='graduation_level',
                              status_col='graduation_status', term_col='demographics_term', target_level='B', use_max_term_logic=True):
