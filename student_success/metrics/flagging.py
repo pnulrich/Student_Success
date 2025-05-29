@@ -39,37 +39,52 @@ def assign_retention_outcomes(df, major_col='major_term', reference_col='major_t
         ).astype(int)
     return df
 
-def classify_dropout_term(df, term_col='demographics_term', student_col='student_ID', graduation_flag_col='flag_graduation', threshold=3, program_target_level = 'US', graduation_target_level='B', graduation_level_col='graduation_level', graduation_status_col='graduation_status'):
+def classify_dropout_term(df, term_col='demographics_term', student_col='student_ID', student_level_col='student_level',
+                             graduation_flag_col='flag_graduation', threshold=3,
+                             program_target_level='US', graduation_target_level='B',
+                             graduation_level_col='graduation_level', graduation_status_col='graduation_status'):
     """
-    Flags the last term of enrollment as the dropout point if the student has not graduated at the specified level and does not return for more than `threshold` terms.
+    Flags the last term of enrollment as the dropout point if the student:
+    - has not graduated at the specified level, and
+    - either does not return for more than `threshold` terms, or
+    - switches from the target level (e.g., bachelor's 'US') to a lower level (e.g., associate 'AS').
 
     Parameters:
         df (pd.DataFrame): DataFrame with student-term records.
         term_col (str): Column indicating term of enrollment (e.g., 'demographics_term').
         student_col (str): Column identifying the student (e.g., 'student_ID').
+        student_level_col (str): Column indicating the level of enrollment (e.g., 'US', 'AS').
         graduation_flag_col (str): Column with binary indicator of graduation (1 = graduated).
-        threshold (int): Number of consecutive missing terms after last known enrollment to define dropout. Default is 3.
-        target_level (str): Graduation level to assess inactivity against (default 'B').
-        level_col (str): Column containing graduation levels.
-        status_col (str): Column containing graduation statuses.
+        threshold (int): Number of consecutive missing terms after last known enrollment to define dropout.
+        program_target_level (str): Program level to assess (default 'US' for bachelor's).
+        graduation_target_level (str): Graduation level to assess (default 'B').
+        graduation_level_col (str): Column containing graduation levels.
+        graduation_status_col (str): Column containing graduation statuses.
 
     Returns:
-        pd.Series: Binary indicator per row where 1 = last active term before student dropped out, 0 = otherwise.
+        pd.Series: Binary indicator per row where 1 = last active term before dropout, 0 = otherwise.
     """
     if graduation_flag_col not in df.columns:
-        df['flag_graduation'] = classify_graduation_status(df, grad_col=graduation_status_col, level_col=graduation_level_col, target_level=graduation_target_level)
+        df['flag_graduation'] = classify_graduation_status(
+            df,
+            grad_col=graduation_status_col,
+            level_col=graduation_level_col,
+            target_level=graduation_target_level
+        )
 
     df = df.sort_values(by=[student_col, term_col])
     df['term_gap'] = 0
     df['flag_dropout_term'] = 0
-
     max_term_overall = df[term_col].max()
 
     for student_id, group in df.groupby(student_col):
         if group[graduation_flag_col].max() == 1:
             continue  # skip graduated students
 
+        group = group.sort_values(by=term_col)
         terms = group[term_col].values
+        levels = group[student_level_col].values
+
         deltas = []
         for i in range(1, len(terms)):
             gap = terms[i] - terms[i - 1]
@@ -77,16 +92,20 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
             gap_sem = gap % 100
             term_gap = gap_years * 3 + (1 if gap_sem == 1 else 2 if gap_sem == 5 else 3 if gap_sem == 8 else 0)
             deltas.append(term_gap)
+
         deltas.append(0)  # No gap after last term
 
-        if len(deltas) == 0:
-            continue
+        for i in range(len(levels) - 1):
+            if levels[i] == program_target_level and levels[i + 1] != program_target_level:
+                df.loc[group.iloc[[i]].index, 'flag_dropout_term'] = 1
+                break
 
-        max_gap = max(deltas)
-        if max_gap >= threshold:
-            max_idx = deltas.index(max_gap)
-            row_indices = group.iloc[[max_idx]].index
-            df.loc[row_indices, 'flag_dropout_term'] = 1
+        if group[student_col].iloc[-1] in df[df['flag_dropout_term'] == 1][student_col].values:
+            continue  # already flagged by level transition
+
+        if max(deltas) >= threshold:
+            max_idx = deltas.index(max(deltas))
+            df.loc[group.iloc[[max_idx]].index, 'flag_dropout_term'] = 1
         else:
             last_term = terms[-1]
             gap = max_term_overall - last_term
@@ -97,6 +116,7 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
                 df.loc[group.index[-1], 'flag_dropout_term'] = 1
 
     return df['flag_dropout_term'].astype(int)
+
 
 
 
