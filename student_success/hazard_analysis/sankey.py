@@ -23,6 +23,19 @@ def hex_to_rgba(hex_color, alpha=0.4):
     rgba = mcolors.to_rgba(hex_color, alpha=alpha)
     return f"rgba({int(rgba[0] * 255)}, {int(rgba[1] * 255)}, {int(rgba[2] * 255)}, {rgba[3]})"
 
+def wrap_plot_title(title, max_length=75):
+    """
+    Inserts a <br> line break into the title string at the nearest space
+    before the max_length character limit for improved layout in narrow displays.
+    """
+    if len(title) <= max_length:
+        return title
+    break_index = title.rfind(' ', 0, max_length)
+    if break_index == -1:
+        break_index = max_length
+    return title[:break_index] + "<br>" + title[break_index+1:]
+
+
 def classify_end_status(row, target_major_name, student_last_semester_number, student_last_semester, maximum_dataset_term):
     """
     Classifies a student's final academic status based on graduation, inactivity, or most recent discipline.
@@ -217,17 +230,31 @@ def create_sankey_plot(data, major, plot_title, output_filename=None):
                                  marker=dict(size=100, color=disciplines_colors[i]), name=discipline))
 
     fig.update_layout(
-        title_text=plot_title,
-        font_size=20,
+        title = dict(
+            text=wrap_plot_title(plot_title),
+            x = 0.45,
+            xanchor = 'center',
+            font = dict(size=20)
+        ),
         height=1000,
+        width =1200,
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", x=0.2, xanchor="center", y=-0.2,
-                    tracegroupgap=5, itemwidth=70, font=dict(size=24)),
+        # legend=dict(orientation="h", yanchor="bottom", x=0.2, xanchor="center", y=-0.2,
+        #             tracegroupgap=5, itemwidth=70, font=dict(size=24)),
+        legend=dict(
+            orientation="v",
+            y=1,
+            x=1.02,  # places it just outside the right edge
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=16)
+        ),
         yaxis=dict(showticklabels=False),
-        xaxis=dict(showticklabels=False),
-        annotations=[]
+            xaxis=dict(showticklabels=False),
+            annotations=[]
     )
 
     fig.show()
     if output_filename:
         fig.write_html(output_filename)
+
