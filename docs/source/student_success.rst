@@ -8,6 +8,7 @@ Subpackages
    :maxdepth: 4
 
    student_success.hazard_analysis
+   student_success.metrics
    student_success.utils
 
 Submodules

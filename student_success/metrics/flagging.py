@@ -6,24 +6,31 @@ and visualization modules.
 """
 
 import pandas as pd
-import ast
 from student_success.utils.constants import STEM_CORE_MAJORS
 
 def assign_retention_outcomes(df, major_col='major_term', reference_col='major_term_earliest',
                               stem_majors=STEM_CORE_MAJORS, flag_stem=True):
     """
-    Assigns binary flags for retention in major and (optionally) retention in STEM fields.
+    Assigns binary flags for major retention and (optionally) STEM field retention.
 
     Parameters:
-        df (pd.DataFrame): Input dataframe.
-        major_col (str): Column indicating student's current major.
-        reference_col (str): Column indicating reference major (e.g., at matriculation).
-        stem_majors (list): List of STEM major codes.
-        flag_stem (bool): Whether to assign STEM retention flag.
+        df (pd.DataFrame): Input DataFrame with student major history.
+        major_col (str): Column indicating current or observed major.
+        reference_col (str): Column indicating original or reference major (e.g., major at matriculation).
+        stem_majors (list): List of STEM major codes used to flag STEM retention (default = STEM_CORE_MAJORS).
+        flag_stem (bool): Whether to assign a STEM retention flag.
 
     Returns:
-        pd.DataFrame: Copy of input dataframe with 'flag_retention_major' and optionally 'flag_retention_STEM'.
-                      Students who did not start in STEM are flagged with -1 in 'flag_retention_STEM'.
+        pd.DataFrame: A copy of the original DataFrame with two new columns:
+            - 'flag_retention_major': 1 if current major matches reference major, else 0.
+            - 'flag_retention_STEM':
+                - 1 if student began in a STEM major and is still in STEM,
+                - 0 if student left STEM,
+                - -1 if student did not start in STEM.
+
+    Notes:
+        - Intended for use in longitudinal student tracking, retention summaries, and visualizations.
+        - Major codes should be standardized and matched to the `stem_majors` list.
     """
     df = df.copy()
     df['flag_retention_major'] = (df[major_col] == df[reference_col]).astype(int)
@@ -44,25 +51,30 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
                              program_target_level='US', graduation_target_level='B',
                              graduation_level_col='graduation_level', graduation_status_col='graduation_status'):
     """
-    Flags the last term of enrollment as the dropout point if the student:
-    - has not graduated at the specified level, and
-    - either does not return for more than `threshold` terms, or
-    - switches from the target level (e.g., bachelor's 'US') to a lower level (e.g., associate 'AS').
+    Flags the final term of a student's enrollment as a dropout point under the following conditions:
+    - The student has not graduated at the specified level, AND
+    - EITHER they do not re-enroll for more than `threshold` terms,
+      OR they transition from the target student level (e.g., bachelor's 'US') to a lower level (e.g., associate 'AS').
 
     Parameters:
-        df (pd.DataFrame): DataFrame with student-term records.
-        term_col (str): Column indicating term of enrollment (e.g., 'demographics_term').
+        df (pd.DataFrame): DataFrame with one row per student per term.
+        term_col (str): Column indicating the academic term (e.g., 'demographics_term'), formatted as YYYYMM.
         student_col (str): Column identifying the student (e.g., 'student_ID').
-        student_level_col (str): Column indicating the level of enrollment (e.g., 'US', 'AS').
-        graduation_flag_col (str): Column with binary indicator of graduation (1 = graduated).
-        threshold (int): Number of consecutive missing terms after last known enrollment to define dropout.
-        program_target_level (str): Program level to assess (default 'US' for bachelor's).
-        graduation_target_level (str): Graduation level to assess (default 'B').
-        graduation_level_col (str): Column containing graduation levels.
-        graduation_status_col (str): Column containing graduation statuses.
+        student_level_col (str): Column indicating student level (e.g., 'US', 'AS').
+        graduation_flag_col (str): Column with binary graduation flag (1 = graduated).
+        threshold (int): Minimum number of terms without enrollment that defines a dropout (default = 3).
+        program_target_level (str): Student level used to assess dropout (default = 'US' for bachelor's level).
+        graduation_target_level (str): Graduation level required to override dropout logic (default = 'B').
+        graduation_level_col (str): Column with graduation level(s), tuple or stringified tuple.
+        graduation_status_col (str): Column with graduation status(es), tuple or stringified tuple.
 
     Returns:
-        pd.Series: Binary indicator per row where 1 = last active term before dropout, 0 = otherwise.
+        pd.Series: Binary indicator (1 = term where dropout occurred, 0 = otherwise).
+
+    Notes:
+        - Students who have graduated at the target level are not considered for dropout.
+        - Dropout is applied to the term preceding a level change or final term if no subsequent activity is found.
+        - Handles malformed tuples and stringified data gracefully.
     """
     if graduation_flag_col not in df.columns:
         df['flag_graduation'] = classify_graduation_status(
@@ -124,17 +136,23 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
 
 def classify_graduation_status(df, grad_col='graduation_status', level_col='graduation_level', target_level='B'):
     """
-    Converts graduation status to binary indicator: 1 = graduated at the target level (e.g., Bachelor's), 0 = not.
+    Determines whether a student graduated at the target degree level based on award status and level.
 
     Parameters:
-        df (pd.DataFrame): DataFrame with columns for graduation status and level.
-        grad_col (str): Column containing a tuple (or stringified tuple) of award statuses.
-        level_col (str): Column containing a tuple (or stringified tuple) of award levels (e.g., 'B', 'M').
-        target_level (str): The graduation level to detect (e.g., 'B' for Bachelor's).
+        df (pd.DataFrame): DataFrame with columns for graduation level and status.
+        grad_col (str): Column containing tuple (or stringified tuple) of graduation statuses.
+        level_col (str): Column containing tuple (or stringified tuple) of degree levels (e.g., 'B', 'M').
+        target_level (str): Degree level to check for (default = 'B' for bachelor's).
 
     Returns:
-        pd.Series: Binary flag where 1 = graduated at the target level.
+        pd.Series: Binary indicator (1 = graduation at target level occurred, 0 = otherwise).
+
+    Notes:
+        - Mixed tuple/string data is normalized.
+        - Students are flagged if any tuple pair (level, status) matches (target_level, 'Awarded').
+        - Handles edge cases with truncated tuples or malformed strings gracefully.
     """
+
     def interpret_and_check(row):
         try:
             statuses = row[grad_col]
@@ -160,32 +178,27 @@ def classify_graduation_status(df, grad_col='graduation_status', level_col='grad
 def classify_graduation_term(df, grad_date_col='graduation_date', level_col='graduation_level',
                              status_col='graduation_status', term_col='demographics_term', target_level='B', use_max_term_logic=True):
     """
-    Identifies whether a student graduated at the specified level in the current term.
+    Determines if a student graduated at the target level in the current term.
 
     Parameters:
         df (pd.DataFrame): DataFrame with one row per student per term.
         grad_date_col (str): Column containing a tuple (or stringified tuple) of graduation dates.
-        level_col (str): Column containing a tuple (or stringified tuple) of degree levels.
+        level_col (str): Column containing a tuple (or stringified tuple) of graduation levels.
         status_col (str): Column containing a tuple (or stringified tuple) of graduation statuses.
-        term_col (str): Column with the current term (int, formatted as YYYYMM).
-        target_level (str): The graduation level to detect (e.g., 'B' for Bachelor's).
+        term_col (str): Column indicating the current term (e.g., 'demographics_term') in YYYYMM format.
+        target_level (str): Degree level to evaluate (default = 'B' for bachelor's).
+        use_max_term_logic (bool): If True, aligns graduation with max enrolled term instead of comparing by date.
 
     Returns:
-        pd.Series: Binary flag where 1 indicates the student graduated at the target level in the current term.
-
-    This function defaults to using max-term logic (use_max_term_logic=True), which:
-        - Expects a column named 'max_course_term' per student.
-        - Flags 1 if any graduation date for the target level is greater than or equal to the max enrolled term.
-        - Avoids mismatches between term codes and actual graduation dates (e.g., May graduations vs Spring 2025).
+        pd.Series: Binary flag (1 = student graduated at target level in this term, 0 = otherwise).
 
     Notes:
-        - If tuple lengths are inconsistent or data are malformed, zip operations may truncate.
-        - If multiple graduation awards exist at the same degree level (e.g., two Bachelor's),
-          this function will return 1 if any matching level/date/status trio aligns with the current term.
-        - This could lead to misinterpretation in rare cases where different majors are earned in different terms.
-        - This function explicitly handles mixed cases where graduation-level columns are native tuples or stringified tuples.
-          See in-line comments for how ast.literal_eval is bypassed on native tuples to avoid exceptions.
-        - Type mismatches caused by float NaNs or mixed-type tuples during aggregation are resolved by converting to strings.
+        - If `use_max_term_logic` is True:
+            - Assumes a 'max_course_term' column exists.
+            - A graduation is flagged if any awarded date for the target level is ≥ that max term.
+        - If False:
+            - Compares parsed graduation dates directly to the term's datetime.
+        - Designed to handle malformed tuples and string representations robustly.
     """
     def interpret_and_check(row):
         try:
