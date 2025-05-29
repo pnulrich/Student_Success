@@ -200,7 +200,7 @@ def calculate_semester_interval(current_term, max_term):
 def assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
                                max_demographics_term):
     """
-    Assign a outcome indicator based on a student's term history.
+    Assign an outcome indicator based on a student's term history.
 
     This function assigns an indicator representing a student's academic
     status in a given term based on their academic history. It considers

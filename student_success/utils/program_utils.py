@@ -45,7 +45,7 @@ def lookup_major_name(major):
     --------
     Full names are determined by the `MAJOR_ABBREV_LABEL` dictionary.
     This dictionary can be modified to reflect your institution's specific majors.
-    Consider processing with replace_premajor_abbreviations befordhand!
+    Consider processing with replace_premajor_abbreviations beforehand!
     """
 
     if pd.isna(major):
