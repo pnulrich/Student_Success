@@ -1,0 +1,180 @@
+# flagging.py
+"""
+Functions to assign categorical flags for student retention, inactivity, and graduation status.
+These are low-level utilities designed for reuse across retention summaries, hazard modeling,
+and visualization modules.
+"""
+
+import pandas as pd
+import ast
+from student_success.utils.constants import STEM_CORE_MAJORS
+
+def assign_retention_outcomes(df, major_col='major_term', reference_col='major_term_earliest',
+                              stem_majors=STEM_CORE_MAJORS, flag_stem=True):
+    """
+    Assigns binary flags for retention in major and (optionally) retention in STEM fields.
+
+    Parameters:
+        df (pd.DataFrame): Input dataframe.
+        major_col (str): Column indicating student's current major.
+        reference_col (str): Column indicating reference major (e.g., at matriculation).
+        stem_majors (list): List of STEM major codes.
+        flag_stem (bool): Whether to assign STEM retention flag.
+
+    Returns:
+        pd.DataFrame: Copy of input dataframe with 'flag_retention_major' and optionally 'flag_retention_STEM'.
+                      Students who did not start in STEM are flagged with -1 in 'flag_retention_STEM'.
+    """
+    df = df.copy()
+    df['flag_retention_major'] = (df[major_col] == df[reference_col]).astype(int)
+
+    if flag_stem:
+        # initialize values with a -1 for all students; thus, default is that students didn't start in STEM
+        df['flag_retention_STEM'] = -1
+
+        # for students who started in a core STEM major during their first term, set retention flag
+        mask = df[reference_col].isin(stem_majors)
+        df.loc[mask, 'flag_retention_STEM'] =(
+            df.loc[mask,major_col].isin(stem_majors)
+        ).astype(int)
+    return df
+
+def classify_inactive(df, last_term_col='last_semester_code', current_term_col='course_term',
+                      threshold=3):
+    """
+    Classifies students as inactive if more than `threshold` terms have elapsed since their last known enrollment.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with one row per student per term.
+        last_term_col (str): Column with each student's last known term (YYYYMM).
+        current_term_col (str): Column with the current term (YYYYMM).
+        threshold (int): Number of terms after which a student is considered inactive.
+
+    Returns:
+        pd.Series: Binary flag where 1 indicates inactive.
+    """
+    term_gap = (df[current_term_col] - df[last_term_col]) // 100 * 3 + (df[current_term_col] - df[last_term_col]) % 100 // 4
+    return (term_gap > threshold).astype(int)
+
+
+
+def classify_graduation_status(df, grad_col='graduation_status', level_col='graduation_level', target_level='B'):
+    """
+    Converts graduation status to binary indicator: 1 = graduated at the target level (e.g., Bachelor's), 0 = not.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with columns for graduation status and level.
+        grad_col (str): Column containing a tuple (or stringified tuple) of award statuses.
+        level_col (str): Column containing a tuple (or stringified tuple) of award levels (e.g., 'B', 'M').
+        target_level (str): The graduation level to detect (e.g., 'B' for Bachelor's).
+
+    Returns:
+        pd.Series: Binary flag where 1 = graduated at the target level.
+    """
+    def interpret_and_check(row):
+        try:
+            status_values = row[grad_col]
+            level_values = row[level_col]
+
+            # Ensure that status and level values are "tuplified" if stored as strings
+            if isinstance(status_values, str):
+                status_values = ast.literal_eval(status_values)
+            if isinstance(level_values, str):
+                level_values = ast.literal_eval(level_values)
+
+            return any(
+                status == 'Awarded' and level == target_level
+                for status, level in zip(status_values, level_values)
+            )
+        except Exception:
+            return False
+
+    return df.apply(interpret_and_check, axis=1).astype(int)
+
+def classify_graduation_term(df, grad_date_col='graduation_date', level_col='graduation_level',
+                             status_col='graduation_status', term_col='demographics_term', target_level='B', use_max_term_logic=True):
+    """
+    Identifies whether a student graduated at the specified level in the current term.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with one row per student per term.
+        grad_date_col (str): Column containing a tuple (or stringified tuple) of graduation dates.
+        level_col (str): Column containing a tuple (or stringified tuple) of degree levels.
+        status_col (str): Column containing a tuple (or stringified tuple) of graduation statuses.
+        term_col (str): Column with the current term (int, formatted as YYYYMM).
+        target_level (str): The graduation level to detect (e.g., 'B' for Bachelor's).
+
+    Returns:
+        pd.Series: Binary flag where 1 indicates the student graduated at the target level in the current term.
+
+    This function defaults to using max-term logic (use_max_term_logic=True), which:
+        - Expects a column named 'max_course_term' per student.
+        - Flags 1 if any graduation date for the target level is greater than or equal to the max enrolled term.
+        - Avoids mismatches between term codes and actual graduation dates (e.g., May graduations vs Spring 2025).
+
+    Notes:
+        - If tuple lengths are inconsistent or data are malformed, zip operations may truncate.
+        - If multiple graduation awards exist at the same degree level (e.g., two Bachelor's),
+          this function will return 1 if any matching level/date/status trio aligns with the current term.
+        - This could lead to misinterpretation in rare cases where different majors are earned in different terms.
+        - This function explicitly handles mixed cases where graduation-level columns are native tuples or stringified tuples.
+          See in-line comments for how ast.literal_eval is bypassed on native tuples to avoid exceptions.
+        - Type mismatches caused by float NaNs or mixed-type tuples during aggregation are resolved by converting to strings.
+    """
+    def interpret_and_check(row):
+        try:
+            levels = row[level_col]
+            dates = row[grad_date_col]
+            statuses = row[status_col]
+
+            if isinstance(levels, str):
+                levels = levels.strip("() ").split(",")
+                levels = [l.strip().strip("'") for l in levels]
+            if isinstance(dates, str):
+                dates = dates.strip("() ").split(",")
+                dates = [d.strip().strip("'") for d in dates]
+            if isinstance(statuses, str):
+                statuses = statuses.strip("() ").split(",")
+                statuses = [s.strip().strip("'") for s in statuses]
+
+            awarded_indices = [i for i, lvl in enumerate(levels)
+                               if lvl == target_level and i < len(statuses) and statuses[i] == 'Awarded']
+
+            if not awarded_indices:
+                return 0
+
+            matching_dates = []
+            for i in awarded_indices:
+                if i < len(dates):
+                    val = dates[i]
+                    if not isinstance(val, str):
+                        val = str(val)
+                    val = val.strip()
+                    if len(val) < 6 or val.lower() in {'nan', 'none', ''}:
+                        continue
+                    matching_dates.append(val)
+
+            parsed_dates = pd.to_datetime(matching_dates, errors='coerce')
+
+            if use_max_term_logic:
+                if 'max_course_term' not in row or pd.isna(row['max_course_term']):
+                    return 0
+                max_term = int(row['max_course_term'])
+                term_date = pd.to_datetime(str(max_term), format='%Y%m', errors='coerce')
+                return int(row[term_col] == max_term and any(pd.notna(d) and d >= term_date for d in parsed_dates))
+            else:
+                term_date = pd.to_datetime(str(row[term_col]), format='%Y%m', errors='coerce')
+                return int(any(pd.notna(d) and d == term_date for d in parsed_dates))
+
+        except Exception as e:
+            print(f"[DEBUG] Exception for {row['student_ID']}: {e}")
+            print("Row data:\n", row)
+            return 0
+
+    return df.apply(interpret_and_check, axis=1).astype(int)
+
+
+
+
+# Placeholder for additional flagging logic to be ported from hazard_utils
+# e.g., assign_dropout_flags, classify_retention_in_major
