@@ -9,7 +9,10 @@ Submodules included:
 - grades, time_utils, matriculation, etc.: Additional support modules.
 """
 
-from .validation import validate_columns
+from .validation import (
+    validate_columns,
+    safe_parse_tuple
+)
 
 from .demographics_utils import (
     set_up_demographic_flags,

@@ -7,6 +7,7 @@ and visualization modules.
 
 import pandas as pd
 from student_success.utils.constants import STEM_CORE_MAJORS
+from student_success.utils.validation import safe_parse_tuple
 
 def assign_retention_outcomes(df, major_col='major_term', reference_col='major_term_earliest',
                               stem_majors=STEM_CORE_MAJORS, flag_stem=True):
@@ -131,9 +132,6 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
 
 
 
-
-
-
 def classify_graduation_status(df, grad_col='graduation_status', level_col='graduation_level', target_level='B'):
     """
     Determines whether a student graduated at the target degree level based on award status and level.
@@ -158,12 +156,11 @@ def classify_graduation_status(df, grad_col='graduation_status', level_col='grad
             statuses = row[grad_col]
             levels = row[level_col]
 
-            if isinstance(statuses, str):
-                statuses = statuses.strip("() ").split(",")
-                statuses = [s.strip().strip("'") for s in statuses]
-            if isinstance(levels, str):
-                levels = levels.strip("() ").split(",")
-                levels = [l.strip().strip("'") for l in levels]
+            statuses = safe_parse_tuple(statuses)
+            levels = safe_parse_tuple(levels)
+
+            if len(statuses) != len(levels):
+                print(f"[WARN] Tuple length mismatch: {row['student_ID']}")
 
             return int(any(
                 status == 'Awarded' and level == target_level
@@ -176,7 +173,8 @@ def classify_graduation_status(df, grad_col='graduation_status', level_col='grad
 
 
 def classify_graduation_term(df, grad_date_col='graduation_date', level_col='graduation_level',
-                             status_col='graduation_status', term_col='demographics_term', target_level='B', use_max_term_logic=True):
+                             status_col='graduation_status', term_col='demographics_term', target_level='B',
+                             use_max_term_logic=True):
     """
     Determines if a student graduated at the target level in the current term.
 
@@ -201,20 +199,11 @@ def classify_graduation_term(df, grad_date_col='graduation_date', level_col='gra
         - Designed to handle malformed tuples and string representations robustly.
     """
     def interpret_and_check(row):
-        try:
-            levels = row[level_col]
-            dates = row[grad_date_col]
-            statuses = row[status_col]
 
-            if isinstance(levels, str):
-                levels = levels.strip("() ").split(",")
-                levels = [l.strip().strip("'") for l in levels]
-            if isinstance(dates, str):
-                dates = dates.strip("() ").split(",")
-                dates = [d.strip().strip("'") for d in dates]
-            if isinstance(statuses, str):
-                statuses = statuses.strip("() ").split(",")
-                statuses = [s.strip().strip("'") for s in statuses]
+        try:
+            levels = safe_parse_tuple(row[level_col])
+            dates = safe_parse_tuple(row[grad_date_col])
+            statuses = safe_parse_tuple(row[status_col])
 
             awarded_indices = [i for i, lvl in enumerate(levels)
                                if lvl == target_level and i < len(statuses) and statuses[i] == 'Awarded']
@@ -222,17 +211,7 @@ def classify_graduation_term(df, grad_date_col='graduation_date', level_col='gra
             if not awarded_indices:
                 return 0
 
-            matching_dates = []
-            for i in awarded_indices:
-                if i < len(dates):
-                    val = dates[i]
-                    if not isinstance(val, str):
-                        val = str(val)
-                    val = val.strip()
-                    if len(val) < 6 or val.lower() in {'nan', 'none', ''}:
-                        continue
-                    matching_dates.append(val)
-
+            matching_dates = [dates[i] for i in awarded_indices if i < len(dates)]
             parsed_dates = pd.to_datetime(matching_dates, errors='coerce')
 
             if use_max_term_logic:
@@ -240,9 +219,11 @@ def classify_graduation_term(df, grad_date_col='graduation_date', level_col='gra
                     return 0
                 max_term = int(row['max_course_term'])
                 term_date = pd.to_datetime(str(max_term), format='%Y%m', errors='coerce')
+
                 return int(row[term_col] == max_term and any(pd.notna(d) and d >= term_date for d in parsed_dates))
             else:
                 term_date = pd.to_datetime(str(row[term_col]), format='%Y%m', errors='coerce')
+
                 return int(any(pd.notna(d) and d == term_date for d in parsed_dates))
 
         except Exception as e:
@@ -253,7 +234,23 @@ def classify_graduation_term(df, grad_date_col='graduation_date', level_col='gra
     return df.apply(interpret_and_check, axis=1).astype(int)
 
 
+def classify_graduation_in_major(df, major_col='major_graduation', target_major='BIO'):
+    """
+    Flags students whose graduation was in the specified target major.
 
+    Parameters:
+        df (pd.DataFrame): DataFrame containing a 'major_graduation' column with final awarded majors.
+        major_col (str): Column indicating graduation majors (e.g., a tuple of majors).
+        target_major (str): Major of interest.
+
+    Returns:
+        pd.Series: Binary flag where 1 = graduated in target major, 0 = otherwise.
+    """
+    def flag_graduated_in_target(row):
+        majors = safe_parse_tuple(row[major_col])
+        return int(target_major in majors)
+
+    return df.apply(flag_graduated_in_target, axis=1).astype(int)
 
 # Placeholder for additional flagging logic to be ported from hazard_utils
 # e.g., assign_dropout_flags, classify_retention_in_major
