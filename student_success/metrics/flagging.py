@@ -252,5 +252,22 @@ def classify_graduation_in_major(df, major_col='major_graduation', target_major=
 
     return df.apply(flag_graduated_in_target, axis=1).astype(int)
 
+def classify_graduation_in_STEM(df, major_col='major_graduation'):
+    """
+    Flags students whose graduation was in a core STEM major.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame containing a 'major_graduation' column with final awarded majors.
+        major_col (str): Column indicating graduation majors (e.g., a tuple of majors).
+
+    Returns:
+        pd.Series: Binary flag where 1 = graduated in a core STEM major, 0 = otherwise.
+    """
+    def flag_graduated_in_STEM(row):
+        graduation_majors = safe_parse_tuple(row[major_col])
+        return int(any(m in STEM_CORE_MAJORS for m in graduation_majors))
+    return df.apply(flag_graduated_in_STEM, axis=1).astype(int)
+
+
 # Placeholder for additional flagging logic to be ported from hazard_utils
 # e.g., assign_dropout_flags, classify_retention_in_major
