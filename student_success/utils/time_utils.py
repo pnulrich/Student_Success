@@ -269,6 +269,92 @@ def calculate_running_semester_number(demographics_df, student_ID_column='studen
 # Example usage of the function
 # updated_df = calculate_running_semester_number(cleaned_df)
 
+def calculate_semester_interval(semester_A, semester_B):
+    """
+    Calculate the number of academic semesters between semester_A and semester_B.
+
+    This function assumes a forward academic sequence: Spring (01), Summer (05), Fall (08).
+    It raises an error if semester_A is after semester_B.
+
+    Parameters
+    ----------
+    semester_A : int
+        The starting term code in format YYYYMM.
+    semester_B : int
+        The ending term code in format YYYYMM.
+
+    Returns
+    -------
+    int
+        The number of semesters between semester_A and semester_B.
+
+    Raises
+    ------
+    ValueError
+        If semester_A is later than semester_B.
+
+    Examples
+    --------
+    >>> calculate_semester_interval(202308, 202401)
+    1
+    >>> calculate_semester_interval(202308, 202405)
+    2
+    >>> calculate_semester_interval(202308, 202305)
+    ValueError: semester_A (202308) must not be after semester_B (202305)
+    """
+
+    if semester_A > semester_B:
+        raise ValueError(f"Semester A ({semester_A}) must not be after Semester B ({semester_B})")
+
+
+    # Semester sequence within academic year: Fall (08), Spring (01), Summer (05)
+    semester_sequence = ['08', '01', '05']
+
+    current_year = int(str(semester_A)[:4])
+    current_semester = str(semester_A)[4:]
+    max_year = int(str(semester_B)[:4])
+    max_semester = str(semester_B)[4:]
+
+    # Adjust year for Fall semester
+    if current_semester == '08':
+        current_year += 1
+    if max_semester == '08':
+        max_year += 1
+
+    # Calculate total semesters missed
+    semesters_between = 0
+
+    # Start from the current semester's position
+    next_semester_index = semester_sequence.index(current_semester)
+    checking_year = current_year
+
+    while True:
+        # Move to next semester in sequence
+        next_semester_index = (next_semester_index + 1) % 3
+
+        # If we've completed the sequence and are starting a new year
+        if next_semester_index == 0:
+            checking_year += 1
+
+        # Adjust year back if we're constructing a Fall term
+        if semester_sequence[next_semester_index] == '08':
+            term_year = checking_year - 1
+
+        else:
+            term_year = checking_year
+
+        # Construct the next term to check
+        next_term = int(f"{term_year}{semester_sequence[next_semester_index]}")
+
+        # Stop if we've reached or exceeded the max term
+        if next_term > semester_B:
+            break
+
+        # Increment missed semesters
+        semesters_between += 1
+
+    return semesters_between
+
 
 # Define function to combine spring/summer based on presence of both terms
 def combine_spring_summer_terms(df, remove_original = False):
