@@ -252,6 +252,25 @@ def classify_graduation_in_major(df, major_col='major_graduation', target_major=
 
     return df.apply(flag_graduated_in_target, axis=1).astype(int)
 
+def classify_graduation_in_first_major(df, major_col='major_graduation', reference_col='major_term_earliest'):
+    """
+    Flags students whose graduation includes their originally declared major.
+
+    Parameters:
+        df (pd.DataFrame): DataFrame with 'major_graduation' and 'major_term_earliest' columns.
+        major_col (str): Column containing graduation majors (stringified or real tuples/lists).
+        reference_col (str): Column with the student's original major (e.g., at matriculation).
+
+    Returns:
+        pd.Series: Binary flag (1 = graduated in first major, 0 = otherwise)
+    """
+    def flag_graduated_in_first_major(row):
+        graduation_majors = safe_parse_tuple(row[major_col])
+        return int(row[reference_col] in graduation_majors)
+
+    return df.apply(flag_graduated_in_first_major, axis=1).astype(int)
+
+
 def classify_graduation_in_STEM(df, major_col='major_graduation'):
     """
     Flags students whose graduation was in a core STEM major.

@@ -4,5 +4,6 @@ from .flagging import (
     classify_graduation_term,
     classify_graduation_status,
     classify_graduation_in_major,
+    classify_graduation_in_first_major,
     classify_graduation_in_STEM
 )
