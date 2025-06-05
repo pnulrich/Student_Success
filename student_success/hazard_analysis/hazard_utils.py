@@ -1,8 +1,12 @@
-import ast
 import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
-from student_success.utils.validation import validate_columns
+from student_success.utils.validation import validate_columns, safe_parse_tuple
+from student_success.utils.time_utils import calculate_semester_interval
+from student_success.metrics.flagging import (
+    classify_graduation_term,
+    classify_graduation_in_first_major
+)
 
 def prepare_hazard_data(df,
                         target_major,
@@ -76,11 +80,11 @@ def prepare_hazard_data(df,
     ...     df, "BIO", transfer_credit_max=30, transfer_credit_min=10,
     ...     fall_start=1, academic_year_min=2010, academic_year_max=2024
     ... )
-    Number of unique students in BIO with transfer credits from 10 to as many as 30: 100
-    Number of unique students in BIO with transfer credits from 10 to as many as 30 with Fall start: 75
+    [INFO] 100 students started in BIO with 10–30 transfer credits.
+    [INFO] 75 students began in Fall terms.
     """
 
-    #  Confirm that essential fields are present in the input dataframe
+    # Confirm that essential fields are present in the input dataframe
     required_cols = ['major_term_earliest', 'transfer_hours_term', 'demographics_term', 'term_earliest',
                          'academic_year', 'student_ID']
     validate_columns(df.columns, required_cols)
@@ -98,238 +102,320 @@ def prepare_hazard_data(df,
 
     # Filter the main DataFrame
     filtered_df = df[df['student_ID'].isin(student_list)].copy()
-    print(
-        f"Number of unique students in {target_major} with {transfer_credit_min} to {transfer_credit_max} transfer credits: {filtered_df['student_ID'].nunique()}")
+    print(f"[INFO] {len(student_list)} students started in {target_major} "
+          f"with {transfer_credit_min}–{transfer_credit_max} transfer credits.")
 
     # Further filter by Fall start if required
     if fall_start:
         filtered_df = filtered_df[filtered_df['term_earliest'] % 100 == 8].copy()
-        print(
-            f"Number of unique students in {target_major} with {transfer_credit_min} to {transfer_credit_max} transfer credits with Fall start: {filtered_df['student_ID'].nunique()}")
+        print(f"[INFO] {filtered_df['student_ID'].nunique()} students began in Fall terms.")
 
     return filtered_df
 
 
-def calculate_semester_interval(current_term, max_term):
-    """
-    Calculate the number of academic semesters between current_term and max_term.
+# def calculate_semester_interval(current_term, max_term):
+#     """
+#     Calculate the number of academic semesters between current_term and max_term.
+#
+#     This function assumes a forward academic sequence: Spring (01), Summer (05), Fall (08).
+#     It raises an error if current_term is after max_term.
+#
+#     Parameters
+#     ----------
+#     current_term : int
+#         The starting term code in format YYYYMM.
+#     max_term : int
+#         The ending term code in format YYYYMM.
+#
+#     Returns
+#     -------
+#     int
+#         The number of semesters between current_term and max_term.
+#
+#     Raises
+#     ------
+#     ValueError
+#         If current_term is later than max_term.
+#
+#     Examples
+#     --------
+#     >>> calculate_semester_interval(202308, 202401)
+#     1
+#     >>> calculate_semester_interval(202308, 202405)
+#     2
+#     >>> calculate_semester_interval(202308, 202305)
+#     ValueError: current_term (202308) must not be after max_term (202305)
+#     """
+#
+#     if current_term > max_term:
+#         raise ValueError(f"current_term ({current_term}) must not be after max_term ({max_term})")
+#
+#
+#     # Semester sequence within academic year: Fall (08), Spring (01), Summer (05)
+#     semester_sequence = ['08', '01', '05']
+#
+#     current_year = int(str(current_term)[:4])
+#     current_semester = str(current_term)[4:]
+#     max_year = int(str(max_term)[:4])
+#     max_semester = str(max_term)[4:]
+#
+#     # Adjust year for Fall semester
+#     if current_semester == '08':
+#         current_year += 1
+#     if max_semester == '08':
+#         max_year += 1
+#
+#     # Calculate total semesters missed
+#     semesters_missed = 0
+#
+#     # Start from the current semester's position
+#     next_semester_index = semester_sequence.index(current_semester)
+#     checking_year = current_year
+#
+#     while True:
+#         # Move to next semester in sequence
+#         next_semester_index = (next_semester_index + 1) % 3
+#
+#         # If we've completed the sequence and are starting a new year
+#         if next_semester_index == 0:
+#             checking_year += 1
+#
+#         # Adjust year back if we're constructing a Fall term
+#         if semester_sequence[next_semester_index] == '08':
+#             term_year = checking_year - 1
+#
+#         else:
+#             term_year = checking_year
+#
+#         # Construct the next term to check
+#         next_term = int(f"{term_year}{semester_sequence[next_semester_index]}")
+#
+#         # Stop if we've reached or exceeded the max term
+#         if next_term > max_term:
+#             break
+#
+#         # Increment missed semesters
+#         semesters_missed += 1
+#
+#     return semesters_missed
 
-    This function assumes a forward academic sequence: Spring (01), Summer (05), Fall (08).
-    It raises an error if current_term is after max_term.
-
-    Parameters
-    ----------
-    current_term : int
-        The starting term code in format YYYYMM.
-    max_term : int
-        The ending term code in format YYYYMM.
-
-    Returns
-    -------
-    int
-        The number of semesters between current_term and max_term.
-
-    Raises
-    ------
-    ValueError
-        If current_term is later than max_term.
-
-    Examples
-    --------
-    >>> calculate_semester_interval(202308, 202401)
-    1
-    >>> calculate_semester_interval(202308, 202405)
-    2
-    >>> calculate_semester_interval(202308, 202305)
-    ValueError: current_term (202308) must not be after max_term (202305)
-    """
-
-    if current_term > max_term:
-        raise ValueError(f"current_term ({current_term}) must not be after max_term ({max_term})")
-
-
-    # Semester sequence within academic year: Fall (08), Spring (01), Summer (05)
-    semester_sequence = ['08', '01', '05']
-
-    current_year = int(str(current_term)[:4])
-    current_semester = str(current_term)[4:]
-    max_year = int(str(max_term)[:4])
-    max_semester = str(max_term)[4:]
-
-    # Adjust year for Fall semester
-    if current_semester == '08':
-        current_year += 1
-    if max_semester == '08':
-        max_year += 1
-
-    # Calculate total semesters missed
-    semesters_missed = 0
-
-    # Start from the current semester's position
-    next_semester_index = semester_sequence.index(current_semester)
-    checking_year = current_year
-
-    while True:
-        # Move to next semester in sequence
-        next_semester_index = (next_semester_index + 1) % 3
-
-        # If we've completed the sequence and are starting a new year
-        if next_semester_index == 0:
-            checking_year += 1
-
-        # Adjust year back if we're constructing a Fall term
-        if semester_sequence[next_semester_index] == '08':
-            term_year = checking_year - 1
-
-        else:
-            term_year = checking_year
-
-        # Construct the next term to check
-        next_term = int(f"{term_year}{semester_sequence[next_semester_index]}")
-
-        # Stop if we've reached or exceeded the max term
-        if next_term > max_term:
-            break
-
-        # Increment missed semesters
-        semesters_missed += 1
-
-    return semesters_missed
-
-
-def assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
-                               max_demographics_term):
-    """
-    Assign an outcome indicator based on a student's term history.
-
-    This function assigns an indicator representing a student's academic
-    status in a given term based on their academic history. It considers
-    major changes, long enrollment gaps, and graduation status.
-
-    Parameters
-    ----------
-    row : pandas.Series
-        A row from the student's DataFrame representing a specific term.
-    prev_major_term : str or int
-        The student's previous major term.
-    term_earliest : int
-        The student's earliest term of enrollment.
-    first_major : str
-        The student's first declared major.
-    is_last_semester : bool
-        Whether the current row is the student's last semester in the dataset.
-    max_demographics_term : int
-        The maximum demographic term code in the dataset.
-
-    Returns
-    -------
-    int
-        outcome indicator code:
-        - -1 : No change from the previous term
-        - 1  : Left the university
-        - 2  : Graduated in the first major
-        - 3  : Graduated in a different major
-        - 4  : Changed to a different major (still active)
-
-    Notes
-    -----
-    - Assumes that Fall terms are indicated by a semester code ending in `08`.
-    - Gaps longer than 2 terms are considered long absences.
-    - Graduation is determined based on the `flag_graduation_term` and
-      `major_graduation` fields.
-    - 'first_major' is extracted from the earliest term and represents the student's original, declared major.
-    - This function should be used within 'process_student_data()'. This ensures that 'first_major' is correctly derived.
-
-
-    Examples
-    --------
-    >>> inner_row = {
-    ...     'demographics_term': 202308,
-    ...     'flag_graduation_term': 1,
-    ...     'major_graduation': 'BIO'
-    ... }
-    >>> assign_outcome_indicators(row, 202208, 202001, 'BIO', True, 202401)
-    2
-    """
-
-    # Check if the student has missed multiple consecutive semesters
-    def has_long_gap(current_term, max_term, gap_threshold=2):
-        return calculate_semester_interval(current_term, max_term) >= gap_threshold
-
-    # Check if this is the last semester in the available data
-    is_last_available_semester = row['demographics_term'] == max_demographics_term
-
-    # Address a student's last semester status
-    if is_last_semester:
-        if row['flag_graduation_term'] == 1:
-            if row['major_graduation'][0] == first_major:
-                return 2  # Graduated in the first major
-            else:
-                return 3  # Graduated in a different major
-
-        # If the row represents a student's last semester, student does not graduate, and there is a long gap, then mark student as having left college
-        elif has_long_gap(current_term=row['demographics_term'], max_term=max_demographics_term):
-            return 1
-
-    # When a term is equivalent ot the last term code in the dataset, check if student has a long gap
-    if is_last_available_semester:
-        if row['demographics_term'] == term_earliest:
-            return -1  # if the last term in the dataset is the student's first semester, then leave unchanged
-        elif row['major_term'] == prev_major_term and not has_long_gap(current_term=row['demographics_term'],
-                                                                       max_term=max_demographics_term):
-            return -1  # Major unchanged from prior semester and no long gap
-        elif row['major_term'] != prev_major_term and not has_long_gap(current_term=row['demographics_term'],
-                                                                       max_term=max_demographics_term):
-            return 4  # major changed from prior semester and no long gap
-
-    # For the earliest term in a student's record, set all values to -1
-    elif row['demographics_term'] == term_earliest:
-        return -1
-
-        # For all other terms,
-    elif row['major_term'] != prev_major_term:
-        return 4  # Left the major
-    else:
-        return -1  # No specific change (edge case)
+# Deprecated: superseded by refactored logic
+# def assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
+#                                max_demographics_term):
+#     """
+#     Assign an outcome indicator based on a student's term history.
+#
+#     This function assigns an indicator representing a student's academic
+#     status in a given term based on their academic history. It considers
+#     major changes, long enrollment gaps, and graduation status.
+#
+#     Parameters
+#     ----------
+#     row : pandas.Series
+#         A row from the student's DataFrame representing a specific term.
+#     prev_major_term : str or int
+#         The student's previous major term.
+#     term_earliest : int
+#         The student's earliest term of enrollment.
+#     first_major : str
+#         The student's first declared major.
+#     is_last_semester : bool
+#         Whether the current row is the student's last semester in the dataset.
+#     max_demographics_term : int
+#         The maximum demographic term code in the dataset.
+#
+#     Returns
+#     -------
+#     int
+#         outcome indicator code:
+#         - -1 : No change from the previous term
+#         - 1  : Left the university
+#         - 2  : Graduated in the first major
+#         - 3  : Graduated in a different major
+#         - 4  : Changed to a different major (still active)
+#
+#     Notes
+#     -----
+#     - Assumes that Fall terms are indicated by a semester code ending in `08`.
+#     - Gaps longer than 2 terms are considered long absences.
+#     - Graduation is determined based on the `flag_graduation_term` and
+#       `major_graduation` fields.
+#     - 'first_major' is extracted from the earliest term and represents the student's original, declared major.
+#     - This function should be used within 'process_student_data()'. This ensures that 'first_major' is correctly derived.
+#
+#
+#     Examples
+#     --------
+#     >>> inner_row = {
+#     ...     'demographics_term': 202308,
+#     ...     'flag_graduation_term': 1,
+#     ...     'major_graduation': 'BIO'
+#     ... }
+#     >>> assign_outcome_indicators(row, 202208, 202001, 'BIO', True, 202401)
+#     2
+#     """
+#
+#     # Check if the student has missed multiple consecutive semesters
+#     def has_long_gap(current_term, max_term, gap_threshold=2):
+#         #return calculate_semester_interval(current_term, max_term) >= gap_threshold
+#         return calculate_semester_interval(semester_A = current_term, semester_B = max_term) >= gap_threshold
+#
+#     # Check if this is the last semester in the available data
+#     is_last_available_semester = row['demographics_term'] == max_demographics_term
+#
+#     # Address a student's last semester status
+#     if is_last_semester:
+#         if row['flag_graduation_term'] == 1:
+#             if row['major_graduation'][0] == first_major:
+#                 return 2  # Graduated in the first major
+#             else:
+#                 return 3  # Graduated in a different major
+#
+#         # If the row represents a student's last semester, student does not graduate, and there is a long gap, then mark student as having left college
+#         elif has_long_gap(current_term=row['demographics_term'], max_term=max_demographics_term):
+#             return 1
+#
+#     # When a term is equivalent ot the last term code in the dataset, check if student has a long gap
+#     if is_last_available_semester:
+#         if row['demographics_term'] == term_earliest:
+#             return -1  # if the last term in the dataset is the student's first semester, then leave unchanged
+#         elif row['major_term'] == prev_major_term and not has_long_gap(current_term=row['demographics_term'],
+#                                                                        max_term=max_demographics_term):
+#             return -1  # Major unchanged from prior semester and no long gap
+#         elif row['major_term'] != prev_major_term and not has_long_gap(current_term=row['demographics_term'],
+#                                                                        max_term=max_demographics_term):
+#             return 4  # major changed from prior semester and no long gap
+#
+#     # For the earliest term in a student's record, set all values to -1
+#     elif row['demographics_term'] == term_earliest:
+#         return -1
+#
+#         # For all other terms,
+#     elif row['major_term'] != prev_major_term:
+#         return 4  # Left the major
+#     else:
+#         return -1  # No specific change (edge case)
 
 
 # Process each student's data
-def process_student_data(student_df, max_demographics_term):
+# def process_student_data(student_df, max_demographics_term):
+#     """
+#     Process a student's academic data and assign outcome indicators.
+#
+#     This function processes a DataFrame containing a student's academic records,
+#     assigning a outcome indicator for each term based on enrollment history,
+#     major changes, graduation status, and enrollment gaps.
+#
+#     Parameters
+#     ----------
+#     student_df : pandas.DataFrame
+#         A DataFrame containing a student's term-by-term academic data.
+#         Required columns:
+#         - 'major_term_earliest'
+#         - 'term_earliest'
+#         - 'semester_number'
+#         - 'major_term'
+#         - 'demographics_term'
+#     max_demographics_term : int
+#         The maximum demographic term code in the dataset.
+#
+#     Returns
+#     -------
+#     list of int
+#         A list of assigned outcome indicators for each row in `student_df`.
+#
+#     Notes
+#     -----
+#     - Tracks major changes by comparing `major_term` between terms.
+#     - Considers gaps longer than 2 terms as a break in enrollment.
+#     - Assigns indicators:
+#         - -1 : No change from previous term
+#         - 1  : Left the university
+#         - 2  : Graduated in the first major
+#         - 3  : Graduated in a different major
+#         - 4  : Changed to a different major (still active)
+#
+#     Examples
+#     --------
+#     >>> student_data_df = pd.DataFrame({
+#     ...     'major_term_earliest': ['BIO'] * 3,
+#     ...     'term_earliest': [202001, 202005, 202008],
+#     ...     'semester_number': [1, 2, 3],
+#     ...     'major_term': ['BIO', 'BIO', 'CHEM'],
+#     ...     'demographics_term': [202001, 202005, 202008]
+#     ... })
+#     >>> process_student_data(student_data_df, 202008)
+#     [-1, -1, 4]
+#     """
+#
+#     required_student_cols = ['major_term_earliest', 'term_earliest', 'semester_number', 'major_term', 'demographics_term']
+#     validate_columns(student_df, required_student_cols)
+#
+#     first_major = student_df.iloc[0]['major_term_earliest']  # First major
+#     term_earliest = student_df['term_earliest'].min()  # earliest semester code
+#     last_semester_number = student_df['semester_number'].max()  # Last semester number
+#     prev_major_term = None  # Track the previous semester's major
+#     # max_demographics_term = student_df['demographics_term'].max()
+#     # print("Max demographics term = ", max_demographics_term)
+#     indicators = []
+#     for i, row in student_df.iterrows():
+#         is_last_semester = row['semester_number'] == last_semester_number
+#         indicator = assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
+#                                                max_demographics_term)
+#         indicators.append(indicator)
+#         prev_major_term = row['major_term']
+#
+#     return indicators
+
+def assign_outcome_indicators(student_df, max_demographics_term):
     """
     Process a student's academic data and assign outcome indicators.
 
     This function processes a DataFrame containing a student's academic records,
-    assigning a outcome indicator for each term based on enrollment history,
-    major changes, graduation status, and enrollment gaps.
+    assigning an outcome indicator for each term based on changes in major,
+    graduation status, and long enrollment gaps.
 
     Parameters
     ----------
     student_df : pandas.DataFrame
         A DataFrame containing a student's term-by-term academic data.
         Required columns:
-        - 'major_term_earliest'
-        - 'term_earliest'
-        - 'semester_number'
-        - 'major_term'
-        - 'demographics_term'
+        - 'major_term_earliest': The student’s original declared major.
+        - 'term_earliest': The student’s first term of enrollment.
+        - 'semester_number': The normalized sequence of academic semesters.
+        - 'major_term': The declared major during each term.
+        - 'demographics_term': Term code for the current record.
+        - 'flag_graduation_term': 1 if student graduates in this term; 0 otherwise.
+        - Optionally: 'flag_graduated_in_first_major' (1 if graduated in original major)
+
     max_demographics_term : int
-        The maximum demographic term code in the dataset.
+        The maximum term in the dataset. Used to assess potential dropouts
+        based on enrollment gaps.
 
     Returns
     -------
     list of int
         A list of assigned outcome indicators for each row in `student_df`.
 
+    Outcome Logic
+    -------------
+    - Each outcome indicator reflects what happened *after* the given term.
+    - Outcome is assigned based on change between the current and previous term,
+      or based on whether the term is the student’s last known semester.
+
+    Indicators:
+        - -1 : No change from prior term; student continues in same major.
+        -  1 : Left the university after this term (inactivity for 2+ terms, no graduation).
+        -  2 : Graduated in their original declared major in this term.
+        -  3 : Graduated in a different major in this term.
+        -  4 : Actively changed major in this term (compared to previous term).
+
     Notes
     -----
-    - Tracks major changes by comparing `major_term` between terms.
-    - Considers gaps longer than 2 terms as a break in enrollment.
-    - Assigns indicators:
-        - -1 : No change from previous term
-        - 1  : Left the university
-        - 2  : Graduated in the first major
-        - 3  : Graduated in a different major
-        - 4  : Changed to a different major (still active)
+    - First term is always coded as -1 since no prior record exists.
+    - Graduation and dropout are only assessed in the student’s final semester.
+    - A long gap is defined as ≥2 terms without further enrollment.
+    - This function supersedes earlier logic in `process_student_data()`.
 
     Examples
     --------
@@ -338,77 +424,356 @@ def process_student_data(student_df, max_demographics_term):
     ...     'term_earliest': [202001, 202005, 202008],
     ...     'semester_number': [1, 2, 3],
     ...     'major_term': ['BIO', 'BIO', 'CHEM'],
-    ...     'demographics_term': [202001, 202005, 202008]
+    ...     'demographics_term': [202001, 202005, 202008],
+    ...     'flag_graduation_term': [0, 0, 0]
     ... })
-    >>> process_student_data(student_data_df, 202008)
+    >>> assign_outcome_indicators(student_data_df, 202008)
     [-1, -1, 4]
     """
 
-    required_student_cols = ['major_term_earliest', 'term_earliest', 'semester_number', 'major_term', 'demographics_term']
-    validate_columns(student_df, required_student_cols)
+    if student_df.empty:
+        return []
 
-    first_major = student_df.iloc[0]['major_term_earliest']  # First major
+    required_cols = [
+        'major_term_earliest', 'term_earliest', 'semester_number',
+        'major_term', 'demographics_term', 'flag_graduation_term'
+    ]
+    validate_columns(student_df.columns, required_cols)
+
+    # Add 'flag_graduated_in_first_major' if not already present
+    if 'flag_graduated_in_first_major' not in student_df.columns:
+        student_df['flag_graduated_in_first_major'] = classify_graduation_in_first_major(student_df)
+
+    # Basic student metadata
     term_earliest = student_df['term_earliest'].min()  # earliest semester code
     last_semester_number = student_df['semester_number'].max()  # Last semester number
-    prev_major_term = None  # Track the previous semester's major
+
     # max_demographics_term = student_df['demographics_term'].max()
     # print("Max demographics term = ", max_demographics_term)
     indicators = []
-    for i, row in student_df.iterrows():
+    major_prev_term = None  # Track the previous semester's major
+
+    # Iterate over semesters
+    for _, row in student_df.iterrows():
         is_last_semester = row['semester_number'] == last_semester_number
-        indicator = assign_outcome_indicators(row, prev_major_term, term_earliest, first_major, is_last_semester,
-                                               max_demographics_term)
-        indicators.append(indicator)
-        prev_major_term = row['major_term']
+        current_term = row['demographics_term']
+        major = row['major_term']
+        graduated = row['flag_graduation_term'] == 1
+        graduated_in_first_major = row['flag_graduated_in_first_major'] == 1
+
+
+        # Check: final record in student history
+        if is_last_semester:
+            if graduated:
+                # Graduated in original major or another major
+                indicators.append(2 if graduated_in_first_major else 3)
+            elif calculate_semester_interval(current_term, max_demographics_term) >= 2:
+                # not graduated and a long enrollment gap --> left university/dropout
+                indicators.append(1)
+            else:
+                # still active
+                indicators.append(-1)
+            major_prev_term = major
+            continue
+
+        # For the earliest term of student records, set value to -1 as a baseline
+        if current_term == term_earliest:
+            indicators.append(-1)
+            major_prev_term = major
+            continue
+
+        if major != major_prev_term:
+            # active but major changed from major in the previous term
+            indicators.append(4)
+            major_prev_term = major
+            continue
+
+        else:
+            # no change
+            indicators.append(-1)
+            major_prev_term = major
+
+
 
     return indicators
 
 
-# convert major_graduation to a tuple (WHY DID I ENCODE major_graduation as a string in the first place?)
-def safe_eval(value):
-    """
-    Safely evaluate a string containing a Python literal expression.
 
-    This function attempts to evaluate a string representation of a Python literal (e.g., lists, dictionaries,
-    integers, floats, booleans). If the input is not a string, it is returned unchanged. If evaluation fails due to
-    invalid syntax or a value error, the function returns `None`.
 
-    Parameters
-    ----------
-    value : str or any
-        The input value to be evaluated. If `value` is a string containing a valid Python literal expression, it is
-        evaluated using `ast.literal_eval`. Non-string inputs are returned as is.
+# # convert major_graduation to a tuple (WHY DID I ENCODE major_graduation as a string in the first place?)
+# def safe_eval(value):
+#     """
+#     Safely evaluate a string containing a Python literal expression.
+#
+#     This function attempts to evaluate a string representation of a Python literal (e.g., lists, dictionaries,
+#     integers, floats, booleans). If the input is not a string, it is returned unchanged. If evaluation fails due to
+#     invalid syntax or a value error, the function returns `None`.
+#
+#     Parameters
+#     ----------
+#     value : str or any
+#         The input value to be evaluated. If `value` is a string containing a valid Python literal expression, it is
+#         evaluated using `ast.literal_eval`. Non-string inputs are returned as is.
+#
+#     Returns
+#     -------
+#     any
+#         The evaluated Python object if the input is a valid Python literal string. Non-string inputs are returned
+#         unchanged. If evaluation fails, `None` is returned.
+#
+#     Notes
+#     -----
+#     - This function uses `ast.literal_eval`, which is safer than `eval` as it only evaluates Python literal expressions.
+#     - Common use cases include converting strings like "{'key': 'value'}" or "[1, 2, 3]" into Python objects.
+#
+#     Examples
+#     --------
+#     >>> safe_eval("{'key': 'value'}")
+#     {'key': 'value'}
+#
+#     >>> safe_eval("[1, 2, 3]")
+#     [1, 2, 3]
+#
+#     >>> safe_eval(42)
+#     42  # Non-string input is returned as is
+#
+#     >>> safe_eval("invalid syntax")
+#     None  # Invalid string returns None
+#     """
+#     try:
+#         return ast.literal_eval(value) if isinstance(value, str) else value
+#     except (ValueError, SyntaxError):
+#         return None  # Or handle in a way appropriate to your use case
 
-    Returns
-    -------
-    any
-        The evaluated Python object if the input is a valid Python literal string. Non-string inputs are returned
-        unchanged. If evaluation fails, `None` is returned.
 
-    Notes
-    -----
-    - This function uses `ast.literal_eval`, which is safer than `eval` as it only evaluates Python literal expressions.
-    - Common use cases include converting strings like "{'key': 'value'}" or "[1, 2, 3]" into Python objects.
-
-    Examples
-    --------
-    >>> safe_eval("{'key': 'value'}")
-    {'key': 'value'}
-
-    >>> safe_eval("[1, 2, 3]")
-    [1, 2, 3]
-
-    >>> safe_eval(42)
-    42  # Non-string input is returned as is
-
-    >>> safe_eval("invalid syntax")
-    None  # Invalid string returns None
-    """
-    try:
-        return ast.literal_eval(value) if isinstance(value, str) else value
-    except (ValueError, SyntaxError):
-        return None  # Or handle in a way appropriate to your use case
-
+# def prepare_and_process_data(student_major_data_df,
+#                              coursework_df,
+#                              target_major,
+#                              transfer_credit_min,
+#                              transfer_credit_max,
+#                              target_major_course_prefix,
+#                              academic_year_min = None,
+#                              academic_year_max = None):
+#     """
+#     Prepares and processes data for hazard analysis.
+#
+#     This function filters, processes, and aggregates student and coursework data
+#     to support hazard analysis, focusing on academic progression, major changes,
+#     and course load statistics for a specified target major.
+#
+#     Parameters
+#     ----------
+#     student_major_data_df : pandas.DataFrame
+#         A DataFrame containing student demographic and academic information.
+#         Required columns include:
+#         - 'student_ID': Unique identifier for students.
+#         - 'demographics_term': Term of demographic data.
+#         - 'major_term': Current major for the term.
+#         - 'major_graduation': Graduation status or term.
+#         - 'semester_number': Sequential outcome indicator.
+#         - 'term_earliest': Earliest term of enrollment.
+#
+#     coursework_df : pandas.DataFrame
+#         A DataFrame containing detailed course information.
+#         Required columns include:
+#         - 'student_ID': Unique identifier for students.
+#         - 'course_prefix': Prefix of the course (e.g., 'BIO').
+#         - 'course_credits': Credit hours for each course.
+#         - 'demographics_term': Term in which the course was taken.
+#
+#     target_major : str
+#         The target major to filter and analyze (e.g., 'BIO').
+#
+#     transfer_credit_max : int
+#         Maximum number of transfer credit hours allowed for students
+#         to be included in the analysis.
+#
+#     target_major_course_prefix : str
+#         The course prefix associated with the target major (e.g., 'BIO').
+#
+#     academic_year_min : int, optional
+#         The minimum academic year to include in the analysis. If None, no
+#         lower limit is applied.
+#
+#     academic_year_max : int, optional
+#         The maximum academic year to include in the analysis. If None, no
+#         upper limit is applied.
+#
+#     Returns
+#     -------
+#     tuple
+#         - filtered_df (pandas.DataFrame): Filtered and processed student data
+#           with added outcome indicators and course load information.
+#         - target_major_courseload_df (pandas.DataFrame): Summary statistics
+#           of target major course load by semester, including mean and standard
+#           deviation for course credits and course counts.
+#
+#     Notes
+#     -----
+#     - Filters students based on target major, transfer credit limits, and fall-term starts.
+#     - Assigns outcome indicators to track progression, major changes, gaps in enrollment,
+#       and graduation status. Only the first major change is flagged.
+#     - Aggregates course load data for the target major, calculating:
+#       - Number of courses taken per semester.
+#       - Total credits earned per semester.
+#       - Summary statistics (mean and standard deviation) for course credits
+#         and course counts by semester.
+#     - Assumes terms ending with '8' correspond to fall semesters.
+#     - Filters and processes coursework data to focus only on the target major.
+#
+#     Examples
+#     --------
+#     >>> filtered_data_df, stats_df = prepare_and_process_data(
+#     ...     student_major_data_df, coursework_df, "BIO", 30, "BIO", 2010, 2024
+#     ... )
+#     >>> print(filtered_data_df.head())
+#     >>> print(stats_df)
+#     """
+#
+#     required_student_cols = [
+#         'major_term_earliest',
+#         'transfer_hours_term',
+#         'demographics_term',
+#         'term_earliest',
+#         'academic_year',
+#         'student_ID',
+#         'major_term',
+#         'major_graduation',
+#         'semester_number'
+#     ]
+#
+#     required_coursework_cols = [
+#         'student_ID',
+#         'course_prefix',
+#         'course_credits',
+#         'course_number',
+#         'course_suffix',
+#         'demographics_term'
+#     ]
+#
+#     validate_columns(student_major_data_df.columns, required_student_cols)
+#     validate_columns(coursework_df.columns, required_coursework_cols)
+#
+#     # Filter student data based on arguments passed to function
+#     filtered_df = prepare_hazard_data(
+#         df=student_major_data_df,
+#         target_major=target_major,
+#         transfer_credit_min=transfer_credit_min,
+#         transfer_credit_max=transfer_credit_max,
+#         fall_start=1,  # Include only students who started in fall terms
+#         academic_year_min = academic_year_min,
+#         academic_year_max = academic_year_max
+#     )
+#
+#
+#     # filtered_df = fil`tered_df[filtered_df['major_term'] == target_major].copy()
+#
+#     print(filtered_df['major_term'].unique())
+#
+#     # Convert 'major_graduation' strings to Python objects (e.g., tuples) for processing
+#     # filtered_df['major_graduation'] = filtered_df['major_graduation'].apply(safe_eval)
+#
+#     # Normalize major_graduation to parsed tuples
+#     filtered_df['major_graduation'] = filtered_df['major_graduation'].apply(safe_parse_tuple)
+#
+#     # Compute graduation flags
+#     filtered_df['flag_graduation_term'] = classify_graduation_term(filtered_df)
+#     if 'flag_graduated_in_first_major' not in filtered_df.columns:
+#         filtered_df['flag_graduated_in_first_major'] = classify_graduation_term(filtered_df)
+#
+#     # Identify the latest term in the dataset for reference in processing
+#     max_demographics_term = filtered_df['demographics_term'].max()
+#
+#     # Assign outcome indicators to track student status by semester
+#     outcome_indicators_dict = (
+#         filtered_df.groupby('student_ID')
+#         .apply(lambda x: assign_outcome_indicators(x.sort_values('semester_number'), max_demographics_term))
+#         .to_dict()  # Convert the grouped results into a dictionary
+#     )
+#
+#     # Map outcome indicators back to the main DataFrame
+#     indicators = []
+#     for _, row in filtered_df.iterrows():
+#         student_id = row['student_ID']
+#         student_group = filtered_df[filtered_df['student_ID'] == student_id]  # Group data by student
+#         student_group_sorted = student_group.sort_values('semester_number')  # Sort by semester
+#         row_index = student_group_sorted.index.get_loc(_)  # Find the row index for the current term
+#         indicator = outcome_indicators_dict[student_id][row_index]  # Retrieve the indicator
+#         indicators.append(indicator)
+#
+#     # Add the computed outcome indicators to the DataFrame
+#     filtered_df['outcome_indicator'] = indicators
+#
+#     # Ensure only the first major change is flagged as 4
+#     # Identify the earliest major change for each student and set all subsequent major changes to -1
+#     filtered_df['earliest_major_change'] = (
+#         filtered_df[filtered_df['outcome_indicator'] == 4]
+#         .groupby('student_ID')['semester_number']
+#         .transform('min')
+#     )
+#     filtered_df['outcome_indicator'] = filtered_df.apply(
+#         lambda current_row: -1 if current_row['outcome_indicator'] == 4 and current_row['semester_number'] != current_row['earliest_major_change'] else current_row['outcome_indicator'],
+#         axis=1
+#     )
+#     # Drop helper column
+#     filtered_df.drop(columns=['earliest_major_change'], inplace=True)
+#
+#     # Calculate course load statistics for the target major
+#     filtered_coursework_df = coursework_df.copy()
+#
+#     # Filter coursework to include only courses in the target major
+#     filtered_coursework_df = filtered_coursework_df[filtered_coursework_df['course_prefix'] == target_major_course_prefix].copy()
+#
+#     # create full course number codes
+#     filtered_coursework_df['course_fullcode'] = filtered_coursework_df['course_prefix'] + filtered_coursework_df['course_number'].astype(
+#         str) + filtered_coursework_df['course_suffix'].fillna('')
+#
+#     # Aggregate course load metrics (number of courses, total credits, course list) by semester
+#     result = filtered_coursework_df.groupby(['student_ID', 'demographics_term']).agg(
+#         semester_courses_target_major=('course_prefix', 'count'),
+#         semester_credits_target_major=('course_credits', 'sum'),
+#         course_list=('course_fullcode', list)  # Collect a list of courses taken
+#     ).reset_index()
+#
+#     # Merge course load data into the filtered student DataFrame
+#     filtered_df = filtered_df.merge(result, on=['student_ID', 'demographics_term'], how='left')
+#     filtered_df['semester_courses_target_major'] = filtered_df['semester_courses_target_major'].fillna(0)
+#     filtered_df['semester_credits_target_major'] = filtered_df['semester_credits_target_major'].fillna(0)
+#
+#     # Calculate descriptive statistics for credit hours by semester
+#     credits_stats = (
+#         filtered_df[
+#             (filtered_df['outcome_indicator'] == -1) &  # Focus on active students
+#             (filtered_df['major_term'] == target_major)  # Students still in the target major
+#         ]
+#         .groupby('semester_number')
+#         .agg(
+#             avg_semester_credits_target_major=('semester_credits_target_major', 'mean'),
+#             std_semester_credits_target_major=('semester_credits_target_major', 'std')
+#         )
+#         .reset_index()
+#     )
+#
+#     # Calculate descriptive statistics for course counts by semester
+#     courses_stats = (
+#         filtered_df[
+#             (filtered_df['outcome_indicator'] == -1) &  # Focus on active students
+#             (filtered_df['major_term'] == target_major)  # Students still in the target major
+#         ]
+#         .groupby('semester_number')
+#         .agg(
+#             avg_semester_courses_target_major=('semester_courses_target_major', 'mean'),
+#             std_semester_courses_target_major=('semester_courses_target_major', 'std'),
+#         )
+#         .reset_index()
+#     )
+#
+#     # Combine credit and course statistics into a single DataFrame
+#     target_major_courseload_df = pd.merge(
+#         credits_stats, courses_stats, on='semester_number', how='inner'
+#     )
+#
+#     return filtered_df, target_major_courseload_df
 
 def prepare_and_process_data(student_major_data_df,
                              coursework_df,
@@ -416,8 +781,8 @@ def prepare_and_process_data(student_major_data_df,
                              transfer_credit_min,
                              transfer_credit_max,
                              target_major_course_prefix,
-                             academic_year_min = None,
-                             academic_year_max = None):
+                             academic_year_min=None,
+                             academic_year_max=None):
     """
     Prepares and processes data for hazard analysis.
 
@@ -453,13 +818,13 @@ def prepare_and_process_data(student_major_data_df,
         to be included in the analysis.
 
     target_major_course_prefix : str
-        The course prefix associated with the target major (e.g., 'BIO').
+        The course prefix associated with the target major (e.g., 'BIOL').
 
-    academic_year_min : int, optional
+    academic_year_min : int, optional (e.g., 2018, YYYY)
         The minimum academic year to include in the analysis. If None, no
         lower limit is applied.
 
-    academic_year_max : int, optional
+    academic_year_max : int, optional (e.g., 2018, YYYY)
         The maximum academic year to include in the analysis. If None, no
         upper limit is applied.
 
@@ -488,7 +853,7 @@ def prepare_and_process_data(student_major_data_df,
     Examples
     --------
     >>> filtered_data_df, stats_df = prepare_and_process_data(
-    ...     student_major_data_df, coursework_df, "BIO", 30, "BIO", 2010, 2024
+    ...     student_major_data_df, coursework_df, "BIO", 30, "BIOL", 2010, 2024
     ... )
     >>> print(filtered_data_df.head())
     >>> print(stats_df)
@@ -525,40 +890,32 @@ def prepare_and_process_data(student_major_data_df,
         transfer_credit_min=transfer_credit_min,
         transfer_credit_max=transfer_credit_max,
         fall_start=1,  # Include only students who started in fall terms
-        academic_year_min = academic_year_min,
-        academic_year_max = academic_year_max
+        academic_year_min=academic_year_min,
+        academic_year_max=academic_year_max
     )
-
-
-    # filtered_df = fil`tered_df[filtered_df['major_term'] == target_major].copy()
 
     print(filtered_df['major_term'].unique())
 
-    # Convert 'major_graduation' strings to Python objects (e.g., tuples) for processing
-    filtered_df['major_graduation'] = filtered_df['major_graduation'].apply(safe_eval)
+    # Normalize major_graduation to parsed tuples
+    filtered_df['major_graduation'] = filtered_df['major_graduation'].apply(safe_parse_tuple)
+
+    # Compute graduation flags
+    filtered_df['flag_graduation_term'] = classify_graduation_term(filtered_df)
+    if 'flag_graduated_in_first_major' not in filtered_df.columns:
+        filtered_df['flag_graduated_in_first_major'] = classify_graduation_in_first_major(filtered_df)
 
     # Identify the latest term in the dataset for reference in processing
     max_demographics_term = filtered_df['demographics_term'].max()
 
     # Assign outcome indicators to track student status by semester
-    outcome_indicators_dict = (
-        filtered_df.groupby('student_ID')
-        .apply(lambda x: process_student_data(x.sort_values('semester_number'), max_demographics_term))
-        .to_dict()  # Convert the grouped results into a dictionary
+    filtered_df = (
+        filtered_df.groupby('student_ID', group_keys=False)
+        .apply(lambda x: x.assign(
+            outcome_indicator=assign_outcome_indicators(x.sort_values('semester_number'), max_demographics_term)
+        ))
     )
 
-    # Map outcome indicators back to the main DataFrame
-    indicators = []
-    for _, row in filtered_df.iterrows():
-        student_id = row['student_ID']
-        student_group = filtered_df[filtered_df['student_ID'] == student_id]  # Group data by student
-        student_group_sorted = student_group.sort_values('semester_number')  # Sort by semester
-        row_index = student_group_sorted.index.get_loc(_)  # Find the row index for the current term
-        indicator = outcome_indicators_dict[student_id][row_index]  # Retrieve the indicator
-        indicators.append(indicator)
 
-    # Add the computed outcome indicators to the DataFrame
-    filtered_df['outcome_indicator'] = indicators
 
     # Ensure only the first major change is flagged as 4
     # Identify the earliest major change for each student and set all subsequent major changes to -1
@@ -567,30 +924,35 @@ def prepare_and_process_data(student_major_data_df,
         .groupby('student_ID')['semester_number']
         .transform('min')
     )
+
+    filtered_df['outcome_indicator_original'] = filtered_df['outcome_indicator']
+
     filtered_df['outcome_indicator'] = filtered_df.apply(
-        lambda current_row: -1 if current_row['outcome_indicator'] == 4 and current_row['semester_number'] != current_row['earliest_major_change'] else current_row['outcome_indicator'],
+        lambda current_row: -1 if current_row['outcome_indicator'] == 4 and current_row['semester_number'] != current_row['earliest_major_change']
+        else current_row['outcome_indicator'],
         axis=1
     )
     # Drop helper column
     filtered_df.drop(columns=['earliest_major_change'], inplace=True)
 
-
-
-    # Calculate course load statistics for the target major
-    filtered_coursework_df = coursework_df.copy()
-
     # Filter coursework to include only courses in the target major
-    filtered_coursework_df = filtered_coursework_df[filtered_coursework_df['course_prefix'] == target_major_course_prefix].copy()
+    filtered_coursework_df = coursework_df.copy()
+    filtered_coursework_df = filtered_coursework_df[
+        filtered_coursework_df['course_prefix'] == target_major_course_prefix
+    ].copy()
 
-    # create full course number codes
-    filtered_coursework_df['course_fullcode'] = filtered_coursework_df['course_prefix'] + filtered_coursework_df['course_number'].astype(
-        str) + filtered_coursework_df['course_suffix'].fillna('')
+    # Create full course number codes (e.g., BIOL1104K)
+    filtered_coursework_df['course_fullcode'] = (
+        filtered_coursework_df['course_prefix'] +
+        filtered_coursework_df['course_number'].astype(str) +
+        filtered_coursework_df['course_suffix'].fillna('')
+    )
 
     # Aggregate course load metrics (number of courses, total credits, course list) by semester
     result = filtered_coursework_df.groupby(['student_ID', 'demographics_term']).agg(
         semester_courses_target_major=('course_prefix', 'count'),
         semester_credits_target_major=('course_credits', 'sum'),
-        course_list=('course_fullcode', list)  # Collect a list of courses taken
+        course_list=('course_fullcode', list)
     ).reset_index()
 
     # Merge course load data into the filtered student DataFrame
@@ -599,10 +961,11 @@ def prepare_and_process_data(student_major_data_df,
     filtered_df['semester_credits_target_major'] = filtered_df['semester_credits_target_major'].fillna(0)
 
     # Calculate descriptive statistics for credit hours by semester
+    # TODO: Assess how this will be impacted by anyone one who changed out of the target major but took target major courses after changing
     credits_stats = (
         filtered_df[
-            (filtered_df['outcome_indicator'] == -1) &  # Focus on active students
-            (filtered_df['major_term'] == target_major)  # Students still in the target major
+            (filtered_df['outcome_indicator'] == -1) &
+            (filtered_df['major_term'] == target_major)
         ]
         .groupby('semester_number')
         .agg(
@@ -615,13 +978,13 @@ def prepare_and_process_data(student_major_data_df,
     # Calculate descriptive statistics for course counts by semester
     courses_stats = (
         filtered_df[
-            (filtered_df['outcome_indicator'] == -1) &  # Focus on active students
-            (filtered_df['major_term'] == target_major)  # Students still in the target major
+            (filtered_df['outcome_indicator'] == -1) &
+            (filtered_df['major_term'] == target_major)
         ]
         .groupby('semester_number')
         .agg(
             avg_semester_courses_target_major=('semester_courses_target_major', 'mean'),
-            std_semester_courses_target_major=('semester_courses_target_major', 'std'),
+            std_semester_courses_target_major=('semester_courses_target_major', 'std')
         )
         .reset_index()
     )
@@ -632,6 +995,7 @@ def prepare_and_process_data(student_major_data_df,
     )
 
     return filtered_df, target_major_courseload_df
+
 
 def calculate_probabilities(input_df):
     """
@@ -681,7 +1045,7 @@ def calculate_probabilities(input_df):
     """
 
     required_input_cols = ['semester_number', 'outcome_indicator', 'student_ID']
-    validate_columns(required_input_cols, required_input_cols)
+    validate_columns(input_df.columns, required_input_cols)
 
     # Calculate the proportions of active students by semester and status
     proportions_df = (

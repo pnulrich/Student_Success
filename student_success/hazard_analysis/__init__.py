@@ -18,6 +18,21 @@ from .hazard_utils import (
 
 )
 
+from student_success.metrics.flagging import (
+    classify_dropout_term,
+    classify_graduation_term,
+    classify_graduation_in_major,
+    classify_graduation_in_STEM,
+    classify_graduation_status
+)
+
+from student_success.utils.validation import (
+    safe_parse_tuple,
+    validate_columns
+)
+
+from student_success.utils.time_utils import (calculate_semester_interval)
+
 from .hazard_plots import (
     plot_hazard_ratio,
     plot_cumulative_probability,
