@@ -42,7 +42,8 @@ from .matriculation_utils import (
 
 from .program_utils import (
     classify_discipline,
-    lookup_major_name
+    lookup_major_name,
+    replace_premajor_abbreviations
 )
 
 from .scrambler import (
@@ -65,7 +66,9 @@ from .constants import (
     DISCIPLINE_LABELS,
     RETENTION_OUTCOME_LABELS,
     RETENTION_OUTCOME_LABEL_DICT,
-    RETENTION_OUTCOME_CODE_DICT
+    RETENTION_OUTCOME_CODE_DICT,
+    SANKEY_DISCIPLINE_GROUPS,
+    SANKEY_DISCIPLINE_COLOR_MAP
 )
 
 from .time_utils import (
@@ -76,6 +79,6 @@ from .time_utils import (
     calculate_running_semester_number,
     combine_spring_summer_terms,
     get_academic_year,
-    get_nth_year_fall_term
-
+    get_nth_year_fall_term,
+    standardize_to_term_code
 )

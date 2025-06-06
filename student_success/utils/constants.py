@@ -132,3 +132,30 @@ RETENTION_OUTCOME_CODE_DICT = {
 
 RETENTION_OUTCOME_LABEL_DICT = {v: k for k, v in RETENTION_OUTCOME_CODE_DICT.items()}
 
+# -------------------------------------------------------------------
+# Sankey Plot Discipline Simplification (for visualization clarity)
+# -------------------------------------------------------------------
+
+SANKEY_DISCIPLINE_GROUPS = {
+    'BIO': 'Target Major',
+    'NEUR': 'STEM-Related',
+    'CHM': 'Other STEM',
+    'CSC': 'STEM-Related',
+    'PSY': 'Non-STEM',
+    'IDS': 'Interdisciplinary Studies',
+    'NUR': 'Non-STEM',
+    # Add others as needed
+}
+
+SANKEY_DISCIPLINE_COLOR_MAP = {
+    'Target Major': "#88CCEE",
+    'STEM-Related': "#117733",
+    'Other STEM': "#DDCC77",
+    'Non-STEM': "#44AA99",
+    'Interdisciplinary Studies': "#888888",
+    'Graduated Other': "#882255",
+    'Graduated BIO': "#332288",   # dynamically injected for different target majors
+    'Left College': "#CC6677",
+    'Unknown': "#999999"
+}
+
