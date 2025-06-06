@@ -1,7 +1,19 @@
 import pandas as pd
+import warnings
 import plotly.graph_objects as go
 import matplotlib.colors as mcolors
-from student_success.utilityfunctions import classify_discipline
+from student_success.utils.program_utils import classify_discipline
+from student_success.utils.time_utils import calculate_semester_interval, standardize_to_term_code
+from student_success.metrics.flagging import (
+    classify_graduation_status,
+    classify_graduation_in_major
+)
+
+from student_success.utils.constants import (
+    SANKEY_DISCIPLINE_GROUPS,
+    SANKEY_DISCIPLINE_COLOR_MAP
+)
+
 
 def hex_to_rgba(hex_color, alpha=0.4):
     """
@@ -36,7 +48,7 @@ def wrap_plot_title(title, max_length=75):
     return title[:break_index] + "<br>" + title[break_index+1:]
 
 
-def classify_end_status(row, target_major_name, student_last_semester_number, student_last_semester, maximum_dataset_term):
+def classify_end_status(row, target_major, target_major_name, student_last_semester_number, student_last_semester, maximum_dataset_term):
     """
     Classifies a student's final academic status based on graduation, inactivity, or most recent discipline.
 
@@ -57,11 +69,11 @@ def classify_end_status(row, target_major_name, student_last_semester_number, st
     --------
     str
         A classification string such as 'Graduated Biology', 'Graduated Other', 'Left College', or a discipline name.
-    """
 
+    """
     if row['flag_graduation'] == 1:
-        if row['major_term_name'] == target_major_name:
-            return f'Graduated {target_major_name}'
+        if row['major_term'] == target_major:
+            return f'Graduated {target_major}'
         else:
             return 'Graduated Other'
     elif row['semester_number'] == student_last_semester_number[row['student_ID']] and \
@@ -70,7 +82,7 @@ def classify_end_status(row, target_major_name, student_last_semester_number, st
     else:
         return row['discipline'] if pd.notna(row['discipline']) else 'Unknown Discipline'
 
-def create_sankey_plot(data, major, plot_title, output_filename=None):
+def create_sankey_plot(data, target_major, plot_title, output_filename=None, refactor = True, target_major_name = None):
     """
     Creates and displays a Sankey diagram to visualize student flow across disciplines and outcomes.
 
@@ -98,6 +110,8 @@ def create_sankey_plot(data, major, plot_title, output_filename=None):
     - Custom color mappings and curriculum category orders are currently hard-coded.
     - Hover tooltips display transition counts, and color legends explain flows by status and discipline.
     """
+    if target_major_name is None:
+        target_major_name = target_major  # fallback if not provided
 
     print(f"Unique Students: {data['student_ID'].nunique()}")
 
@@ -105,40 +119,55 @@ def create_sankey_plot(data, major, plot_title, output_filename=None):
     data['curriculum'] = pd.Categorical(data['major_term_name'], categories=[
         'Biology', 'Psychology', 'Interdisciplinary Studies', 'Computer Science', 'Other',
         'Exercise Science', 'Chemistry', 'Nursing', 'Neuroscience',
-        f'Graduated {major}', 'Graduated Other', 'Left College'], ordered=True)
+        f'Graduated {target_major}', 'Graduated Other', 'Left College'], ordered=True)
 
     student_last_semester_number = data.groupby('student_ID')['semester_number'].max().to_dict()
     student_last_semester = data.groupby('student_ID')['demographics_term'].max().to_dict()
 
-    data['discipline'] = data['major_term'].apply(classify_discipline)
 
-    data['end_status'] = data.apply(
-        lambda row: classify_end_status(
-            row, target_major_name=major,
-            student_last_semester_number=student_last_semester_number,
-            student_last_semester=student_last_semester,
-            maximum_dataset_term=data['demographics_term'].max()),
-        axis=1)
+
+    if refactor:
+        data['discipline'] = data['major_term'].apply(lambda m: classify_sankey_discipline(m, target_major))
+        data = assign_sankey_end_status(data, target_major=target_major)
+
+    if not refactor:
+        #data['discipline'] = data['major_term'].apply(classify_discipline)
+        data['discipline'] = data['major_term'].apply(lambda m: classify_sankey_discipline(m, target_major))
+        data['end_status'] = data.apply(
+             lambda row: classify_end_status(
+                 row, target_major = target_major,
+                 target_major_name=target_major_name,
+                 student_last_semester_number=student_last_semester_number,
+                 student_last_semester=student_last_semester,
+                 maximum_dataset_term=data['demographics_term'].max()),
+             axis=1)
 
     data = data.sort_values(by=['student_ID', 'semester_number', 'curriculum'])
 
     # TODO: parameterize
-    custom_color_map = {
-        f'{major}': "#88CCEE", 'Other STEM': "#DDCC77", 'STEM-Related': "#117733",
-        'Non-STEM': "#44AA99", f'Graduated {major}': "#332288",
-        'Graduated Other': "#882255", 'Left College': "#CC6677",
-        'Interdisciplinary Studies': "#888888"
-    }
+    # custom_color_map = {
+    #     f'{target_major}': "#88CCEE", 'Other STEM': "#DDCC77", 'STEM-Related': "#117733",
+    #     'Non-STEM': "#44AA99", f'Graduated {target_major}': "#332288",
+    #     'Graduated Other': "#882255", 'Left College': "#CC6677",
+    #     'Interdisciplinary Studies': "#888888"
+    # }
 
-    end_statuses = [f"Graduated {major}", "Graduated Other", "Left College"]
+    custom_color_map = SANKEY_DISCIPLINE_COLOR_MAP.copy()
+    custom_color_map.update({
+        f'Graduated {target_major}': "#332288",
+        'Graduated Other': "#882255",
+        'Left College': "#CC6677"
+    })
+
+    end_statuses = [f"Graduated {target_major}", "Graduated Other", "Left College"]
     end_status_colors = ["#332288", "#882255", "#CC6677"]
 
     # TODO: parameterize
-    disciplines = [f"{major}", "Other STEM", "STEM-Related", "Non-STEM", "Interdisciplinary Studies"]
+    disciplines = [f"{target_major}", "Other STEM", "STEM-Related", "Non-STEM", "Interdisciplinary Studies"]
     disciplines_colors = ["#88CCEE", "#DDCC77", "#117733", "#44AA99", "#888888"]
 
     unique_curriculum = data['discipline'].unique()
-    nodes = [f"Graduated {major}", "Graduated Other", "Left College"]
+    nodes = [f"Graduated {target_major}", "Graduated Other", "Left College"]
     for sem in data['semester_number'].unique():
         for curr in unique_curriculum:
             if curr not in nodes:
@@ -206,7 +235,8 @@ def create_sankey_plot(data, major, plot_title, output_filename=None):
             thickness=20,
             line=dict(color="black", width=1),
             label=["" for _ in nodes],
-            color=[custom_color_map.get(node.split(' - ')[0], "#888888") for node in nodes],
+            #color=[custom_color_map.get(node.split(' - ')[0], "#888888") for node in nodes],
+            color=[custom_color_map.get(extract_node_label(node), "#888888") for node in nodes],
             hovertemplate="%{value}",
             hoverlabel=dict(bgcolor="white", font=dict(size=20))
         ),
@@ -225,9 +255,15 @@ def create_sankey_plot(data, major, plot_title, output_filename=None):
         fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
                                  marker=dict(size=100, color=end_status_colors[i]), name=status))
 
-    for i, discipline in enumerate(disciplines):
-        fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
-                                 marker=dict(size=100, color=disciplines_colors[i]), name=discipline))
+    #for i, discipline in enumerate(disciplines):
+        #fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
+        #                         marker=dict(size=100, color=disciplines_colors[i]), name=discipline))
+
+    for discipline, color in custom_color_map.items():
+        if discipline not in end_statuses:
+            fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers',
+                                     marker=dict(size=100, color=color),
+                                     name=SANKEY_DISCIPLINE_GROUPS.get(discipline, discipline)))
 
     fig.update_layout(
         title = dict(
@@ -254,7 +290,98 @@ def create_sankey_plot(data, major, plot_title, output_filename=None):
             annotations=[]
     )
 
+    # Add this line at the end of create_sankey_plot(), just before fig.show()
+    return data
+
     fig.show()
     if output_filename:
         fig.write_html(output_filename)
 
+
+# refactoring on 2025-06-05
+def assign_sankey_end_status(df, target_major, max_term=None, inactivity_gap=4):
+    """
+    Classifies end status for Sankey plots: Graduated [target_major], Graduated Other, Left College, or last known discipline.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Student-term level dataset.
+    target_major_name : str
+        e.g., 'BIO'
+    max_term : int, optional
+        Maximum demographics_term to evaluate inactivity. If None, computed from df.
+    inactivity_gap : int
+        Term gap threshold to flag students as inactive (default = 4).
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Original df with an added 'end_status' column for Sankey plotting.
+
+    Notes
+    -----
+    If your dataset includes custom-coded composite Spring+Summer terms (e.g., 2019.11),
+    these are internally standardized to YYYY05 for interval calculations.
+
+    To ensure correct interpretation, you must pre-filter out "Summer only"
+    records (e.g., 2019.01) when using combined Spring+Summer composite logic.
+    Otherwise, distinct student trajectories may be conflated in downstream analyses.
+    """
+
+    df = df.copy()
+
+    if df['demographics_term'].apply(lambda x: isinstance(x, float) and str(x).endswith(".11")).any() and \
+       df['demographics_term'].apply(lambda x: isinstance(x, float) and str(x).endswith(".01")).any():
+        warnings.warn(
+            "Dataset includes BOTH composite (.11) and summer-only (.01) terms — consider filtering to avoid conflation."
+        )
+
+    # Standardize terms
+    df['standard_term'] = df['demographics_term'].apply(standardize_to_term_code)
+
+    if max_term is None:
+        max_term = df['demographics_term'].max()
+    max_term_standard = standardize_to_term_code(max_term)
+
+    # Graduation flags
+    df['flag_graduation'] = classify_graduation_status(df)
+    df['flag_graduation_in_major'] = classify_graduation_in_major(df, target_major=target_major)
+
+    # Get last standardized term and discipline by student
+    last_term_by_student = df.groupby('student_ID')['standard_term'].max()
+    discipline_by_student = df.sort_values('demographics_term').groupby('student_ID')['discipline'].last()
+
+    def classify(row):
+        sid = row['student_ID']
+        last_term = last_term_by_student[sid]
+        discipline = discipline_by_student.get(sid, 'Unknown Discipline')
+
+        if row['standard_term'] != last_term:
+            return None  # Only classify in last term
+
+        if row['flag_graduation'] == 1:
+            if row['flag_graduation_in_major'] == 1:
+                return f'Graduated {target_major}'
+            else:
+                return 'Graduated Other'
+
+        elif calculate_semester_interval(
+            semester_A=last_term,
+            semester_B=max_term_standard
+        ) > inactivity_gap:
+            return 'Left College'
+
+        else:
+            return discipline if pd.notna(discipline) else 'Unknown Discipline'
+
+    df['end_status'] = df.apply(classify, axis=1)
+    return df
+
+def classify_sankey_discipline(major_abbrev, target_major):
+    if major_abbrev == target_major:
+        return 'Target Major'
+    return SANKEY_DISCIPLINE_GROUPS.get(major_abbrev, 'Unknown')
+
+def extract_node_label(node):
+    return node.split(' - ')[0] if ' - Sem' in node else node
