@@ -240,81 +240,83 @@ def plot_grades(grades_df, letterGrades = False, title = 'Frequency Diagram of G
         plt.show()
 
 
-def calculate_retention_rates(input_df, stem_majors=[], major_list=[], stem = True, student_id_col='student_ID',
-                              major_col='major_term', semester_col='semester_number'):
-    """
-        Calculates the retention rates for a specified major and optionally for STEM majors within a DataFrame.
+# Deprecated: logic now handled by assign_retention_outcomes() in hazard_utils.py
+# def calculate_retention_rates(input_df, stem_majors=[], major_list=[], stem = True, student_id_col='student_ID',
+#                               major_col='major_term', semester_col='semester_number'):
+#     """
+#         Calculates the retention rates for a specified major and optionally for STEM majors within a DataFrame.
+#
+#         Parameters:
+#         - input_df (pd.DataFrame): DataFrame containing the student data.
+#         - stem_majors (list): List of major codes considered as STEM majors.
+#         - major (str): Specific major to analyze. Default 'All' calculates retention for each major in the DataFrame.
+#         - stem (bool): Flag to determine whether to calculate STEM major retention rates. Defaults to True.
+#         - student_id_col (str): Column name for student IDs.
+#         - major_col (str): Column name for students' initial majors at matriculation.
+#         - semester_col (str): Column name for semester number.
+#
+#         Returns:
+#         - pd.DataFrame: The original DataFrame augmented with 'flag_retention_major' and, if `stem` is True, 'retention_STEM'.
+#         The 'flag_retention_major' column indicates whether students are retained in their initial major or the specified major per term.
+#         The 'retention_STEM' column flags students whose major belongs to the specified list of STEM majors, indicating their retention within STEM fields.
+#
+#         Example of usage:
+#         - cleaned_df = calculate_retention_rates(cleaned_df, stem_majors=['CHM', 'BIOL', 'PHYS'], major='BIO')
+#         """
+#     # Calculate retention for the specific major
+#     #if major == 'All':
+#     #    #df['retention_major'] = (df[major_col] == major).astype(int)
+#     #    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
+#     #else:
+#     #    #df['retention_major'] = df.groupby([student_id_col, semester_col])[major_col].transform('first').eq(
+#     #    #    df[major_col]).astype(int)
+#     input_df = input_df[input_df['major_matriculation'].isin(major_list)].copy()
+#     input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
+#
+#     # Calculate retention for STEM majors
+#     if stem:
+#         input_df['flag_retention_STEM'] = input_df[major_col].isin(stem_majors).astype(int)
+#
+#     return input_df
 
-        Parameters:
-        - input_df (pd.DataFrame): DataFrame containing the student data.
-        - stem_majors (list): List of major codes considered as STEM majors.
-        - major (str): Specific major to analyze. Default 'All' calculates retention for each major in the DataFrame.
-        - stem (bool): Flag to determine whether to calculate STEM major retention rates. Defaults to True.
-        - student_id_col (str): Column name for student IDs.
-        - major_col (str): Column name for students' initial majors at matriculation.
-        - semester_col (str): Column name for semester number.
-
-        Returns:
-        - pd.DataFrame: The original DataFrame augmented with 'flag_retention_major' and, if `stem` is True, 'retention_STEM'.
-        The 'flag_retention_major' column indicates whether students are retained in their initial major or the specified major per term.
-        The 'retention_STEM' column flags students whose major belongs to the specified list of STEM majors, indicating their retention within STEM fields.
-
-        Example of usage:
-        - cleaned_df = calculate_retention_rates(cleaned_df, stem_majors=['CHM', 'BIOL', 'PHYS'], major='BIO')
-        """
-    # Calculate retention for the specific major
-    #if major == 'All':
-    #    #df['retention_major'] = (df[major_col] == major).astype(int)
-    #    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
-    #else:
-    #    #df['retention_major'] = df.groupby([student_id_col, semester_col])[major_col].transform('first').eq(
-    #    #    df[major_col]).astype(int)
-    input_df = input_df[input_df['major_matriculation'].isin(major_list)].copy()
-    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
-
-    # Calculate retention for STEM majors
-    if stem:
-        input_df['flag_retention_STEM'] = input_df[major_col].isin(stem_majors).astype(int)
-
-    return input_df
-
-def calculate_retention_rates_from_earliest_term(input_df, stem_majors=[], major_list=[], stem = True, student_id_col='student_ID',
-                              major_col='major_term', semester_col='semester_number'):
-    """
-        Calculates the retention rates for a specified major and optionally for STEM majors within a DataFrame.
-
-        Parameters:
-        - input_df (pd.DataFrame): DataFrame containing the student data.
-        - stem_majors (list): List of major codes considered as STEM majors.
-        - major (str): Specific major to analyze. Default 'All' calculates retention for each major in the DataFrame.
-        - stem (bool): Flag to determine whether to calculate STEM major retention rates. Defaults to True.
-        - student_id_col (str): Column name for student IDs.
-        - major_col (str): Column name for students' initial majors at matriculation.
-        - semester_col (str): Column name for semester number.
-
-        Returns:
-        - pd.DataFrame: The original DataFrame augmented with 'flag_retention_major' and, if `stem` is True, 'retention_STEM'.
-        The 'flag_retention_major' column indicates whether students are retained in their initial major or the specified major per term.
-        The 'retention_STEM' column flags students whose major belongs to the specified list of STEM majors, indicating their retention within STEM fields.
-
-        Example of usage:
-        - cleaned_df = calculate_retention_rates(cleaned_df, stem_majors=['CHM', 'BIOL', 'PHYS'], major='BIO')
-        """
-    # Calculate retention for the specific major
-    #if major == 'All':
-    #    #df['retention_major'] = (df[major_col] == major).astype(int)
-    #    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
-    #else:
-    #    #df['retention_major'] = df.groupby([student_id_col, semester_col])[major_col].transform('first').eq(
-    #    #    df[major_col]).astype(int)
-    input_df = input_df[input_df['major_earliest_term'].isin(major_list)].copy()
-    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_earliest_term']).astype(int)
-
-    # Calculate retention for STEM majors
-    if stem:
-        input_df['flag_retention_STEM'] = input_df[major_col].isin(stem_majors).astype(int)
-
-    return input_df
+# Deprecated: logic now handled by assign_retention_outcomes() in hazard_utils.py
+# def calculate_retention_rates_from_earliest_term(input_df, stem_majors=[], major_list=[], stem = True, student_id_col='student_ID',
+#                               major_col='major_term', semester_col='semester_number'):
+#     """
+#         Calculates the retention rates for a specified major and optionally for STEM majors within a DataFrame.
+#
+#         Parameters:
+#         - input_df (pd.DataFrame): DataFrame containing the student data.
+#         - stem_majors (list): List of major codes considered as STEM majors.
+#         - major (str): Specific major to analyze. Default 'All' calculates retention for each major in the DataFrame.
+#         - stem (bool): Flag to determine whether to calculate STEM major retention rates. Defaults to True.
+#         - student_id_col (str): Column name for student IDs.
+#         - major_col (str): Column name for students' initial majors at matriculation.
+#         - semester_col (str): Column name for semester number.
+#
+#         Returns:
+#         - pd.DataFrame: The original DataFrame augmented with 'flag_retention_major' and, if `stem` is True, 'retention_STEM'.
+#         The 'flag_retention_major' column indicates whether students are retained in their initial major or the specified major per term.
+#         The 'retention_STEM' column flags students whose major belongs to the specified list of STEM majors, indicating their retention within STEM fields.
+#
+#         Example of usage:
+#         - cleaned_df = calculate_retention_rates(cleaned_df, stem_majors=['CHM', 'BIOL', 'PHYS'], major='BIO')
+#         """
+#     # Calculate retention for the specific major
+#     #if major == 'All':
+#     #    #df['retention_major'] = (df[major_col] == major).astype(int)
+#     #    input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_matriculation']).astype(int)
+#     #else:
+#     #    #df['retention_major'] = df.groupby([student_id_col, semester_col])[major_col].transform('first').eq(
+#     #    #    df[major_col]).astype(int)
+#     input_df = input_df[input_df['major_earliest_term'].isin(major_list)].copy()
+#     input_df.loc[:, 'flag_retention_major'] = (input_df['major_term'] == input_df['major_earliest_term']).astype(int)
+#
+#     # Calculate retention for STEM majors
+#     if stem:
+#         input_df['flag_retention_STEM'] = input_df[major_col].isin(stem_majors).astype(int)
+#
+#     return input_df
 
 # def plot_retention_rate(cleaned_df, semester_col='semester_number', major_retention_col='flag_retention_major', stem_retention_col='flag_retention_STEM', stem_plot=True, major_plot=True, major_list=[], xlim_range = None):
 #     """
