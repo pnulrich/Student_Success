@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+import math
 
 def adjust_grad_term(date):
     """
@@ -460,3 +461,59 @@ def combine_spring_summer_terms(df, remove_original = False):
     result_df.drop(columns=['year'], inplace=True)
 
     return result_df
+
+def standardize_to_term_code(term):
+    """
+    Converts float-coded terms (e.g., 202004.11) and standard integers (e.g., 202008)
+    into valid YYYYMM format for interval calculations.
+
+    Mapping:
+    - .10 → Spring → YYYY01
+    - .01 → Summer → YYYY05
+    - .11 → Combined → YYYY05
+    - .00 or valid int → Passed through
+
+    Notes
+    -----
+    This function ensures compatibility with calculate_semester_interval()
+    by mapping custom-encoded floats into valid 6-digit term codes.
+    """
+
+    import pandas as pd
+    import math
+
+    if pd.isna(term) or (isinstance(term, float) and math.isnan(term)):
+        raise ValueError("Encountered NaN or missing term code.")
+
+    if isinstance(term, float):
+        term_str = f"{term:.2f}"
+        year_part, suffix = term_str.split(".")
+        if len(year_part) == 6:
+            year_str = year_part[:4]
+        elif len(year_part) == 8:
+            # Already improperly formed, use first 4 digits
+            year_str = year_part[:4]
+        else:
+            year_str = year_part
+
+        if suffix == "10":
+            return int(f"{year_str}01")
+        elif suffix == "01":
+            return int(f"{year_str}05")
+        elif suffix == "11":
+            return int(f"{year_str}05")
+        elif suffix == "00":
+            return int(f"{year_str}08")
+        else:
+            raise ValueError(f"Unrecognized suffix '{suffix}' in term '{term}'")
+
+    elif isinstance(term, int):
+        if str(term).endswith(("01", "05", "08")):
+            return term
+        else:
+            raise ValueError(f"Invalid MM in standard term code: {term}")
+
+    else:
+        raise ValueError(f"Unsupported term code type: {term} ({type(term)})")
+
+
