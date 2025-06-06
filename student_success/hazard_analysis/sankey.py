@@ -25,20 +25,33 @@ def hex_to_rgba(hex_color, alpha=0.4):
     alpha : float, optional
         Transparency level from 0 (fully transparent) to 1 (fully opaque). Default is 0.4.
 
-    Returns:
-    --------
+    Returns
+    -------
     str
-        An RGBA color string (e.g., 'rgba(136, 204, 238, 0.4)').
+        An RGBA color string compatible with Plotly (e.g., 'rgba(136, 204, 238, 0.4)').
     """
 
     rgba = mcolors.to_rgba(hex_color, alpha=alpha)
     return f"rgba({int(rgba[0] * 255)}, {int(rgba[1] * 255)}, {int(rgba[2] * 255)}, {rgba[3]})"
 
+
 def wrap_plot_title(title, max_length=75):
     """
-    Inserts a <br> line break into the title string at the nearest space
-    before the max_length character limit for improved layout in narrow displays.
+    Wraps long plot titles by inserting a <br> at the nearest space before the max_length.
+
+    Parameters
+    ----------
+    title : str
+        Original plot title text.
+    max_length : int, optional
+        Max character width before attempting a line break. Default = 75.
+
+    Returns
+    -------
+    str
+        Formatted title string with <br> inserted for visual layout in narrow figures.
     """
+
     if len(title) <= max_length:
         return title
     break_index = title.rfind(' ', 0, max_length)
@@ -47,34 +60,45 @@ def wrap_plot_title(title, max_length=75):
     return title[:break_index] + "<br>" + title[break_index+1:]
 
 
-def create_sankey_plot(data, target_major, plot_title, output_filename=None, target_major_name = None):
+def create_sankey_plot(data, target_major, plot_title, output_filename=None, target_major_name=None):
     """
-    Creates and displays a Sankey diagram to visualize student flow across disciplines and outcomes.
+    Generates a Sankey diagram showing longitudinal student flows by discipline and final outcome.
 
-    This function generates an interactive Sankey diagram using Plotly, showing how students in a specified
-    major move through different disciplines across semesters and ultimately graduate, change majors, or leave.
+    The diagram tracks students from a specified target major across semesters, illustrating
+    when and how they persist, switch disciplines, graduate, or leave. Disciplines are grouped
+    by major abbreviation and labeled using SANKEY_DISCIPLINE_GROUPS.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     data : pandas.DataFrame
-        A DataFrame containing student records with columns including 'student_ID', 'major_term',
-        'major_term_name', 'semester_number', 'flag_graduation', and 'demographics_term'.
+        Term-level student records. Required columns include:
+        - student_ID
+        - demographics_term
+        - major_term
+        - semester_number
+        - major_graduation
+        - graduation_status
 
-    major : str
-        The abbreviation of the target major (e.g., 'BIO') to highlight in the Sankey flow.
+    target_major : str
+        The abbreviated major code of interest (e.g., 'BIO').
 
     plot_title : str
-        Title to display at the top of the Sankey diagram.
+        Title displayed at the top of the Sankey diagram.
 
     output_filename : str, optional
-        If specified, saves the Sankey plot as an HTML file to this path.
+        If specified, saves the Plotly figure as an HTML file.
 
-    Notes:
-    ------
-    - This function assumes majors have been normalized (e.g., premajors replaced via PREMAJOR_TO_MAJOR_DICT; see utils.constants.py).
-    - Custom color mappings and curriculum category orders are currently hard-coded.
-    - Hover tooltips display transition counts, and color legends explain flows by status and discipline.
+    target_major_name : str, optional
+        Human-readable name for the target major (e.g., 'Biology').
+        If not provided, defaults to target_major.
+
+    Notes
+    -----
+    - 'discipline' and 'end_status' columns will be added to `data`.
+    - End status is only applied in the final term for each student.
+    - Flows are colored by discipline or end status using SANKEY_DISCIPLINE_COLOR_MAP.
     """
+
     if target_major_name is None:
         target_major_name = target_major  # fallback if not provided
 
@@ -222,31 +246,47 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
 # refactoring on 2025-06-05
 def assign_sankey_end_status(df, target_major, max_term=None, inactivity_gap=4):
     """
-    Classifies end status for Sankey plots: Graduated [target_major], Graduated Other, Left College, or last known discipline.
+    Assigns an 'end_status' column for use in Sankey plots, marking the final state of each student.
+
+    Values include:
+        - Graduated [target_major]
+        - Graduated Other
+        - Left College
+        - Last known discipline (if still active)
 
     Parameters
     ----------
-    df : pd.DataFrame
-        Student-term level dataset.
-    target_major_name : str
-        e.g., 'BIO'
+    df : pandas.DataFrame
+        Term-level student records. Must include:
+        - demographics_term
+        - major_term
+        - discipline (assigned before calling this function)
+        - graduation_status
+        - major_graduation
+
+    target_major : str
+        The abbreviation of the target major (e.g., 'BIO').
+
     max_term : int, optional
-        Maximum demographics_term to evaluate inactivity. If None, computed from df.
-    inactivity_gap : int
-        Term gap threshold to flag students as inactive (default = 4).
+        The maximum term (YYYYMM format) used to evaluate inactivity. Defaults to max(df['demographics_term']).
+
+    inactivity_gap : int, optional
+        Number of terms without enrollment used to classify 'Left College'. Default = 4.
 
     Returns
     -------
-    df : pd.DataFrame
-        Original df with an added 'end_status' column for Sankey plotting.
+    df : pandas.DataFrame
+        Same as input but with a new 'end_status' column.
 
     Notes
     -----
-    If your dataset includes custom-coded composite Spring+Summer terms (e.g., 2019.11),
-    these are internally standardized to YYYY05 for interval calculations.
+    - Only the final term for each student receives a non-null end_status.
+    - Assumes standard term encoding (YYYYMM) or uses `standardize_to_term_code` for composite terms.
+    - Warns if both summer-only (.01) and combined (.11) terms are present in the data.
 
-    To ensure correct interpretation, you must pre-filter out "Summer only"
-    records (e.g., 2019.01) when using combined Spring+Summer composite logic.
+    If your dataset includes custom-coded composite Spring+Summer terms (e.g., 2019.11),
+    these are internally standardized to YYYY05 for interval calculations. To ensure correct interpretation,
+    you must pre-filter out "Summer only" records (e.g., 2019.01) when using combined Spring+Summer composite logic.
     Otherwise, distinct student trajectories may be conflated in downstream analyses.
     """
 
@@ -299,10 +339,55 @@ def assign_sankey_end_status(df, target_major, max_term=None, inactivity_gap=4):
     df['end_status'] = df.apply(classify, axis=1)
     return df
 
+
 def classify_sankey_discipline(major_abbrev, target_major):
+    """
+    Maps a major code to its Sankey discipline group, treating the target major as 'Target Major'.
+
+    Parameters
+    ----------
+    major_abbrev : str
+        Major abbreviation (e.g., 'BIO', 'CHM', 'SOC').
+
+    target_major : str
+        Target major abbreviation to highlight specially in Sankey flow.
+
+    Returns
+    -------
+    str
+        One of: 'Target Major', a Sankey discipline label (e.g., 'Non-STEM'), or 'Unknown'.
+
+    Notes
+    -----
+    Mapping is based on SANKEY_DISCIPLINE_GROUPS defined in utils.constants.
+    """
+
     if major_abbrev == target_major:
         return 'Target Major'
     return SANKEY_DISCIPLINE_GROUPS.get(major_abbrev, 'Unknown')
 
+
 def extract_node_label(node):
+    """
+    Extracts the discipline label from a Sankey node string.
+
+    Parameters
+    ----------
+    node : str
+        Node name, typically in the format 'Discipline - Sem X' or a terminal status.
+
+    Returns
+    -------
+    str
+        The discipline or terminal label (e.g., 'Target Major', 'Graduated BIO').
+
+    Examples
+    --------
+    >>> extract_node_label("Non-STEM - Sem 2")
+    'Non-STEM'
+
+    >>> extract_node_label("Graduated BIO")
+    'Graduated BIO'
+    """
+
     return node.split(' - ')[0] if ' - Sem' in node else node
