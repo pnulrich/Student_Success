@@ -1,19 +1,69 @@
 import pydot
 
 ### helper functions
-def create_course_nodes(course_name, include_did_not_take_next=False, node_pie = False, pie_data = None):
+def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=False, pie_data=None, graph=None):
+    """
+    Create course node (box) and optionally attach a demographic pie node to its right.
 
+    Parameters
+    ----------
+    course_name : str
+        Name of the course.
+    include_did_not_take_next : bool
+        Whether to include a "Did Not Take Next" node.
+    node_pie : bool
+        Whether to render a pie chart next to the course box.
+    pie_data : dict or None
+        Dictionary of {color: proportion} values for the pie chart.
+    graph : pydot.Dot or None
+        The graph object to which nodes/edges are added.
 
-    if node_pie and pie_data:
-        print(f"Creating pie node for {course_name} with pie_data: {pie_data}")
-        course_node = make_pie_node(course_name, pie_data)
-    else:
-        print(f"Creating default box node for {course_name}")
-        course_node = pydot.Node(course_name, shape="box")
-
-    # doing this avoids overwriting of the full dictionary and risk of silent replacement
+    Returns
+    -------
+    dict of pydot.Node
+        A dictionary of named nodes.
+    """
     nodes = {}
+    course_node = pydot.Node(course_name, shape="box", label=course_name)
     nodes["course"] = course_node
+
+    # Create the main course node (always a box)
+    if graph and not node_pie:
+        graph.add_node(course_node)
+
+    # Optional pie chart node
+    if node_pie and pie_data and graph:
+        # add course node
+        graph.add_node(course_node)
+
+        #create pie chart node
+        pie_node_name = f"{course_name}_pie"
+        wedges = [f"{color};{proportion:.2f}" for color, proportion in pie_data.items()]
+        fillcolor = ":".join(wedges)
+
+        pie_node = pydot.Node(
+            pie_node_name,
+            label="",
+            shape="circle",
+            style="wedged",
+            fillcolor=fillcolor,
+            width="0.5",
+            height="0.5",
+            penwidth="0.5",
+            color="gray",
+            margin =0
+        )
+
+        # add pie chart node
+        graph.add_node(pie_node)
+        # Invisible edge to force layout
+        graph.add_edge(pydot.Edge(course_name, pie_node_name, style="invis", weight=100))
+        subgraph = pydot.Subgraph(rank='same')
+        subgraph.add_node(course_node)
+        subgraph.add_node(pie_node)
+        graph.add_subgraph(subgraph)
+
+    # Add outcome nodes
     nodes["pass"] = pydot.Node(f"Pass {course_name}", label="Pass")
     nodes["dfw"] = pydot.Node(f"DFW {course_name}", label="DFW")
     nodes["retake"] = pydot.Node(f"Retake {course_name}", label="Retake")
@@ -22,6 +72,7 @@ def create_course_nodes(course_name, include_did_not_take_next=False, node_pie =
         nodes["did_not_take_next"] = pydot.Node(f"Did Not Take Next {course_name}", label="Did Not Take Next")
 
     return nodes
+
 
 
 def add_course_edges(graph, nodes, stats, include_did_not_take_next=False):
@@ -42,9 +93,9 @@ def add_course_edges(graph, nodes, stats, include_did_not_take_next=False):
 
 def add_alternate_entry(graph, course_name, alt_entry_count):
     node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
-    # graph.add_node(node)
-    # graph.add_edge(pydot.Edge(node, pydot.Node(course_name), label=f"{alt_entry_count}"))
-    graph.add_edge(pydot.Edge(node, course_name, label=f"{alt_entry_count}"))
+    graph.add_node(node)
+    graph.add_edge(pydot.Edge(node, pydot.Node(course_name), label=f"{alt_entry_count}"))
+    # graph.add_edge(pydot.Edge(node, course_name, label=f"{alt_entry_count}"))
 
 def get_combined_course_df(df, ids_1, ids_2):
     return df[df['student_ID'].isin(set(ids_1) | set(ids_2))]
@@ -104,8 +155,12 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
                 pie_data = descriptives.get("first_attempt_proportions")
             else:
                 pie_data = None
-            nodes = create_course_nodes(course_name, include_did_not_take_next=include_did_not_take,
-                                        node_pie=node_pie, pie_data=pie_data)
+            nodes = create_course_nodes(
+                course_name,
+                include_did_not_take_next=include_did_not_take,
+                node_pie=node_pie,
+                pie_data=pie_data,
+                graph = graph)
 
             for node in nodes.values():
                 graph.add_node(node)
@@ -142,8 +197,13 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
             else:
                 pie_data = None
 
-            nodes = create_course_nodes(course_name, include_did_not_take_next=include_did_not_take,
-                                        node_pie=node_pie, pie_data=pie_data)
+            nodes = create_course_nodes(
+                course_name,
+                include_did_not_take_next=include_did_not_take,
+                node_pie=node_pie,
+                pie_data=pie_data,
+                graph=graph)
+
             for node in nodes.values():
                  graph.add_node(node)
 
