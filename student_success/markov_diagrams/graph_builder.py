@@ -3,26 +3,30 @@ import matplotlib.pyplot as plt
 ### helper functions
 def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=False, pie_data=None, graph=None):
     """
-    Create course node (box) and optionally attach a demographic pie node to its right.
+    Creates labeled nodes for a course and its outcomes in a pydot graph.
+
+    Depending on the parameters, this function adds a main course node (optionally with a demographic pie chart image),
+    as well as nodes for "Pass", "DFW", "Retake", and optionally "Did Not Take Next".
 
     Parameters
     ----------
     course_name : str
-        Name of the course.
-    include_did_not_take_next : bool
-        Whether to include a "Did Not Take Next" node.
-    node_pie : bool
-        Whether to render a pie chart next to the course box.
-    pie_data : dict or None
-        Dictionary of {color: proportion} values for the pie chart.
-    graph : pydot.Dot or None
-        The graph object to which nodes/edges are added.
+        Name of the course to use in node labels.
+    include_did_not_take_next : bool, optional
+        Whether to include a "Did Not Take Next" outcome node (default is False).
+    node_pie : bool, optional
+        Whether to include a pie chart image inside the course node (default is False).
+    pie_data : dict, optional
+        Dictionary mapping color names to proportions, used to create pie chart (only if node_pie is True).
+    graph : pydot.Dot, optional
+        The graph to which nodes should be added.
 
     Returns
     -------
-    dict of pydot.Node
-        A dictionary of named nodes.
+    dict
+        Dictionary of pydot.Node objects keyed by role ('course', 'pass', 'dfw', 'retake', 'did_not_take_next').
     """
+
     import os
 
     nodes = {}
@@ -85,6 +89,25 @@ def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=F
 
 
 def add_course_edges(graph, nodes, stats, include_did_not_take_next=False):
+    """
+    Adds outcome edges to a course graph, labeled with performance statistics.
+
+    Edges are drawn from the course node to the "Pass" and "DFW" nodes,
+    from "DFW" to "Retake", and from "Retake" to both "Pass" and "Did Not Take Next"
+    based on provided summary stats.
+
+    Parameters
+    ----------
+    graph : pydot.Dot
+        The graph to which edges should be added.
+    nodes : dict
+        Dictionary of node objects created by `create_course_nodes()`.
+    stats : dict
+        Dictionary containing performance statistics (e.g., DFW rate, repeat pass rate).
+    include_did_not_take_next : bool, optional
+        Whether to include edges to a "Did Not Take Next" node (default is False).
+    """
+
     graph.add_edge(pydot.Edge(nodes['course'], nodes['pass'],
                               label=f"{stats['first_pass_proportion']:.3f} ({stats['first_pass_number']})"))
     graph.add_edge(pydot.Edge(nodes['course'], nodes['dfw'],
@@ -101,16 +124,62 @@ def add_course_edges(graph, nodes, stats, include_did_not_take_next=False):
                                   label=f"{stats['second_DFW_proportion']:.3f} ({stats['second_DFW_number']})"))
 
 def add_alternate_entry(graph, course_name, alt_entry_count):
+    """
+    Adds a node and edge to represent students entering a course without taking the prior prerequisite.
+
+    Parameters
+    ----------
+    graph : pydot.Dot
+        The graph to which the alternate entry node and edge will be added.
+    course_name : str
+        Name of the course receiving alternate entries.
+    alt_entry_count : int
+        Number of students entering without prior course completion.
+    """
+
     node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
     graph.add_node(node)
     graph.add_edge(pydot.Edge(node, pydot.Node(course_name), label=f"{alt_entry_count}"))
     # graph.add_edge(pydot.Edge(node, course_name, label=f"{alt_entry_count}"))
 
 def get_combined_course_df(df, ids_1, ids_2):
+    """
+    Returns a filtered dataframe containing rows for a union of two student ID sets.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        The full course dataset.
+    ids_1 : iterable
+        First set of student IDs.
+    ids_2 : iterable
+        Second set of student IDs.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Subset of `df` where student_ID is in either `ids_1` or `ids_2`.
+    """
+
     return df[df['student_ID'].isin(set(ids_1) | set(ids_2))]
 
-# helper function that may be useful at some point...move to utils?
+
 def get_earliest_major(df):
+    """
+    Determines each student's earliest major and merges it into the dataframe.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A dataframe with at least ['student_ID', 'course_term', 'major_matriculation'] columns.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Original dataframe with a new 'major_matriculation' column set to the earliest observed value.
+
+    Notes: helper function that may be useful at some point...move to utils or delete?
+    """
     df_sorted = df.sort_values(by=['student_ID', 'course_term'])
     earliest = df_sorted.groupby('student_ID').first()['major_term_earliest']
     df_merged = df.merge(earliest, how='left', on='student_ID', suffixes=('', '_Earliest'))
@@ -120,7 +189,33 @@ def get_earliest_major(df):
 
 
 
-def course_sequence_analysis(course_sequence, df, major_matriculation_column = 'major_term_earliest', target_major_code = None, node_pie=False):
+def course_sequence_analysis(course_sequence, df, major_matriculation_column = 'major_term_earliest',
+                             target_major_code = None, node_pie=False):
+    """
+    Constructs a flow diagram representing student progression across a sequence of courses.
+
+    Includes demographic breakdowns if `node_pie` is enabled. Handles alternate entries, drop-off,
+    and repeat behavior using custom edge logic and summary statistics.
+
+    Parameters
+    ----------
+    course_sequence : list of str
+        Ordered list of course names to include in the flow sequence.
+    df : pandas.DataFrame
+        Input dataset with course, grade, and student demographic data.
+    major_matriculation_column : str, optional
+        Column name indicating each student's major at matriculation.
+    target_major_code : str or None, optional
+        If specified, restrict analysis to students with this major.
+    node_pie : bool, optional
+        Whether to embed demographic pie charts in course nodes.
+
+    Returns
+    -------
+    None
+        Writes out a PNG image of the course flow diagram and displays it using matplotlib.
+    """
+
     import pydot
 
     from student_success.markov_diagrams.course_flows import (
@@ -254,6 +349,24 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
 
 
 def make_pie_node(node_id, demographic_proportions):
+    """
+    Creates a pydot node with a pie wedge fill to represent demographic proportions.
+
+    Parameters
+    ----------
+    node_id : str
+        Unique identifier for the node.
+    demographic_proportions : dict
+        Mapping of color names to proportions (e.g., {'green': 0.6, 'blue': 0.4}).
+
+    Returns
+    -------
+    pydot.Node
+        A circle-shaped node styled with demographic wedges.
+
+    Notes: DEPRECATED?
+    """
+
     wedges = [f"{color};{proportion:.2f}" for color, proportion in demographic_proportions.items()]
     fillcolor = ":".join(wedges)
 
@@ -271,15 +384,16 @@ def make_pie_node(node_id, demographic_proportions):
 
 def save_pie_chart(pie_data, filepath):
     """
-    Save a pie chart image for demographic data.
+    Generates and saves a pie chart image from demographic proportions.
 
     Parameters
     ----------
     pie_data : dict
-        Dictionary of {color_name: proportion}.
+        Dictionary mapping color names to proportions (e.g., {'green': 0.6, 'blue': 0.4}).
     filepath : str
-        Where to save the image (e.g., "output/course_pie.png")
+        Full path where the PNG image should be saved.
     """
+
     colors = list(pie_data.keys())
     values = list(pie_data.values())
 
@@ -292,21 +406,20 @@ def save_pie_chart(pie_data, filepath):
 
 def create_course_node_with_image(course_name, image_path):
     """
-    Create a pydot.Node with an embedded pie chart image.
+    Creates a box-shaped pydot node with an embedded pie chart image and a label.
 
     Parameters
     ----------
     course_name : str
-        Label for the node.
+        Label to display below the pie chart image.
     image_path : str
-        File path to the pie chart image.
+        Path to the PNG image to embed within the node.
 
     Returns
     -------
     pydot.Node
+        A box-shaped node embedding an image and labeled with the course name.
     """
-
-
 
     return pydot.Node(
         name=course_name,
