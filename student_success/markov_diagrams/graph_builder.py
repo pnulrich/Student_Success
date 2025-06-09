@@ -1,15 +1,26 @@
 import pydot
 
 ### helper functions
-def create_course_nodes(course_name, include_did_not_take_next=False):
-    nodes = {
-        "course": pydot.Node(course_name, shape="box"),
-        "pass": pydot.Node(f"Pass {course_name}", label="Pass"),
-        "dfw": pydot.Node(f"DFW {course_name}", label="DFW"),
-        "retake": pydot.Node(f"Retake {course_name}", label="Retake")
-    }
+def create_course_nodes(course_name, include_did_not_take_next=False, node_pie = False, pie_data = None):
+
+
+    if node_pie and pie_data:
+        print(f"Creating pie node for {course_name} with pie_data: {pie_data}")
+        course_node = make_pie_node(course_name, pie_data)
+    else:
+        print(f"Creating default box node for {course_name}")
+        course_node = pydot.Node(course_name, shape="box")
+
+    # doing this avoids overwriting of the full dictionary and risk of silent replacement
+    nodes = {}
+    nodes["course"] = course_node
+    nodes["pass"] = pydot.Node(f"Pass {course_name}", label="Pass")
+    nodes["dfw"] = pydot.Node(f"DFW {course_name}", label="DFW")
+    nodes["retake"] = pydot.Node(f"Retake {course_name}", label="Retake")
+
     if include_did_not_take_next:
         nodes["did_not_take_next"] = pydot.Node(f"Did Not Take Next {course_name}", label="Did Not Take Next")
+
     return nodes
 
 
@@ -31,8 +42,9 @@ def add_course_edges(graph, nodes, stats, include_did_not_take_next=False):
 
 def add_alternate_entry(graph, course_name, alt_entry_count):
     node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
-    graph.add_node(node)
-    graph.add_edge(pydot.Edge(node, pydot.Node(course_name), label=f"{alt_entry_count}"))
+    # graph.add_node(node)
+    # graph.add_edge(pydot.Edge(node, pydot.Node(course_name), label=f"{alt_entry_count}"))
+    graph.add_edge(pydot.Edge(node, course_name, label=f"{alt_entry_count}"))
 
 def get_combined_course_df(df, ids_1, ids_2):
     return df[df['student_ID'].isin(set(ids_1) | set(ids_2))]
@@ -55,29 +67,49 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
         analyze_course, calculate_alternate_entry, calculate_progression_to_next_course
     )
 
-    def filter_kwargs(**kwargs):
+    def filter_kwargs(include_node_pie=False):
+        kwargs = {
+            'major_matriculation_column': major_matriculation_column
+        }
         if target_major_code is not None:
             kwargs['target_major_code'] = target_major_code
-        kwargs['major_matriculation_column'] = major_matriculation_column
+        if include_node_pie:
+            kwargs['node_pie'] = node_pie
         return kwargs
 
     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
     previous_pass_node = None
 
     for index, course_name in enumerate(course_sequence):
-        print(index)
+
 
         is_last = index == len(course_sequence) - 1
         is_first = index == 0
         include_did_not_take = index < len(course_sequence) - 1
 
+        print(f"Index: {index}, is_last: {is_last}, is_first: {is_first}")
+
+
         # Create and add course nodes
-        nodes = create_course_nodes(course_name, include_did_not_take_next=include_did_not_take)
-        for node in nodes.values():
-            graph.add_node(node)
+        #nodes = create_course_nodes(course_name, include_did_not_take_next=include_did_not_take)
+        #for node in nodes.values():
+        #    graph.add_node(node)
 
         if is_first and not is_last:
-            descriptives = analyze_course(course_name, df, **filter_kwargs())
+            descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=True))
+            print(f"\n\nWe are in is_first and is_last condition: {descriptives.get('first_attempt_proportions')}")
+
+            # Get the proportions for course demographics if node_pie == True
+            if node_pie and descriptives:
+                pie_data = descriptives.get("first_attempt_proportions")
+            else:
+                pie_data = None
+            nodes = create_course_nodes(course_name, include_did_not_take_next=include_did_not_take,
+                                        node_pie=node_pie, pie_data=pie_data)
+
+            for node in nodes.values():
+                graph.add_node(node)
+
             progression = calculate_progression_to_next_course(course_name, course_sequence[index + 1], df,
                                                                **filter_kwargs())
             print("Next course name : ", course_sequence[index + 1])
@@ -94,13 +126,28 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
             students_in_alternate_entry = alt_entry['alt_entry_ids']
 
             prereq_result = calculate_progression_to_next_course(prerequisite, course_name, df, **filter_kwargs())
-            graph.add_edge(pydot.Edge(previous_pass_node, nodes['course'],
+
+            graph.add_edge(pydot.Edge(previous_pass_node.get_name(), course_name,
                                       label=f"{prereq_result['proportion_taking_next']:.3f} ({prereq_result['number_taking_next']})"))
 
             students_who_did_take_next = prereq_result['students_who_did_take_next']
             combined_df = get_combined_course_df(df, students_who_did_take_next, students_in_alternate_entry)
-            descriptives = analyze_course(course_name, combined_df, **filter_kwargs())
+            descriptives = analyze_course(course_name, combined_df, **filter_kwargs(include_node_pie=True))
+            #print(descriptives)
 
+            # Get the proportions for course demographics if node_pie == True
+            if node_pie and descriptives:
+                pie_data = descriptives.get("first_attempt_proportions")
+                print(pie_data)
+            else:
+                pie_data = None
+
+            nodes = create_course_nodes(course_name, include_did_not_take_next=include_did_not_take,
+                                        node_pie=node_pie, pie_data=pie_data)
+            for node in nodes.values():
+                 graph.add_node(node)
+
+            # move to next course
             if not is_last:
                 next_course = course_sequence[index + 1]
                 print("Course name : ", course_name)
@@ -113,12 +160,14 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
                                           label=f"{progression['proportion_not_taking_next']:.3f} ({progression['number_not_taking_next']})"))
 
         print(descriptives)
+
         add_course_edges(graph, nodes, descriptives, include_did_not_take_next=include_did_not_take)
         previous_pass_node = nodes['pass']
 
     graph.set("nodesep", "1.0")
     image_filename = "course_sequence_attempts_graph.png"
     graph.write_png(image_filename)
+    graph.write_raw("debug_graph.dot")
 
     fig = plt.figure(figsize=(10, 10))
 
@@ -131,3 +180,19 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
     img = plt.imread(image_filename)
     ax.imshow(img)
     plt.show()
+
+
+def make_pie_node(node_id, demographic_proportions):
+    wedges = [f"{color};{proportion:.2f}" for color, proportion in demographic_proportions.items()]
+    fillcolor = ":".join(wedges)
+
+    print(f"Rendering pie node {node_id} with fillcolor: {fillcolor}")
+
+    return pydot.Node(
+        name=node_id,
+        label=node_id,  # ← REQUIRED FOR RENDERING
+        shape="circle",
+        style="wedged",
+        fillcolor=fillcolor,
+    )
+
