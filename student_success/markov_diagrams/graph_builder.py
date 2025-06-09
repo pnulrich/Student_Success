@@ -1,5 +1,5 @@
 import pydot
-
+import matplotlib.pyplot as plt
 ### helper functions
 def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=False, pie_data=None, graph=None):
     """
@@ -23,6 +23,8 @@ def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=F
     dict of pydot.Node
         A dictionary of named nodes.
     """
+    import os
+
     nodes = {}
     course_node = pydot.Node(course_name, shape="box", label=course_name)
     nodes["course"] = course_node
@@ -33,35 +35,42 @@ def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=F
 
     # Optional pie chart node
     if node_pie and pie_data and graph:
-        # add course node
+        temp_dir = os.getcwd() + '\\temp\\'
+        image_path = f"{temp_dir}/{course_name.replace(' ', '_')}.png"
+        save_pie_chart(pie_data, image_path)
+
+        course_node = create_course_node_with_image(course_name, image_path)
         graph.add_node(course_node)
 
-        #create pie chart node
-        pie_node_name = f"{course_name}_pie"
-        wedges = [f"{color};{proportion:.2f}" for color, proportion in pie_data.items()]
-        fillcolor = ":".join(wedges)
-
-        pie_node = pydot.Node(
-            pie_node_name,
-            label="",
-            shape="circle",
-            style="wedged",
-            fillcolor=fillcolor,
-            width="0.5",
-            height="0.5",
-            penwidth="0.5",
-            color="gray",
-            margin =0
-        )
-
-        # add pie chart node
-        graph.add_node(pie_node)
-        # Invisible edge to force layout
-        graph.add_edge(pydot.Edge(course_name, pie_node_name, style="invis", weight=100))
-        subgraph = pydot.Subgraph(rank='same')
-        subgraph.add_node(course_node)
-        subgraph.add_node(pie_node)
-        graph.add_subgraph(subgraph)
+        # # add course node
+        # graph.add_node(course_node)
+        #
+        # #create pie chart node
+        # pie_node_name = f"{course_name}_pie"
+        # wedges = [f"{color};{proportion:.2f}" for color, proportion in pie_data.items()]
+        # fillcolor = ":".join(wedges)
+        #
+        # pie_node = pydot.Node(
+        #     pie_node_name,
+        #     label="",
+        #     shape="circle",
+        #     style="wedged",
+        #     fillcolor=fillcolor,
+        #     width="0.5",
+        #     height="0.5",
+        #     penwidth="0.5",
+        #     color="gray",
+        #     margin =0
+        # )
+        #
+        # # add pie chart node
+        # graph.add_node(pie_node)
+        # # Invisible edge to force layout
+        # graph.add_edge(pydot.Edge(course_name, pie_node_name, style="invis", weight=100))
+        # subgraph = pydot.Subgraph(rank='same')
+        # subgraph.add_node(course_node)
+        # subgraph.add_node(pie_node)
+        # graph.add_subgraph(subgraph)
 
     # Add outcome nodes
     nodes["pass"] = pydot.Node(f"Pass {course_name}", label="Pass")
@@ -113,7 +122,7 @@ def get_earliest_major(df):
 
 def course_sequence_analysis(course_sequence, df, major_matriculation_column = 'major_term_earliest', target_major_code = None, node_pie=False):
     import pydot
-    import matplotlib.pyplot as plt
+
     from student_success.markov_diagrams.course_flows import (
         analyze_course, calculate_alternate_entry, calculate_progression_to_next_course
     )
@@ -155,6 +164,7 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
                 pie_data = descriptives.get("first_attempt_proportions")
             else:
                 pie_data = None
+
             nodes = create_course_nodes(
                 course_name,
                 include_did_not_take_next=include_did_not_take,
@@ -226,15 +236,16 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
 
     graph.set("nodesep", "1.0")
     image_filename = "course_sequence_attempts_graph.png"
-    graph.write_png(image_filename)
-    graph.write_raw("debug_graph.dot")
+    graph.write(image_filename, format ="png", prog="dot", encoding = "utf-8")
+    graph.set_graph_defaults(dpi = "300")
+    # graph.write_raw("debug_graph.dot")
 
-    fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(6, 6), dpi = 300)
 
     if target_major_code:
-        fig.suptitle(f"Course Sequence Analysis for {target_major_code} Majors", fontsize=16)
+        fig.suptitle(f"Course Sequence Analysis for {target_major_code} Majors", fontsize=12)
     else:
-        fig.suptitle(f"Course Sequence Analysis (no major filter applied)", fontsize=16)
+        fig.suptitle(f"Course Sequence Analysis (no major filter applied)", fontsize=12)
     ax = fig.add_subplot(111)
     ax.axis('off')
     img = plt.imread(image_filename)
@@ -256,3 +267,57 @@ def make_pie_node(node_id, demographic_proportions):
         fillcolor=fillcolor,
     )
 
+
+
+def save_pie_chart(pie_data, filepath):
+    """
+    Save a pie chart image for demographic data.
+
+    Parameters
+    ----------
+    pie_data : dict
+        Dictionary of {color_name: proportion}.
+    filepath : str
+        Where to save the image (e.g., "output/course_pie.png")
+    """
+    colors = list(pie_data.keys())
+    values = list(pie_data.values())
+
+    fig, ax = plt.subplots(figsize=(0.9, 0.9), dpi=100)
+    ax.pie(values, colors=colors, wedgeprops=dict(edgecolor='white'))
+    ax.axis('equal')  # Keep circular
+
+    plt.savefig(filepath, transparent=True, bbox_inches='tight', pad_inches=0.15)
+    plt.close()
+
+def create_course_node_with_image(course_name, image_path):
+    """
+    Create a pydot.Node with an embedded pie chart image.
+
+    Parameters
+    ----------
+    course_name : str
+        Label for the node.
+    image_path : str
+        File path to the pie chart image.
+
+    Returns
+    -------
+    pydot.Node
+    """
+
+
+
+    return pydot.Node(
+        name=course_name,
+        label=f"\n\n{course_name}",
+        shape="box",
+        image=image_path,
+        labelloc="b",           # optional: label below the image
+        # imagescale="true",
+        fontsize="12",
+        # width="1.2",            # size adjustments
+        # height="1.4",
+        fixedsize="false",
+        margin = "0.1, 0.4"
+    )
