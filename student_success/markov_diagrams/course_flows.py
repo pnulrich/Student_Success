@@ -108,12 +108,34 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
 
     print(f"Number of students who failed the second attempt of {course_name}: {second_DFW_number}")
 
+    if node_pie:
+
+        # TODO: Create a demographics helper function in utils.demgoraphics_utils.py
+        def compute_proportions(df, col, mapping = None):
+            total = len(df)
+            if total == 0:
+                return {}
+            proportions = df[col].value_counts(normalize = True).to_dict()
+            if mapping:
+                # Recolor using map and remove missing values
+                return {mapping[k]: v for k, v in proportions.items() if k in mapping}
+            return proportions
+
+        gender_color_map = {"F": "green", "M": "blue"}
+        first_attempt_proportions = compute_proportions(df = course_df_first_attempts, col = 'demographics_sex', mapping = gender_color_map)
+        second_attempt_proportions = compute_proportions(df=second_attempt_df, col='demographics_sex',
+                                                        mapping=gender_color_map)
+        print(f"analyze_course() 1st attempt demographic proportions for {course_name}: {first_attempt_proportions}")
+        print(f"analyze_course() 2nd attempt demographic proportions for {course_name}: {second_attempt_proportions}")
+
     descriptives = {
+        "first_attempt_proportions": first_attempt_proportions,
         "first_pass_number": first_pass_number,
         "first_pass_proportion": first_pass_proportion,
         "first_DFW_number": first_DFW_number,
         "first_DFW_proportion": first_DFW_proportion,
         "proportion_DFW_repeat": proportion_DFW_repeat,
+        "second_attempt_proportions": second_attempt_proportions,
         "second_attempt_number": second_attempt_number,
         "second_pass_number": second_pass_number,
         "second_pass_proportion": second_pass_proportion,
