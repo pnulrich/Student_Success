@@ -17,6 +17,14 @@ PEER_ABBREVIATION_DICT = {
 # Mapping for descriptions of sex
 SEX_DICT = {'Female': 1, 'Male': 0, 'F': 1, 'M': 0}
 
+DEMOGRAPHIC_COLOR_MAPS = {
+    "flag_sex": {1: "green", 0: "blue"},  # 1 = female, 0 = male
+    "flag_PELL": {1: "green", 0: "blue"},  # 1 = Pell-eligible, 0 = not Pell-eligible
+    "flag_first_generation": {1: "green", 0: "blue"},  # 1 = first gen, 0 = continuing gen
+    "flag_PEER": {1: "brown", 0: "white"},  # 1 = PEER student, 0 = non-PEER
+    "flag_hispanic": {1: "brown", 0: "white"},  # 1 = Hispanic, 0 = non-Hispanic
+    "flag_grad": {1: "green", 0: "blue"}  # 1 = graduated, 0 = not graduated
+}
 
 # major codes grouped by discipline
 MAJORS_DISCIPLINES = {
