@@ -46,36 +46,6 @@ def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=F
         course_node = create_course_node_with_image(course_name, image_path)
         graph.add_node(course_node)
 
-        # # add course node
-        # graph.add_node(course_node)
-        #
-        # #create pie chart node
-        # pie_node_name = f"{course_name}_pie"
-        # wedges = [f"{color};{proportion:.2f}" for color, proportion in pie_data.items()]
-        # fillcolor = ":".join(wedges)
-        #
-        # pie_node = pydot.Node(
-        #     pie_node_name,
-        #     label="",
-        #     shape="circle",
-        #     style="wedged",
-        #     fillcolor=fillcolor,
-        #     width="0.5",
-        #     height="0.5",
-        #     penwidth="0.5",
-        #     color="gray",
-        #     margin =0
-        # )
-        #
-        # # add pie chart node
-        # graph.add_node(pie_node)
-        # # Invisible edge to force layout
-        # graph.add_edge(pydot.Edge(course_name, pie_node_name, style="invis", weight=100))
-        # subgraph = pydot.Subgraph(rank='same')
-        # subgraph.add_node(course_node)
-        # subgraph.add_node(pie_node)
-        # graph.add_subgraph(subgraph)
-
     # Add outcome nodes
     nodes["pass"] = pydot.Node(f"Pass {course_name}", label="Pass")
     nodes["dfw"] = pydot.Node(f"DFW {course_name}", label="DFW")
@@ -140,25 +110,26 @@ def add_alternate_entry(graph, course_name, alt_entry_count):
     node = pydot.Node(f"Alternate Entry to {course_name}", label="Alternate Entry")
     graph.add_node(node)
     graph.add_edge(pydot.Edge(node, pydot.Node(course_name), label=f"{alt_entry_count}"))
-    # graph.add_edge(pydot.Edge(node, course_name, label=f"{alt_entry_count}"))
 
 def get_combined_course_df(df, ids_1, ids_2):
     """
-    Returns a filtered dataframe containing rows for a union of two student ID sets.
+    Returns a filtered DataFrame including only students present in at least one of two ID sets.
+
+    Useful when combining students who progressed from one course to the next and those who entered from alternate pathways.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        The full course dataset.
+        The full dataset to filter.
     ids_1 : iterable
-        First set of student IDs.
+        Set of student_IDs (e.g., those who took the prerequisite).
     ids_2 : iterable
-        Second set of student IDs.
+        Set of student_IDs (e.g., alternate entries).
 
     Returns
     -------
     pandas.DataFrame
-        Subset of `df` where student_ID is in either `ids_1` or `ids_2`.
+        Subset of `df` containing rows where student_ID is in either `ids_1` or `ids_2`.
     """
 
     return df[df['student_ID'].isin(set(ids_1) | set(ids_2))]
@@ -190,30 +161,32 @@ def get_earliest_major(df):
 
 
 def course_sequence_analysis(course_sequence, df, major_matriculation_column = 'major_term_earliest',
-                             target_major_code = None, node_pie=False):
+                             target_major_code = None, node_pie=False, demographics_flag_col = None):
     """
-    Constructs a flow diagram representing student progression across a sequence of courses.
+    Generates a flow diagram showing student progression through a sequence of courses.
 
-    Includes demographic breakdowns if `node_pie` is enabled. Handles alternate entries, drop-off,
-    and repeat behavior using custom edge logic and summary statistics.
+    The diagram includes labeled nodes and edges representing outcomes and transitions,
+    with optional pie chart embeddings to visualize demographic breakdowns.
 
     Parameters
     ----------
     course_sequence : list of str
-        Ordered list of course names to include in the flow sequence.
+        Ordered list of course titles to include in the sequence.
     df : pandas.DataFrame
-        Input dataset with course, grade, and student demographic data.
+        Dataset containing course attempts, grades, and demographics.
     major_matriculation_column : str, optional
-        Column name indicating each student's major at matriculation.
-    target_major_code : str or None, optional
-        If specified, restrict analysis to students with this major.
+        Column name indicating students' earliest major (default 'major_term_earliest').
+    target_major_code : str, optional
+        If provided, limits analysis to students with this major.
     node_pie : bool, optional
-        Whether to embed demographic pie charts in course nodes.
+        Whether to embed demographic pie charts in course nodes (default False).
+    demographics_flag_col : str, optional
+        Column name for a binary or categorical demographic used in pie charts (required if node_pie is True).
 
     Returns
     -------
     None
-        Writes out a PNG image of the course flow diagram and displays it using matplotlib.
+        Writes a PNG file of the course sequence diagram and displays it with matplotlib.
     """
 
     import pydot
@@ -230,34 +203,35 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
             kwargs['target_major_code'] = target_major_code
         if include_node_pie:
             kwargs['node_pie'] = node_pie
+        if node_pie:
+            kwargs['demographics_flag_col'] = demographics_flag_col
         return kwargs
+
+    if not node_pie and demographics_flag_col is not None:
+        raise ValueError("You specified a demographics_flag_col, but node_pie=False. "
+                         "Either enable pie charts or remove the demographics_col.")
+    if node_pie and demographics_flag_col is None:
+        raise ValueError("You specified node_pie = True but did not provide a demographics_flag_col. "
+                         "Either disable pie charts or specify demographics_flag_col.")
+
+
 
     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
     previous_pass_node = None
 
     for index, course_name in enumerate(course_sequence):
-
-
         is_last = index == len(course_sequence) - 1
         is_first = index == 0
         include_did_not_take = index < len(course_sequence) - 1
 
         print(f"Index: {index}, is_last: {is_last}, is_first: {is_first}")
 
-
-        # Create and add course nodes
-        #nodes = create_course_nodes(course_name, include_did_not_take_next=include_did_not_take)
-        #for node in nodes.values():
-        #    graph.add_node(node)
-
         if is_first and not is_last:
-            descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=True))
-            print(f"\n\nWe are in is_first and is_last condition: {descriptives.get('first_attempt_proportions')}")
-
-            # Get the proportions for course demographics if node_pie == True
-            if node_pie and descriptives:
-                pie_data = descriptives.get("first_attempt_proportions")
+            if node_pie:
+                descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=True))
+                pie_data = descriptives.get("first_attempt_demographic_proportions")
             else:
+                descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=False))
                 pie_data = None
 
             nodes = create_course_nodes(
@@ -270,8 +244,14 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
             for node in nodes.values():
                 graph.add_node(node)
 
-            progression = calculate_progression_to_next_course(course_name, course_sequence[index + 1], df,
-                                                               **filter_kwargs())
+            progression = calculate_progression_to_next_course(
+                course_name,
+                course_sequence[index + 1],
+                df,
+                major_matriculation_column=major_matriculation_column,
+                target_major_code=target_major_code if target_major_code else None
+            )
+
             print("Next course name : ", course_sequence[index + 1])
             print("Number taking next : ", progression['number_taking_next'])
             graph.add_edge(pydot.Edge(nodes['pass'], nodes['did_not_take_next'],
@@ -281,11 +261,19 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
             prerequisite = course_sequence[index - 1]
             print("The prerequisite course name is", prerequisite, "and current course is", course_name)
 
-            alt_entry = calculate_alternate_entry(course_name, prerequisite, df, **filter_kwargs())
+            alt_entry = calculate_alternate_entry(
+                current_course = course_name, prior_course = prerequisite, df = df,
+                target_major_code = target_major_code, major_matriculation_column = major_matriculation_column)
             add_alternate_entry(graph, course_name, alt_entry['n_without_prior_pass'])
             students_in_alternate_entry = alt_entry['alt_entry_ids']
 
-            prereq_result = calculate_progression_to_next_course(prerequisite, course_name, df, **filter_kwargs())
+            prereq_result = calculate_progression_to_next_course(
+                prerequisite,
+                course_name,
+                df,
+                major_matriculation_column=major_matriculation_column,
+                target_major_code=target_major_code if target_major_code else None
+            )
 
             graph.add_edge(pydot.Edge(previous_pass_node.get_name(), course_name,
                                       label=f"{prereq_result['proportion_taking_next']:.3f} ({prereq_result['number_taking_next']})"))
@@ -293,11 +281,10 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
             students_who_did_take_next = prereq_result['students_who_did_take_next']
             combined_df = get_combined_course_df(df, students_who_did_take_next, students_in_alternate_entry)
             descriptives = analyze_course(course_name, combined_df, **filter_kwargs(include_node_pie=True))
-            #print(descriptives)
 
             # Get the proportions for course demographics if node_pie == True
             if node_pie and descriptives:
-                pie_data = descriptives.get("first_attempt_proportions")
+                pie_data = descriptives.get("first_attempt_demographic_proportions")
                 print(pie_data)
             else:
                 pie_data = None
@@ -348,40 +335,6 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
     plt.show()
 
 
-def make_pie_node(node_id, demographic_proportions):
-    """
-    Creates a pydot node with a pie wedge fill to represent demographic proportions.
-
-    Parameters
-    ----------
-    node_id : str
-        Unique identifier for the node.
-    demographic_proportions : dict
-        Mapping of color names to proportions (e.g., {'green': 0.6, 'blue': 0.4}).
-
-    Returns
-    -------
-    pydot.Node
-        A circle-shaped node styled with demographic wedges.
-
-    Notes: DEPRECATED?
-    """
-
-    wedges = [f"{color};{proportion:.2f}" for color, proportion in demographic_proportions.items()]
-    fillcolor = ":".join(wedges)
-
-    print(f"Rendering pie node {node_id} with fillcolor: {fillcolor}")
-
-    return pydot.Node(
-        name=node_id,
-        label=node_id,  # ← REQUIRED FOR RENDERING
-        shape="circle",
-        style="wedged",
-        fillcolor=fillcolor,
-    )
-
-
-
 def save_pie_chart(pie_data, filepath):
     """
     Generates and saves a pie chart image from demographic proportions.
@@ -398,7 +351,12 @@ def save_pie_chart(pie_data, filepath):
     values = list(pie_data.values())
 
     fig, ax = plt.subplots(figsize=(0.9, 0.9), dpi=100)
-    ax.pie(values, colors=colors, wedgeprops=dict(edgecolor='white'))
+    ax.pie(values, colors=colors, wedgeprops=dict(edgecolor='black'))
+
+    # Add circular outline
+    circle = plt.Circle((0, 0), 1.0, transform=ax.transData, fill=False, color='black', linewidth=1)
+    ax.add_patch(circle)
+
     ax.axis('equal')  # Keep circular
 
     plt.savefig(filepath, transparent=True, bbox_inches='tight', pad_inches=0.15)

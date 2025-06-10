@@ -1,40 +1,44 @@
 import pandas as pd
+from student_success.utils.constants import DEMOGRAPHIC_COLOR_MAPS
 
-
-def analyze_course(course_name, df, major_matriculation_column = 'major_term_earliest', target_major_code = None, prerequisite_course=False, node_pie=False):
+def analyze_course(course_name, df, major_matriculation_column = 'major_term_earliest', target_major_code = None, prerequisite_course=False, node_pie=False, demographics_flag_col = None):
     """
-    Analyze student performance and attempt statistics for a given course.
+    Analyze student performance, repeat rates, and (optionally) demographic composition for a specific course.
 
     Parameters
     ----------
     course_name : str
-        Name of the course to analyze (e.g., 'Principles of Chemistry I')
+        The course title to analyze (e.g., 'Principles of Chemistry I').
     df : pandas.DataFrame
-        Input DataFrame containing course data.
-    major_matriculation_column : str
-        Name of the column in df that holds the student's earliest major (default is 'major_term_earliest')
+        Input dataframe containing student course records.
+    major_matriculation_column : str, optional
+        Column indicating each student’s major at matriculation. Default is 'major_term_earliest'.
     target_major_code : str, optional
-        Major code to filter analysis to a specific target major (e.g., 'BIO', 'CHM'). If None, includes all majors.
+        If specified, restricts analysis to students with this major.
     prerequisite_course : bool, optional
-        Indicator for whether the course is a prerequisite (default is False).
+        Whether the course is treated as a prerequisite (default is False).
     node_pie : bool, optional
-        Indicator for whether to include pie charts for key demographics (default is False).
+        If True, compute demographic breakdowns for use in pie charts.
+    demographics_flag_col : str, optional
+        Name of binary demographic column used to generate pie charts (e.g., 'flag_sex').
 
     Returns
     -------
     dict or None
-        A dictionary containing the following descriptive statistics if course attempts exist:
-            - 'first_pass_number': Number of students passing the course on the first attempt.
-            - 'first_pass_proportion': Proportion of students passing the course on the first attempt.
-            - 'first_DFW_number': Number of students receiving a D, F, or W grade on the first attempt.
-            - 'first_DFW_proportion': Proportion of students receiving a D, F, or W grade on the first attempt.
-            - 'proportion_DFW_repeat': Proportion of students repeating the course after initial failure.
-            - 'second_attempt_number': Total number of second attempts for the course.
-            - 'second_pass_number': Number of students passing the course on the second attempt.
-            - 'second_pass_proportion': Proportion of students passing the course on the second attempt.
-            - 'second_DFW_number': Number of students receiving a D, F, or W grade on the second attempt.
-            - 'second_DFW_proportion': Proportion of students receiving a D, F, or W grade on the second attempt.
-        Returns None if no attempts are found for the specified course.
+        A dictionary with course performance and (optional) demographic breakdowns:
+            - 'first_pass_number': Count of students passing on first attempt.
+            - 'first_pass_proportion': Proportion passing on first attempt.
+            - 'first_DFW_number': Count receiving D, F, or W on first attempt.
+            - 'first_DFW_proportion': Proportion with D, F, or W on first attempt.
+            - 'proportion_DFW_repeat': Proportion of DFW students who repeated.
+            - 'second_attempt_number': Count of second attempts.
+            - 'second_pass_number': Count passing on second attempt.
+            - 'second_pass_proportion': Proportion passing on second attempt.
+            - 'second_DFW_number': Count with D/F/W on second attempt.
+            - 'second_DFW_proportion': Proportion with D/F/W on second attempt.
+            - 'first_attempt_demographic_proportions': Optional dict of {color: proportion} for pie node.
+            - 'second_attempt_demographic_proportions': Optional dict of {color: proportion} for pie node.
+        Returns None if the course is not found in the dataset.
     """
 
     if df.empty:
@@ -108,9 +112,14 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
 
     print(f"Number of students who failed the second attempt of {course_name}: {second_DFW_number}")
 
-    if node_pie:
+    if node_pie and demographics_flag_col is not None:
+        if demographics_flag_col not in DEMOGRAPHIC_COLOR_MAPS:
+            raise ValueError(
+                f"Demographic column '{demographics_flag_col}' is not recognized.\n"
+                f"Valid options: {list(DEMOGRAPHIC_COLOR_MAPS.keys())}"
+            )
 
-        # TODO: Create a demographics helper function in utils.demgoraphics_utils.py
+        # TODO: Create a demographics helper function in utils.demographics_utils.py
         def compute_proportions(df, col, mapping = None):
             total = len(df)
             if total == 0:
@@ -121,21 +130,22 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
                 return {mapping[k]: v for k, v in proportions.items() if k in mapping}
             return proportions
 
-        gender_color_map = {"F": "green", "M": "blue"}
-        first_attempt_proportions = compute_proportions(df = course_df_first_attempts, col = 'demographics_sex', mapping = gender_color_map)
-        second_attempt_proportions = compute_proportions(df=second_attempt_df, col='demographics_sex',
-                                                        mapping=gender_color_map)
-        print(f"analyze_course() 1st attempt demographic proportions for {course_name}: {first_attempt_proportions}")
-        print(f"analyze_course() 2nd attempt demographic proportions for {course_name}: {second_attempt_proportions}")
+        color_map = DEMOGRAPHIC_COLOR_MAPS.get(demographics_flag_col)
+        first_attempt_demographic_proportions = compute_proportions(df = course_df_first_attempts, col = demographics_flag_col,
+                                                        mapping = color_map)
+        second_attempt_demographic_proportions = compute_proportions(df=second_attempt_df, col=demographics_flag_col,
+                                                        mapping=color_map)
+        print(f"analyze_course() 1st attempt demographic proportions for {course_name}: {first_attempt_demographic_proportions}")
+        print(f"analyze_course() 2nd attempt demographic proportions for {course_name}: {second_attempt_demographic_proportions}")
 
     descriptives = {
-        "first_attempt_proportions": first_attempt_proportions,
+        "first_attempt_demographic_proportions": first_attempt_demographic_proportions,
         "first_pass_number": first_pass_number,
         "first_pass_proportion": first_pass_proportion,
         "first_DFW_number": first_DFW_number,
         "first_DFW_proportion": first_DFW_proportion,
         "proportion_DFW_repeat": proportion_DFW_repeat,
-        "second_attempt_proportions": second_attempt_proportions,
+        "second_attempt_demographic_proportions": second_attempt_demographic_proportions,
         "second_attempt_number": second_attempt_number,
         "second_pass_number": second_pass_number,
         "second_pass_proportion": second_pass_proportion,
@@ -148,31 +158,30 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
 
 def calculate_progression_to_next_course(current_course, next_course, df, target_major_code = None, major_matriculation_column = 'major_term_earliest'):
     """
-    Calculate the progression of students from a current course to a next course.
+    Calculate how many students progressed from one course to the next after passing.
 
     Parameters
     ----------
     current_course : str
-        The name of the current course.
+        Course the student completed first (e.g., 'CHEM 1211K').
     next_course : str
-        The name of the next course.
-    df : pandas DataFrame
-        The DataFrame containing student enrollment data.
-   target_major_code : str, optional
-        If provided, limits analysis to students with this major code.
+        Course that follows in the sequence (e.g., 'CHEM 1212K').
+    df : pandas.DataFrame
+        DataFrame with student course records.
+    target_major_code : str, optional
+        If provided, restricts analysis to students with this major at matriculation.
     major_matriculation_column : str, optional
-        Column name identifying the student's major at matriculation (default is 'major_term_earliest').
-
+        Name of column identifying the student’s entry major (default is 'major_term_earliest').
 
     Returns
     -------
     dict
         Dictionary containing:
-            - 'proportion_not_taking_next'
-            - 'number_not_taking_next'
-            - 'proportion_taking_next'
-            - 'number_taking_next'
-            - 'students_who_did_take_next': list of student_IDs who took the next course
+            - 'proportion_not_taking_next': % of passed students who did not take the next course.
+            - 'number_not_taking_next': Raw count of these students.
+            - 'proportion_taking_next': % of passed students who continued.
+            - 'number_taking_next': Raw count of these students.
+            - 'students_who_did_take_next': List of student_IDs who progressed.
     """
 
     if target_major_code:
@@ -231,25 +240,25 @@ def calculate_alternate_entry(current_course, prior_course, df, target_major_cod
     Parameters
     ----------
     current_course : str
-        The course students entered (e.g., 'PRINCIPLES OF CHEMISTRY II').
+        The downstream course (e.g., 'CHEM 1212K').
     prior_course : str
-        The expected prerequisite course (e.g., 'PRINCIPLES OF CHEMISTRY I').
+        The expected prerequisite course (e.g., 'CHEM 1211K').
     df : pandas.DataFrame
-        DataFrame containing course history. Must include 'student_ID', 'course_title', 'course_grade_letter_simp', and
-        the specified `major_matriculation_column`.
+        DataFrame containing student course history. Must include 'student_ID', 'course_title',
+        'course_grade_letter_simp', and the specified major column.
     target_major_code : str, optional
-        If provided, limits analysis to students with this major code.
+        If provided, limits analysis to students with this major at matriculation.
     major_matriculation_column : str, optional
-        Column name indicating the student's major at matriculation (default is 'major_term_earliest').
+        Column name for student’s matriculation major (default is 'major_term_earliest').
 
     Returns
     -------
     dict
-        Dictionary with:
-            - 'n_total': Total students in current course
-            - 'n_without_prior_pass': Count who did not pass the prior course
-            - 'pct_alternate_entry': Percentage who skipped or failed the prerequisite
-            - 'alt_entry_ids': List of student_IDs without prior pass
+        A dictionary summarizing alternate entries:
+            - 'n_total': Total number of students in the current course.
+            - 'n_without_prior_pass': Count of students who skipped or failed the prerequisite.
+            - 'pct_alternate_entry': % of students without prior course pass.
+            - 'alt_entry_ids': List of student_IDs who did not pass the prerequisite.
     """
 
     if target_major_code:
