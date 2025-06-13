@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.hazard_analysis.hazard_utils module &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="student_success.hazard_analysis.sankey module" href="student_success.hazard_analysis.sankey.html" />
+    <link rel="prev" title="student_success.hazard_analysis.hazard_plots module" href="student_success.hazard_analysis.hazard_plots.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="student_success.html">student_success package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#module-student_success">Module contents</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="student_success.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="student_success.hazard_analysis.html">student_success.hazard_analysis package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="student_success.hazard_analysis.html#module-student_success.hazard_analysis">Module contents</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="student_success.hazard_analysis.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.metrics.html">student_success.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.utils.html">student_success.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="student_success.html">student_success package</a></li>
+          <li class="breadcrumb-item"><a href="student_success.hazard_analysis.html">student_success.hazard_analysis package</a></li>
+      <li class="breadcrumb-item active">student_success.hazard_analysis.hazard_utils module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/student_success.hazard_analysis.hazard_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-student_success.hazard_analysis.hazard_utils">
+<span id="student-success-hazard-analysis-hazard-utils-module"></span><h1>student_success.hazard_analysis.hazard_utils module<a class="headerlink" href="#module-student_success.hazard_analysis.hazard_utils" title="Link to this heading"></a></h1>
+<p>Hazard analysis utilities for modeling student progression.</p>
+<p>Includes:
+- Filtering and preprocessing data for hazard modeling (<cite>prepare_hazard_data</cite>)
+- Outcome indicator assignment based on term-by-term academic history (<cite>assign_outcome_indicators</cite>)
+- Aggregation of course loads and outcome distributions (<cite>prepare_and_process_data</cite>)
+- Cumulative probability calculation (<cite>calculate_probabilities</cite>)
+- Logistic feature extraction for fitted curves (<cite>extract_logistic_features</cite>)</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.hazard_analysis.hazard_utils.assign_outcome_indicators">
+<span class="sig-name descname"><span class="pre">assign_outcome_indicators</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">student_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_demographics_term</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/hazard_analysis/hazard_utils.html#assign_outcome_indicators"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.hazard_analysis.hazard_utils.assign_outcome_indicators" title="Link to this definition"></a></dt>
+<dd><p>Process a student’s academic data and assign outcome indicators.</p>
+<p>This function processes a DataFrame containing a student’s academic records,
+assigning an outcome indicator for each term based on changes in major,
+graduation status, and long enrollment gaps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>student_df</strong> (<em>pandas.DataFrame</em>) – A DataFrame containing a student’s term-by-term academic data.
+Required columns:
+- ‘major_term_earliest’: The student’s original declared major.
+- ‘term_earliest’: The student’s first term of enrollment.
+- ‘semester_number’: The normalized sequence of academic semesters.
+- ‘major_term’: The declared major during each term.
+- ‘demographics_term’: Term code for the current record.
+- ‘flag_graduation_term’: 1 if student graduates in this term; 0 otherwise.
+- Optionally: ‘flag_graduated_in_first_major’ (1 if graduated in original major)</p></li>
+<li><p><strong>max_demographics_term</strong> (<em>int</em>) – The maximum term in the dataset. Used to assess potential dropouts
+based on enrollment gaps.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>list of int</em> – A list of assigned outcome indicators for each row in <cite>student_df</cite>.
+The list is in the same order as <cite>student_df</cite> and can be assigned as a new column (e.g., ‘outcome_indicator’).</p></li>
+<li><p><em>Outcome Logic</em></p></li>
+<li><p><em>————-</em></p></li>
+<li><p><em>- Each outcome indicator reflects what happened *after</em> the given term.*</p></li>
+<li><p><em>- Outcome is assigned based on change between the current and previous term,</em> – or based on whether the term is the student’s last known semester.</p></li>
+<li><p><em>Indicators</em> –</p>
+<ul>
+<li><p>-1 : No change from prior term; student continues in same major.</p></li>
+<li><p>1 : Left the university after this term (inactivity for 2+ terms, no graduation).</p></li>
+<li><p>2 : Graduated in their original declared major in this term.</p></li>
+<li><p>3 : Graduated in a different major in this term.</p></li>
+<li><p>4 : Actively changed major in this term (compared to previous term).</p></li>
+</ul>
+</li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>First term is always coded as -1 since no prior record exists.</p></li>
+<li><p>Graduation and dropout are only assessed in the student’s final semester.</p></li>
+<li><p>A long gap is defined as ≥2 terms without further enrollment.</p></li>
+<li><p>This function supersedes earlier logic in <cite>process_student_data()</cite>.</p></li>
+<li><p>Outcome indicator values are determined one row at a time but require knowledge of the full student history.</p></li>
+</ul>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">student_data_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+<span class="gp">... </span>    <span class="s1">&#39;major_term_earliest&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;BIO&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s1">&#39;term_earliest&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">202001</span><span class="p">,</span> <span class="mi">202005</span><span class="p">,</span> <span class="mi">202008</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s1">&#39;semester_number&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s1">&#39;major_term&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;BIO&#39;</span><span class="p">,</span> <span class="s1">&#39;BIO&#39;</span><span class="p">,</span> <span class="s1">&#39;CHEM&#39;</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s1">&#39;demographics_term&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">202001</span><span class="p">,</span> <span class="mi">202005</span><span class="p">,</span> <span class="mi">202008</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="s1">&#39;flag_graduation_term&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">assign_outcome_indicators</span><span class="p">(</span><span class="n">student_data_df</span><span class="p">,</span> <span class="mi">202008</span><span class="p">)</span>
+<span class="go">[-1, -1, 4]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.hazard_analysis.hazard_utils.calculate_probabilities">
+<span class="sig-name descname"><span class="pre">calculate_probabilities</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_df</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/hazard_analysis/hazard_utils.html#calculate_probabilities"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.hazard_analysis.hazard_utils.calculate_probabilities" title="Link to this definition"></a></dt>
+<dd><p>Calculate proportions, cumulative probabilities, and active student counts by semester.</p>
+<p>This function computes:
+1. Proportions of students by <cite>outcome_indicator</cite> for each semester.
+2. Cumulative probabilities of various outcomes, adjusted for the active population.
+3. Total active student counts per semester.
+4. A filtered DataFrame (<cite>masked_df</cite>) filtered version of ‘input_df’ with rows only where outcome != -1. Use this to focus on transition or terminal events.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>input_df</strong> (<em>pandas.DataFrame</em>) – A DataFrame containing student data with the following required columns:
+- ‘semester_number’: Identifier for the semester.
+- ‘outcome_indicator’: Outcome indicator for each student.
+- ‘student_ID’: Unique identifier for students.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>A dictionary containing:
+- “proportions_df”: pandas.DataFrame</p>
+<blockquote>
+<div><p>Proportions of each outcome (<cite>outcome_indicator</cite>) by semester.</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>”cumulative_df”: pandas.DataFrame</dt><dd><p>Cumulative probabilities for each outcome by semester.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>”active_student_counts”: pandas.Series</dt><dd><p>Total number of active students per semester.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>”masked_df”: pandas.DataFrame</dt><dd><p>Filtered DataFrame excluding rows with <cite>outcome_indicator == -1</cite>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>The function assumes that outcomes are represented by specific values of <cite>outcome_indicator</cite>.</p></li>
+<li><p>Cumulative probabilities are calculated for each outcome in the following order:
+1 (Left College), 4 (Changed Major), 2 (Graduated in Target Major), 3 (Graduated Other).</p></li>
+<li><p>Active student counts are used to normalize proportions.</p></li>
+<li><p>Active population is modeled as those with outcome -1 (continued) or 4 (changed major).</p></li>
+<li><p>The proportions and cumulative probabilities are calculated relative to this active base.</p></li>
+</ul>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">calculate_probabilities</span><span class="p">(</span><span class="n">student_df</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;proportions_df&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;cumulative_df&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;active_student_counts&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;masked_df&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.hazard_analysis.hazard_utils.extract_logistic_features">
+<span class="sig-name descname"><span class="pre">extract_logistic_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outcome_indicator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">semester_numbers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cumulative_probabilities</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/hazard_analysis/hazard_utils.html#extract_logistic_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.hazard_analysis.hazard_utils.extract_logistic_features" title="Link to this definition"></a></dt>
+<dd><p>Fit a logistic model and extract features.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outcome_indicator</strong> (<em>int</em>) – outcome indicator code
+- -1 : No change from the previous term
+- 1  : Left university
+- 2  : Graduated in first major
+- 3  : Graduated in different major
+- 4  : Changed to different major (still active)</p></li>
+<li><p><strong>semester_numbers</strong> (<em>array-like</em>) – The semester numbers.</p></li>
+<li><p><strong>cumulative_probabilities</strong> (<em>array-like</em>) – The cumulative probabilities for a given outcome.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary containing the logistic model parameters:
+- “K”: Maximum cumulative probability
+- “r”: Growth rate
+- “t_half”: Half-max semester number</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.hazard_analysis.hazard_utils.prepare_and_process_data">
+<span class="sig-name descname"><span class="pre">prepare_and_process_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">student_major_data_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coursework_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_major</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_credit_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_credit_max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_major_course_prefix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">academic_year_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">academic_year_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/hazard_analysis/hazard_utils.html#prepare_and_process_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.hazard_analysis.hazard_utils.prepare_and_process_data" title="Link to this definition"></a></dt>
+<dd><p>Prepares and processes data for hazard analysis.</p>
+<p>This function filters, processes, and aggregates student and coursework data
+to support hazard analysis, focusing on academic progression, major changes,
+and course load statistics for a specified target major.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>student_major_data_df</strong> (<em>pandas.DataFrame</em>) – A DataFrame containing student demographic and academic information.
+Required columns include:
+- ‘student_ID’: Unique identifier for students.
+- ‘demographics_term’: Term of demographic data.
+- ‘major_term’: Current major for the term.
+- ‘major_graduation’: Graduation status or term.
+- ‘semester_number’: Sequential outcome indicator.
+- ‘term_earliest’: Earliest term of enrollment.</p></li>
+<li><p><strong>coursework_df</strong> (<em>pandas.DataFrame</em>) – A DataFrame containing detailed course information.
+Required columns include:
+- ‘student_ID’: Unique identifier for students.
+- ‘course_prefix’: Prefix of the course (e.g., ‘BIO’).
+- ‘course_credits’: Credit hours for each course.
+- ‘demographics_term’: Term in which the course was taken.</p></li>
+<li><p><strong>target_major</strong> (<em>str</em>) – The target major to filter and analyze (e.g., ‘BIO’).</p></li>
+<li><p><strong>transfer_credit_max</strong> (<em>int</em>) – Maximum number of transfer credit hours allowed for students
+to be included in the analysis.</p></li>
+<li><p><strong>target_major_course_prefix</strong> (<em>str</em>) – The course prefix associated with the target major (e.g., ‘BIOL’).</p></li>
+<li><p><strong>academic_year_min</strong> (<em>int</em><em>, </em><em>optional</em><em> (</em><em>e.g.</em><em>, </em><em>2018</em><em>, </em><em>YYYY</em><em>)</em>) – The minimum academic year to include in the analysis. If None, no
+lower limit is applied.</p></li>
+<li><p><strong>academic_year_max</strong> (<em>int</em><em>, </em><em>optional</em><em> (</em><em>e.g.</em><em>, </em><em>2018</em><em>, </em><em>YYYY</em><em>)</em>) – The maximum academic year to include in the analysis. If None, no
+upper limit is applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>filtered_df (pandas.DataFrame): All terms for students who met inclusion criteria
+with outcome indicators and course metrics merged in.</p></li>
+<li><p>target_major_courseload_df (pandas.DataFrame): Summary statistics
+of target major course load by semester, including mean and standard
+deviation for course credits and course counts.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Filters students based on target major, transfer credit limits, and fall-term starts.</p></li>
+<li><p>Assigns outcome indicators to track progression, major changes, gaps in enrollment, and graduation status. Only the first major change is flagged.</p></li>
+<li><dl class="simple">
+<dt>Aggregates course load data for the target major, calculating:</dt><dd><ul>
+<li><p>Number of courses taken per semester.</p></li>
+<li><p>Total credits earned per semester.</p></li>
+<li><p>Summary statistics (mean and standard deviation) for course credits and course counts by semester.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Assumes terms ending with ‘8’ correspond to fall semesters.</p></li>
+<li><p>Filters and processes coursework data to focus only on the target major.</p></li>
+<li><p>Outcome indicators are assigned on a per-student, per-semester basis.</p></li>
+<li><p>Only the first instance of a major change (outcome 4) is retained; subsequent major changes are reset to -1 (no change).</p></li>
+</ul>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_data_df</span><span class="p">,</span> <span class="n">stats_df</span> <span class="o">=</span> <span class="n">prepare_and_process_data</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">student_major_data_df</span><span class="p">,</span> <span class="n">coursework_df</span><span class="p">,</span> <span class="s2">&quot;BIO&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="s2">&quot;BIOL&quot;</span><span class="p">,</span> <span class="mi">2010</span><span class="p">,</span> <span class="mi">2024</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">filtered_data_df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">stats_df</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.hazard_analysis.hazard_utils.prepare_hazard_data">
+<span class="sig-name descname"><span class="pre">prepare_hazard_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_major</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_credit_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_credit_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fall_start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">academic_year_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">academic_year_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/hazard_analysis/hazard_utils.html#prepare_hazard_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.hazard_analysis.hazard_utils.prepare_hazard_data" title="Link to this definition"></a></dt>
+<dd><p>Prepares and filters student data for hazard analysis.</p>
+<p>This function filters students based on their earliest declared major,
+transfer credit range, earliest term, and optionally their start in a fall term.
+Additionally, it can restrict the dataset based on a range of academic years.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – The input DataFrame containing student records. Required columns:
+- ‘major_term_earliest’: The earliest major declared by the student.
+- ‘transfer_hours_term’: Transfer credit hours earned by the student.
+- ‘demographics_term’: The term for the student’s demographic record.
+- ‘term_earliest’: The earliest term the student enrolled.
+- ‘academic_year’: The academic year associated with the term.
+- ‘student_ID’: A unique identifier for each student.</p></li>
+<li><p><strong>target_major</strong> (<em>str</em>) – The target major to filter students by, based on their earliest declared major.</p></li>
+<li><p><strong>transfer_credit_max</strong> (<em>int</em><em>, </em><em>optional</em>) – The maximum number of transfer credit hours a student can have to be included
+in the dataset. Default is 30.</p></li>
+<li><p><strong>transfer_credit_min</strong> (<em>int</em><em>, </em><em>optional</em>) – The minimum number of transfer credit hours a student must have to be included.
+Default is 0.</p></li>
+<li><p><strong>fall_start</strong> (<em>int</em><em>, </em><em>optional</em>) – If set to 1, filters students to those whose earliest term ends with <cite>8</cite>,
+indicating a fall start term. If set to 0, all terms are included. Default is 1.</p></li>
+<li><p><strong>academic_year_min</strong> (<em>int</em><em>, </em><em>optional</em>) – The minimum academic year to include in the filtered dataset. If None, no
+lower limit is applied. Default is None.</p></li>
+<li><p><strong>academic_year_max</strong> (<em>int</em><em>, </em><em>optional</em>) – The maximum academic year to include in the filtered dataset. If None, no
+upper limit is applied. Default is None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>pandas.DataFrame</em> – A DataFrame of filtered student records meeting the specified criteria.</p></li>
+<li><p><em>Prints</em></p></li>
+<li><p><em>——</em></p></li>
+<li><p><em>- The number of unique students meeting the transfer credit and target major criteria.</em></p></li>
+<li><ul>
+<li><p>If <cite>fall_start</cite> is set to 1, the number of unique students who also started – in a fall term.</p></li>
+</ul>
+</li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Assumes term codes ending in <cite>8</cite> correspond to fall semesters.</p></li>
+<li><p>Designed for use in hazard analysis, focusing on student retention and progression.</p></li>
+<li><p>If <cite>academic_year_min</cite> or <cite>academic_year_max</cite> are specified, filters the dataset
+to include only records within the specified academic year range.</p></li>
+</ul>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_df</span> <span class="o">=</span> <span class="n">prepare_hazard_data</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">df</span><span class="p">,</span> <span class="s2">&quot;BIO&quot;</span><span class="p">,</span> <span class="n">transfer_credit_max</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">transfer_credit_min</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">fall_start</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">academic_year_min</span><span class="o">=</span><span class="mi">2010</span><span class="p">,</span> <span class="n">academic_year_max</span><span class="o">=</span><span class="mi">2024</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="go">[INFO] 100 students started in BIO with 10–30 transfer credits.</span>
+<span class="go">[INFO] 75 students began in Fall terms.</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="student_success.hazard_analysis.hazard_plots.html" class="btn btn-neutral float-left" title="student_success.hazard_analysis.hazard_plots module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="student_success.hazard_analysis.sankey.html" class="btn btn-neutral float-right" title="student_success.hazard_analysis.sankey module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.utils package &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="student_success.utils.constants module" href="student_success.utils.constants.html" />
+    <link rel="prev" title="student_success.metrics.flagging module" href="student_success.metrics.flagging.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="student_success.html">student_success package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#module-student_success">Module contents</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="student_success.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="student_success.hazard_analysis.html">student_success.hazard_analysis package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.metrics.html">student_success.metrics package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">student_success.utils package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#module-student_success.utils">Module contents</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="student_success.html">student_success package</a></li>
+      <li class="breadcrumb-item active">student_success.utils package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/student_success.utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="student-success-utils-package">
+<h1>student_success.utils package<a class="headerlink" href="#student-success-utils-package" title="Link to this heading"></a></h1>
+<section id="module-student_success.utils">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-student_success.utils" title="Link to this heading"></a></h2>
+<p>Utility functions for data wrangling and processing in student_success.</p>
+<section id="included-components">
+<h3>Included components:<a class="headerlink" href="#included-components" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><dl class="simple">
+<dt>io_utils :</dt><dd><ul>
+<li><p>Tools for file I/O, including column renaming from codebooks.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>scrambler :</dt><dd><ul>
+<li><p>Functions for anonymizing and restoring student IDs.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>program_utils :</dt><dd><ul>
+<li><p>Functions for metadata assignment, labeling, and lookup of information associated with majors and programs</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>grade_utils :</dt><dd><ul>
+<li><p>functions for manipulation and cleaning of grade columns</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>grades, time_utils, matriculation, etc. :</dt><dd><ul>
+<li><p>Additional support modules</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</section>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.constants.html">student_success.utils.constants module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.constants.html#usage-notes-for-institutional-customization">Usage Notes for Institutional Customization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.constants.html#contents">Contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.demographics_utils.html">student_success.utils.demographics_utils module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.demographics_utils.html#student_success.utils.demographics_utils.demographics_first_semester"><code class="docutils literal notranslate"><span class="pre">demographics_first_semester()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.demographics_utils.html#student_success.utils.demographics_utils.set_up_demographic_flags"><code class="docutils literal notranslate"><span class="pre">set_up_demographic_flags()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.grade_utils.html">student_success.utils.grade_utils module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.grade_utils.html#student_success.utils.grade_utils.filter_valid_letter_grades"><code class="docutils literal notranslate"><span class="pre">filter_valid_letter_grades()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.grade_utils.html#student_success.utils.grade_utils.letter_grade_clean"><code class="docutils literal notranslate"><span class="pre">letter_grade_clean()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.grade_utils.html#student_success.utils.grade_utils.letter_grade_simplify"><code class="docutils literal notranslate"><span class="pre">letter_grade_simplify()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.grade_utils.html#student_success.utils.grade_utils.num_grade_institutional"><code class="docutils literal notranslate"><span class="pre">num_grade_institutional()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.grade_utils.html#student_success.utils.grade_utils.num_grade_normalized"><code class="docutils literal notranslate"><span class="pre">num_grade_normalized()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.grade_utils.html#student_success.utils.grade_utils.strip_grade_suffixes"><code class="docutils literal notranslate"><span class="pre">strip_grade_suffixes()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.io_utils.html">student_success.utils.io_utils module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.io_utils.html#student_success.utils.io_utils.concatenate_csv_files"><code class="docutils literal notranslate"><span class="pre">concatenate_csv_files()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.io_utils.html#student_success.utils.io_utils.extract_column_mapping"><code class="docutils literal notranslate"><span class="pre">extract_column_mapping()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.io_utils.html#student_success.utils.io_utils.flatten_column_mapping"><code class="docutils literal notranslate"><span class="pre">flatten_column_mapping()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.io_utils.html#student_success.utils.io_utils.load_grades"><code class="docutils literal notranslate"><span class="pre">load_grades()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.io_utils.html#student_success.utils.io_utils.rename_columns_in_bulk"><code class="docutils literal notranslate"><span class="pre">rename_columns_in_bulk()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.matriculation_utils.html">student_success.utils.matriculation_utils module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.matriculation_utils.html#student_success.utils.matriculation_utils.clean_and_adjust_matriculation"><code class="docutils literal notranslate"><span class="pre">clean_and_adjust_matriculation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.matriculation_utils.html#student_success.utils.matriculation_utils.filter_by_valid_matriculation_term"><code class="docutils literal notranslate"><span class="pre">filter_by_valid_matriculation_term()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.program_utils.html">student_success.utils.program_utils module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.program_utils.html#student_success.utils.program_utils.classify_discipline"><code class="docutils literal notranslate"><span class="pre">classify_discipline()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.program_utils.html#student_success.utils.program_utils.lookup_major_name"><code class="docutils literal notranslate"><span class="pre">lookup_major_name()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.program_utils.html#student_success.utils.program_utils.replace_premajor_abbreviations"><code class="docutils literal notranslate"><span class="pre">replace_premajor_abbreviations()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.scrambler.html">student_success.utils.scrambler module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.scrambler.html#student_success.utils.scrambler.scramble_ID"><code class="docutils literal notranslate"><span class="pre">scramble_ID()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.scrambler.html#student_success.utils.scrambler.unscramble_ID"><code class="docutils literal notranslate"><span class="pre">unscramble_ID()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.time_utils.html">student_success.utils.time_utils module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.adjust_grad_term"><code class="docutils literal notranslate"><span class="pre">adjust_grad_term()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.calculate_running_semester_number"><code class="docutils literal notranslate"><span class="pre">calculate_running_semester_number()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.calculate_semester_interval"><code class="docutils literal notranslate"><span class="pre">calculate_semester_interval()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.combine_spring_summer_terms"><code class="docutils literal notranslate"><span class="pre">combine_spring_summer_terms()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.create_semesters"><code class="docutils literal notranslate"><span class="pre">create_semesters()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.get_academic_year"><code class="docutils literal notranslate"><span class="pre">get_academic_year()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.get_nth_year_fall_term"><code class="docutils literal notranslate"><span class="pre">get_nth_year_fall_term()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.increment_semester"><code class="docutils literal notranslate"><span class="pre">increment_semester()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.time_utils.html#student_success.utils.time_utils.standardize_to_term_code"><code class="docutils literal notranslate"><span class="pre">standardize_to_term_code()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="student_success.utils.validation.html">student_success.utils.validation module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.validation.html#student_success.utils.validation.safe_parse_tuple"><code class="docutils literal notranslate"><span class="pre">safe_parse_tuple()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.utils.validation.html#student_success.utils.validation.validate_columns"><code class="docutils literal notranslate"><span class="pre">validate_columns()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="student_success.metrics.flagging.html" class="btn btn-neutral float-left" title="student_success.metrics.flagging module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="student_success.utils.constants.html" class="btn btn-neutral float-right" title="student_success.utils.constants module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

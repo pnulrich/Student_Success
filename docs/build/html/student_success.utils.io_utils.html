@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.utils.io_utils module &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="student_success.utils.matriculation_utils module" href="student_success.utils.matriculation_utils.html" />
+    <link rel="prev" title="student_success.utils.grade_utils module" href="student_success.utils.grade_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="student_success.html">student_success package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#module-student_success">Module contents</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="student_success.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="student_success.hazard_analysis.html">student_success.hazard_analysis package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.metrics.html">student_success.metrics package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="student_success.utils.html">student_success.utils package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="student_success.utils.html#module-student_success.utils">Module contents</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="student_success.utils.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="student_success.html">student_success package</a></li>
+          <li class="breadcrumb-item"><a href="student_success.utils.html">student_success.utils package</a></li>
+      <li class="breadcrumb-item active">student_success.utils.io_utils module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/student_success.utils.io_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-student_success.utils.io_utils">
+<span id="student-success-utils-io-utils-module"></span><h1>student_success.utils.io_utils module<a class="headerlink" href="#module-student_success.utils.io_utils" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.utils.io_utils.concatenate_csv_files">
+<span class="sig-name descname"><span class="pre">concatenate_csv_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filenames</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low_memory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/utils/io_utils.html#concatenate_csv_files"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.utils.io_utils.concatenate_csv_files" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.utils.io_utils.extract_column_mapping">
+<span class="sig-name descname"><span class="pre">extract_column_mapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/utils/io_utils.html#extract_column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.utils.io_utils.extract_column_mapping" title="Link to this definition"></a></dt>
+<dd><p>Extract column mapping from an Excel file (.xlsx or .xls)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file_path</strong> (<em>str</em>) – Path to the Excel spreadsheet file containing column mapping.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary where keys are variable_name_project values and values are lists of variable_name_institution values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.utils.io_utils.flatten_column_mapping">
+<span class="sig-name descname"><span class="pre">flatten_column_mapping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">column_mapping</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/utils/io_utils.html#flatten_column_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.utils.io_utils.flatten_column_mapping" title="Link to this definition"></a></dt>
+<dd><p>Flatten column mapping from a nested dictionary to a single-level dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>column_mapping</strong> (<em>dict</em>) – A dictionary where keys are variable_name_project values and values are lists of variable_name_institution values.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A flattened dictionary where keys are variable_name_institution values and values are variable_name_project values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.utils.io_utils.load_grades">
+<span class="sig-name descname"><span class="pre">load_grades</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/utils/io_utils.html#load_grades"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.utils.io_utils.load_grades" title="Link to this definition"></a></dt>
+<dd><p>Load a CSV grades report file selected by the user and return it as a pandas DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The DataFrame containing the grades data loaded from the selected CSV file.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This function prompts the user to select a CSV grades report file, loads the file as a pandas DataFrame,
+and returns the DataFrame.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.utils.io_utils.rename_columns_in_bulk">
+<span class="sig-name descname"><span class="pre">rename_columns_in_bulk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column_mapping_filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/utils/io_utils.html#rename_columns_in_bulk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.utils.io_utils.rename_columns_in_bulk" title="Link to this definition"></a></dt>
+<dd><p>Rename columns in a DataFrame in bulk based on a column mapping extracted from an Excel file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pandas DataFrame</em>) – The DataFrame whose columns are to be renamed.</p></li>
+<li><p><strong>column_mapping_filepath</strong> (<em>str</em>) – The file path to the tab-delimited file containing the column mapping.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The DataFrame with renamed columns.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This function reads an Excel file (.xls or .xlsx) containing two sheets: a description sheet with information,
+on the file and a sheet detailing the column mapping. The function extracts the mapping, flattens
+the nested column mapping dictionary, and renames the columns of the input DataFrame accordingly.</p>
+<p>The column mapping file must include three columns: ‘variable_name_project’, ‘variable_name_institution’,
+and ‘description’, where ‘variable_name_project’ corresponds to the old column names and
+‘variable_name_institution’ corresponds to the new column names.</p>
+<p>Example usage:
+<code class="docutils literal notranslate"><span class="pre">`python</span>
+<span class="pre">df</span> <span class="pre">=</span> <span class="pre">pd.DataFrame(...)</span>&#160; <span class="pre">#</span> <span class="pre">Define</span> <span class="pre">your</span> <span class="pre">DataFrame</span>
+<span class="pre">renamed_df</span> <span class="pre">=</span> <span class="pre">rename_columns_in_bulk(df,</span> <span class="pre">'path/to/column_mapping_file.xlsx')</span>
+<span class="pre">`</span></code></p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="student_success.utils.grade_utils.html" class="btn btn-neutral float-left" title="student_success.utils.grade_utils module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="student_success.utils.matriculation_utils.html" class="btn btn-neutral float-right" title="student_success.utils.matriculation_utils module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

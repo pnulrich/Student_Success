@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.utils.matriculation_utils &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">student_success.utils.matriculation_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for student_success.utils.matriculation_utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">student_success.utils.validation</span> <span class="kn">import</span> <span class="n">validate_columns</span>
+
+<span class="c1">#  CAUTION: BANNER may not reliably report &#39;matriculation_term&#39; do to wide variations in timing and programs in an institution</span>
+<span class="c1">#  If you are using matriculation term values derived from BANNER, ensure that values match what you expect. Be diligent</span>
+<span class="c1">#  about clarifying if any matriculation terms or dates are associated with the program of interest. It may be best to</span>
+<span class="c1">#  create a new column in your dataset representing term_earliest (for a specific program). This can be done by using the</span>
+<span class="c1">#  earliest term a student took classes. The benefit of this is avoiding situations where a student matriculates in an earlier</span>
+<span class="c1">#  semester than they begin taking classes.</span>
+
+<div class="viewcode-block" id="filter_by_valid_matriculation_term">
+<a class="viewcode-back" href="../../../student_success.utils.matriculation_utils.html#student_success.utils.matriculation_utils.filter_by_valid_matriculation_term">[docs]</a>
+<span class="k">def</span> <span class="nf">filter_by_valid_matriculation_term</span><span class="p">(</span><span class="n">demographics_df</span><span class="p">,</span> <span class="n">student_id_col</span><span class="o">=</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="n">term_col</span><span class="o">=</span><span class="s1">&#39;matriculation_term&#39;</span><span class="p">,</span>
+                             <span class="n">demo_term_col</span><span class="o">=</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cleans the DataFrame by identifying and keeping only rows for student_ID&#39;s that have a</span>
+<span class="sd">    demographics term associated with the minimum matriculation term. This avoids issues</span>
+<span class="sd">    that occur when a dataset for various years includes demographics but the dataset does not go</span>
+<span class="sd">    back far enough in time to get demographics associated with their first term.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    - demographics_df (pd.DataFrame): DataFrame containing course and student information.</span>
+<span class="sd">    - student_id_col (str): Column name for student ID.</span>
+<span class="sd">    - term_col (str): Column name for the term of matriculation.</span>
+<span class="sd">    - demo_term_col (str): Column name for the demographics term.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    - pd.DataFrame: A cleaned DataFrame containing only the rows where the demographics term</span>
+<span class="sd">      matches the minimum term of matriculation for each student and at least one valid match exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">demographics_df</span> <span class="o">=</span> <span class="n">demographics_df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">validate_columns</span><span class="p">(</span><span class="n">demographics_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">required_columns</span><span class="o">=</span><span class="p">[</span><span class="n">student_id_col</span><span class="p">,</span> <span class="n">term_col</span><span class="p">,</span> <span class="n">demo_term_col</span><span class="p">])</span>
+
+    <span class="c1"># Step 1: Determine the minimum &#39;matriculation_term&#39; for each student</span>
+    <span class="n">min_matriculation_df</span> <span class="o">=</span> <span class="n">demographics_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">student_id_col</span><span class="p">)[</span><span class="n">term_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="c1"># Step 2: Merge this minimum matriculation back with the original DataFrame</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">demographics_df</span><span class="p">,</span> <span class="n">min_matriculation_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">student_id_col</span><span class="p">,</span> <span class="n">suffixes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;_min&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Step 3: Check for matching course terms</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;is_valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">demo_term_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">merged_df</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">term_col</span><span class="si">}</span><span class="s1">_min&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Step 4: Identify students with at least one valid course term match</span>
+    <span class="n">valid_student_ids</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;is_valid&#39;</span><span class="p">]][</span><span class="n">student_id_col</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+
+    <span class="c1"># Step 5: Keep all rows in merged_df for students who have at least one valid match</span>
+    <span class="n">cleaned_df</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">merged_df</span><span class="p">[</span><span class="n">student_id_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">valid_student_ids</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="n">cleaned_df</span></div>
+
+
+<div class="viewcode-block" id="clean_and_adjust_matriculation">
+<a class="viewcode-back" href="../../../student_success.utils.matriculation_utils.html#student_success.utils.matriculation_utils.clean_and_adjust_matriculation">[docs]</a>
+<span class="k">def</span> <span class="nf">clean_and_adjust_matriculation</span><span class="p">(</span><span class="n">demographics_df</span><span class="p">,</span> <span class="n">student_id_col</span><span class="o">=</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="n">matriculation_term_col</span><span class="o">=</span><span class="s1">&#39;matriculation_term&#39;</span><span class="p">,</span>
+                                   <span class="n">demo_term_col</span><span class="o">=</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">,</span> <span class="n">include_multiple_matriculations</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                   <span class="n">demographics_range_min</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adjusts matriculation terms to align with available demographic data.</span>
+
+<span class="sd">    This function supports filtering out students with inconsistent matriculation data, ensuring that the adjusted</span>
+<span class="sd">    matriculation term reflects either:</span>
+<span class="sd">    - the official matriculation term (if demographic data exists for it), or</span>
+<span class="sd">    - the earliest available demographics term.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    demographics_df : pd.DataFrame</span>
+<span class="sd">        A dataframe with one row per student per term containing both matriculation and demographic terms.</span>
+<span class="sd">    student_id_col : str</span>
+<span class="sd">        Column name for student ID (default = &#39;student_ID&#39;).</span>
+<span class="sd">    matriculation_term_col : str</span>
+<span class="sd">        Column name for original matriculation term (default = &#39;matriculation_term&#39;).</span>
+<span class="sd">    demo_term_col : str</span>
+<span class="sd">        Column name for demographics term (default = &#39;demographics_term&#39;).</span>
+<span class="sd">    include_multiple_matriculations : int</span>
+<span class="sd">        - 0: Exclude students with multiple distinct matriculation terms (default).</span>
+<span class="sd">        - 1: Include all students regardless of multiple matriculation terms.</span>
+<span class="sd">    demographics_range_min : int or None</span>
+<span class="sd">        Optional term code. Students with `matriculation_term_min` before this value will be excluded.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        DataFrame with added columns:</span>
+<span class="sd">        - `matriculation_term_min`: minimum matriculation term per student.</span>
+<span class="sd">        - `earliest_demographics_term`: earliest demographics term per student.</span>
+<span class="sd">        - `matriculation_term_adjusted`: final adjusted matriculation term used for analyses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">demographics_df</span> <span class="o">=</span> <span class="n">demographics_df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">validate_columns</span><span class="p">(</span><span class="n">demographics_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">required_columns</span><span class="o">=</span><span class="p">[</span><span class="n">student_id_col</span><span class="p">,</span> <span class="n">matriculation_term_col</span><span class="p">,</span> <span class="n">demo_term_col</span><span class="p">])</span>
+
+    <span class="c1"># Filter students based on the count of unique matriculation terms, if required</span>
+    <span class="n">matriculation_counts</span> <span class="o">=</span> <span class="n">demographics_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">student_id_col</span><span class="p">)[</span><span class="n">matriculation_term_col</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">include_multiple_matriculations</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">valid_student_ids</span> <span class="o">=</span> <span class="n">matriculation_counts</span><span class="p">[</span><span class="n">matriculation_counts</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">demographics_df</span> <span class="o">=</span> <span class="n">demographics_df</span><span class="p">[</span><span class="n">demographics_df</span><span class="p">[</span><span class="n">student_id_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">valid_student_ids</span><span class="p">)]</span>
+
+    <span class="c1"># Get the minimum matriculation term for each student</span>
+    <span class="n">min_matriculation_df</span> <span class="o">=</span> <span class="n">demographics_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">student_id_col</span><span class="p">)[</span><span class="n">matriculation_term_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">min_matriculation_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">matriculation_term_col</span><span class="p">:</span> <span class="s1">&#39;matriculation_term_min&#39;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">demographics_df</span><span class="p">,</span> <span class="n">min_matriculation_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">student_id_col</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+
+    <span class="c1"># If a minimum term is indicated for demographics_range_min, then filter out rows where matriculation occurred</span>
+    <span class="c1"># before demographics_range_min</span>
+    <span class="k">if</span> <span class="n">demographics_range_min</span><span class="p">:</span>
+        <span class="n">merged_df</span> <span class="o">=</span> <span class="n">merged_df</span><span class="p">[</span><span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;matriculation_term_min&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">demographics_range_min</span><span class="p">]</span>
+        <span class="c1"># merged_df is now the filtered dataset</span>
+
+    <span class="c1"># Determine the earliest demographics term for each student and add new column to merged_df</span>
+    <span class="n">earliest_demographics_df</span> <span class="o">=</span> <span class="n">merged_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">student_id_col</span><span class="p">)[</span><span class="n">demo_term_col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">earliest_demographics_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">demo_term_col</span><span class="p">:</span> <span class="s1">&#39;earliest_demographics_term&#39;</span><span class="p">},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">merged_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">merged_df</span><span class="p">,</span> <span class="n">earliest_demographics_df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">student_id_col</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Assign the adjusted matriculation term</span>
+    <span class="n">merged_df</span><span class="p">[</span><span class="s1">&#39;matriculation_term_adjusted&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">merged_df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;matriculation_term_min&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;earliest_demographics_term&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;matriculation_term_min&#39;</span><span class="p">]</span>
+        <span class="k">else</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;earliest_demographics_term&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">merged_df</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.demographics_grad_combine &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../student_success.html">student_success package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">student_success.demographics_grad_combine</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for student_success.demographics_grad_combine</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Python script to de-identify data sets by scrambling ID&#39;s and droppping unnceccesary columns. Generates a CSV for analysis.</span>
+<span class="c1"># Python pandas is much more efficient than R and accomplishes scrambling ID&#39;s perhaps 100X faster.</span>
+<span class="kn">import</span> <span class="nn">tkinter.filedialog</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="n">filedialog</span> <span class="k">as</span> <span class="n">fd</span>
+<span class="kn">import</span> <span class="nn">tkinter</span> <span class="k">as</span> <span class="nn">tk</span>
+<span class="kn">import</span> <span class="nn">student_success.deprecated_utilityfunctions</span> <span class="k">as</span> <span class="nn">utilityfunctions</span>
+
+
+<span class="c1">#collate rows from CSV files of user-selected math courses and drop unnecessary columns</span>
+<div class="viewcode-block" id="collate_math_grades">
+<a class="viewcode-back" href="../../student_success.demographics_grad_combine.html#student_success.demographics_grad_combine.collate_math_grades">[docs]</a>
+<span class="k">def</span> <span class="nf">collate_math_grades</span><span class="p">(</span><span class="n">course_number_mapping</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Reads and combines multiple CSV files containing math grades into a single DataFrame.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    course_number_mapping : dict or False, optional</span>
+<span class="sd">        A dictionary mapping course titles to course numbers. If provided, a new column</span>
+<span class="sd">        &#39;Course_Number&#39; will be created based on this mapping. (default is False)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        A DataFrame containing the combined data from all input CSV files.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Prompt the user to select CSV files</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">tk</span><span class="o">.</span><span class="n">Tk</span><span class="p">()</span>
+    <span class="n">root</span><span class="o">.</span><span class="n">withdraw</span><span class="p">()</span>
+    <span class="n">file_paths</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askopenfilenames</span><span class="p">(</span><span class="n">filetypes</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;CSV Files&#39;</span><span class="p">,</span> <span class="s1">&#39;*.csv&#39;</span><span class="p">)])</span>
+
+    <span class="c1"># Create an empty DataFrame to store the combined data</span>
+    <span class="n">combined_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="c1"># Read and concatenate the CSV files</span>
+    <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="n">file_paths</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+        <span class="n">combined_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">combined_df</span><span class="p">,</span> <span class="n">df</span><span class="p">],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Select the desired columns</span>
+    <span class="n">selected_columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Reg_Term&#39;</span><span class="p">,</span> <span class="s1">&#39;Course_Dept&#39;</span><span class="p">,</span> <span class="s1">&#39;Instr_Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Reg_Crn&#39;</span><span class="p">,</span> <span class="s1">&#39;Reg_Crse_Title&#39;</span><span class="p">,</span> <span class="s1">&#39;ID&#39;</span><span class="p">,</span> <span class="s1">&#39;Final_GRDE&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;StuMajr_Code1&#39;</span><span class="p">]</span>
+    <span class="n">combined_df</span> <span class="o">=</span> <span class="n">combined_df</span><span class="p">[</span><span class="n">selected_columns</span><span class="p">]</span>
+    <span class="n">combined_df</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;ID&quot;</span><span class="p">:</span> <span class="s2">&quot;Student_ID&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;columns&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Create a new column based on the dictionary mapping &#39;Reg_Crse_Title&#39; to &#39;Course_Number&#39;</span>
+    <span class="k">if</span> <span class="n">course_number_mapping</span><span class="p">:</span>
+        <span class="n">combined_df</span><span class="p">[</span><span class="s1">&#39;Course_Number&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">combined_df</span><span class="p">[</span><span class="s1">&#39;Reg_Crse_Title&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">course_number_mapping</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">combined_df</span><span class="p">[</span><span class="s1">&#39;Course_Number&#39;</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">combined_df</span></div>
+
+
+
+<span class="c1">#Joins demographics reports with graduation records in a single dataframe</span>
+<div class="viewcode-block" id="demographics_grad_combine">
+<a class="viewcode-back" href="../../student_success.demographics_grad_combine.html#student_success.demographics_grad_combine.demographics_grad_combine">[docs]</a>
+<span class="k">def</span> <span class="nf">demographics_grad_combine</span><span class="p">(</span><span class="n">cipher</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Combines demographics reports with graduation records into a single DataFrame.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cipher : str or None, optional</span>
+<span class="sd">        A cipher value used to obscure student IDs. (default is None)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        A DataFrame containing combined demographics and graduation data.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - The function prompts the user to select CSV files for demographics and graduation records.</span>
+<span class="sd">    - Demographics and graduation data are merged based on student ID.</span>
+<span class="sd">    - Duplicate rows with the same term and student ID are eliminated.</span>
+<span class="sd">    - The output DataFrame is saved as a CSV file in a user-defined folder with a filename</span>
+<span class="sd">      suffix in YYYYMMDD format.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">cipher</span> <span class="o">==</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;You must provide a cipher value to use this function in order to obscure student IDs.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">demographics_data_filename</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askopenfilename</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;CV Enrollment Academic Program 1 and 2 DB S440270&#39;</span><span class="p">)</span> <span class="c1"># show an &quot;Open&quot; dialog box and return the path to the selected file</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">demographics_data_filename</span><span class="p">)</span>
+    <span class="n">demographics_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">demographics_data_filename</span><span class="p">)</span>
+    <span class="n">demographics_data</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;PantherID&quot;</span><span class="p">:</span> <span class="s2">&quot;Student_ID&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;columns&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1">#using Student_ID as standard</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">demographics_data</span><span class="p">))</span>
+
+    <span class="n">demographics_data</span> <span class="o">=</span> <span class="n">demographics_data</span><span class="p">[</span>
+        <span class="p">[</span>
+            <span class="s2">&quot;SDSTUDEMOG_TERM&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Student_ID&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_BIRTHDATE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_ETHNICITY_CODE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_RACE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_SEX&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_COUNTY_ORIGIN_MATIC&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_STATE_ORIGIN_MATRIC&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_ADDRESS_LINE_1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_ADDRESS_LINE_2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_CITY&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_STATE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_ZIPCODE&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUDEMOG_FINANCIAL_AID_IND&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_MATRIC_TERM&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_TERM&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_MAJOR&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_MAJOR2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_HOURS_ENROLLED&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_HOURS_EARNED&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_HOURS_ATTEMPTED&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_HOURS_TOTAL&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_TRANSFER_HOURS&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUMAIN_TRANSFER_GPA&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUGPA_HOURS_ATTPT_INST&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUGPA_HOURS_EARNED_INST&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SDSTUGPA_GPA_INST&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    <span class="p">]</span>
+
+    <span class="c1">#demographics_data[&#39;SDSTUMAIN_MATRIC_TERM&#39;] = demographics_data[&#39;SDSTUMAIN_MATRIC_TERM&#39;].astype(&#39;int64&#39;)</span>
+
+    <span class="c1">#use secret cipher to obscure identifer</span>
+    <span class="n">demographics_data</span> <span class="o">=</span> <span class="n">utilityfunctions</span><span class="o">.</span><span class="n">scramble_ID</span><span class="p">(</span><span class="n">demographics_data</span><span class="p">,</span> <span class="n">cipher</span><span class="p">)</span>
+
+    <span class="c1"># Keep only year of birth</span>
+    <span class="n">demographics_data</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">&quot;SDSTUDEMOG_BIRTHDATE&quot;</span><span class="p">:</span> <span class="s2">&quot;BirthYear&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;columns&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">demographics_data</span><span class="p">[</span><span class="s2">&quot;BirthYear&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">demographics_data</span><span class="p">[</span><span class="s2">&quot;BirthYear&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">str</span><span class="p">[</span><span class="o">-</span><span class="mi">4</span><span class="p">:]</span>
+
+    <span class="c1"># Eliminate any rows where Term and Student_ID are both duplicated</span>
+    <span class="nb">len</span><span class="p">(</span><span class="n">demographics_data</span><span class="p">)</span>
+    <span class="n">demographics_data</span> <span class="o">=</span> <span class="n">demographics_data</span><span class="p">[</span>
+        <span class="o">~</span><span class="n">demographics_data</span><span class="o">.</span><span class="n">duplicated</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;SDSTUDEMOG_TERM&quot;</span><span class="p">,</span> <span class="s2">&quot;Student_ID&quot;</span><span class="p">],</span> <span class="n">keep</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="nb">len</span><span class="p">(</span><span class="n">demographics_data</span><span class="p">)</span>
+    <span class="c1"># print(demographics_data.head())</span>
+
+    <span class="c1"># Load graduates data file</span>
+    <span class="n">graduates_data_filename</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askopenfilename</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;Graduation Purge Report S761102&#39;</span><span class="p">)</span>
+    <span class="n">graduates_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">graduates_data_filename</span><span class="p">)</span>
+    <span class="n">graduates_data</span><span class="o">.</span><span class="n">rename</span><span class="p">({</span><span class="s2">&quot;Csv_id&quot;</span><span class="p">:</span> <span class="s2">&quot;Student_ID&quot;</span><span class="p">},</span> <span class="n">axis</span><span class="o">=</span><span class="s2">&quot;columns&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># use secret cipher to obscure identifer</span>
+    <span class="n">graduates_data</span> <span class="o">=</span> <span class="n">utilityfunctions</span><span class="o">.</span><span class="n">scramble_ID</span><span class="p">(</span><span class="n">graduates_data</span><span class="p">,</span> <span class="n">cipher</span><span class="p">)</span>
+    <span class="n">graduates_data</span> <span class="o">=</span> <span class="n">graduates_data</span><span class="p">[</span>
+        <span class="n">graduates_data</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="o">~</span><span class="n">graduates_data</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">&quot;Student_name&quot;</span><span class="p">,</span> <span class="s2">&quot;Pidm&quot;</span><span class="p">])]</span>
+    <span class="p">]</span>
+    <span class="nb">len</span><span class="p">(</span><span class="n">graduates_data</span><span class="p">)</span>
+    <span class="n">graduates_data</span> <span class="o">=</span> <span class="n">graduates_data</span><span class="p">[</span>
+        <span class="o">~</span><span class="n">graduates_data</span><span class="o">.</span><span class="n">duplicated</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Student_ID&quot;</span><span class="p">,</span> <span class="s2">&quot;Grad_term&quot;</span><span class="p">],</span> <span class="n">keep</span><span class="o">=</span><span class="s2">&quot;first&quot;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="nb">len</span><span class="p">(</span><span class="n">graduates_data</span><span class="p">)</span>
+
+
+    <span class="c1"># Join datasets based on student ID number</span>
+    <span class="c1"># yields 1060505 rows x 38 columns; this differs from R process in utilityFunctions.r. My R function yields 1089475 rows.</span>
+    <span class="n">demographics_data_combined</span> <span class="o">=</span> <span class="n">demographics_data</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">graduates_data</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;Student_ID&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_year&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_year&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int64&#39;</span><span class="p">)</span>
+    <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;Grad_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int64&#39;</span><span class="p">)</span>
+    <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;SDSTUMAIN_MATRIC_TERM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;SDSTUMAIN_MATRIC_TERM&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;SDSTUMAIN_MATRIC_TERM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">demographics_data_combined</span><span class="p">[</span><span class="s1">&#39;SDSTUMAIN_MATRIC_TERM&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int64&#39;</span><span class="p">)</span>
+
+    <span class="c1"># save combined data set into user defined folder with filename suffix as YYYYMMDD format</span>
+    <span class="n">new_csv_path</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askdirectory</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s2">&quot;Select folder to save CSV&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;/S440270_GraduationPurge_Combined_&quot;</span> <span class="o">+</span> <span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span>
+    <span class="n">demographics_data_combined</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">new_csv_path</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="c1">#demographics_data_combined[&quot;BirthYear&quot;] = demographics_data_combined[&quot;BirthYear&quot;].astype(&#39;int64&#39;)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Data exported to &quot;</span> <span class="o">+</span> <span class="n">new_csv_path</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

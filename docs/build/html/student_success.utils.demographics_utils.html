@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.utils.demographics_utils module &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="student_success.utils.grade_utils module" href="student_success.utils.grade_utils.html" />
+    <link rel="prev" title="student_success.utils.constants module" href="student_success.utils.constants.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="student_success.html">student_success package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#module-student_success">Module contents</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="student_success.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="student_success.hazard_analysis.html">student_success.hazard_analysis package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.metrics.html">student_success.metrics package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="student_success.utils.html">student_success.utils package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="student_success.utils.html#module-student_success.utils">Module contents</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="student_success.utils.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="student_success.html">student_success package</a></li>
+          <li class="breadcrumb-item"><a href="student_success.utils.html">student_success.utils package</a></li>
+      <li class="breadcrumb-item active">student_success.utils.demographics_utils module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/student_success.utils.demographics_utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-student_success.utils.demographics_utils">
+<span id="student-success-utils-demographics-utils-module"></span><h1>student_success.utils.demographics_utils module<a class="headerlink" href="#module-student_success.utils.demographics_utils" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.utils.demographics_utils.demographics_first_semester">
+<span class="sig-name descname"><span class="pre">demographics_first_semester</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'any'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_dataframe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/utils/demographics_utils.html#demographics_first_semester"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.utils.demographics_utils.demographics_first_semester" title="Link to this definition"></a></dt>
+<dd><p>Returns the first-term demographics record for each student, optionally filtered by transfer status.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – DataFrame containing student demographic records across multiple terms.</p></li>
+<li><p><strong>transfer_status</strong> (<em>{'any'</em><em>, </em><em>'with'</em><em>, </em><em>'without'}</em><em>, </em><em>default='any'</em>) – Specifies which students to include based on transfer credit status:
+- ‘any’: include all students
+- ‘with’: include only students with transfer credit in their first term
+- ‘without’: include only students with no transfer credit in their first term</p></li>
+<li><p><strong>return_dataframe</strong> (<em>int</em><em>, </em><em>default=1</em>) – <ul>
+<li><p>1: returns a DataFrame of the first-term records</p></li>
+<li><p>0: returns a list of student_ID values</p></li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Either a DataFrame of first-term demographic records or a list of student_IDs,
+depending on the value of <cite>return_dataframe</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame or list</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <cite>transfer_status</cite> is not one of {‘any’, ‘with’, ‘without’}.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>First-term status is determined using the earliest <cite>demographics_term</cite> for each student.</p></li>
+<li><p>The column ‘transfer_hours_term’ is used to determine transfer credit status.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.utils.demographics_utils.set_up_demographic_flags">
+<span class="sig-name descname"><span class="pre">set_up_demographic_flags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hispanic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pell</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">first_generation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/utils/demographics_utils.html#set_up_demographic_flags"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.utils.demographics_utils.set_up_demographic_flags" title="Link to this definition"></a></dt>
+<dd><p>Adds binary demographic flags to a student-level DataFrame.</p>
+<p>This function creates new columns that represent:
+- PEER status (based on race and optionally ethnicity)
+- Hispanic ethnicity
+- PELL grant eligibility
+- First-generation status
+- Sex (binary flag)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – DataFrame containing demographic data for students.</p></li>
+<li><p><strong>peer</strong> (<em>bool</em><em>, </em><em>default=True</em>) – If True, adds a ‘flag_PEER’ column based on race (and optionally Hispanic status).</p></li>
+<li><p><strong>hispanic</strong> (<em>bool</em><em>, </em><em>default=True</em>) – If True, adds a ‘flag_hispanic’ column for Hispanic ethnicity (using either
+‘demographics_hispanic’ or ‘demographics_ethnicity’).</p></li>
+<li><p><strong>pell</strong> (<em>bool</em><em>, </em><em>default=True</em>) – If True, adds a ‘flag_PELL’ column based on PELL grant eligibility.</p></li>
+<li><p><strong>first_generation</strong> (<em>bool</em><em>, </em><em>default=True</em>) – If True, adds a ‘flag_first_generation’ column based on first-gen college status.</p></li>
+<li><p><strong>sex</strong> (<em>bool</em><em>, </em><em>default=True</em>) – If True, adds a ‘flag_sex’ column based on sex (1 = Female, 0 = Male).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A copy of the original DataFrame with added flag columns, depending on options selected.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>PEER definitions:</dt><dd><ul>
+<li><p>Race values of ‘Black or African American’, ‘American Indian or Alaska Native’,
+‘Pacific Islander’, and multiracial may contribute to PEER status.</p></li>
+<li><p>If <cite>hispanic=True</cite>, students marked as Hispanic override PEER status if their race
+would otherwise result in exclusion.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Sex flag uses values from <cite>SEX_DICT</cite>, which maps both ‘F’/’M’ and ‘Female’/’Male’.</p></li>
+<li><p>Sex and race taxonomy can be updated in student_success.utils.constants.py as needed</p></li>
+<li><p>Missing or unrecognized values default to 0 or -1 where appropriate.</p></li>
+</ul>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="student_success.utils.constants.html" class="btn btn-neutral float-left" title="student_success.utils.constants module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="student_success.utils.grade_utils.html" class="btn btn-neutral float-right" title="student_success.utils.grade_utils module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

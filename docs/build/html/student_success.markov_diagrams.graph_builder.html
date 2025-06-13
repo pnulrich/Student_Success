@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.markov_diagrams.graph_builder module &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="student_success.markov_diagrams.preprocess module" href="student_success.markov_diagrams.preprocess.html" />
+    <link rel="prev" title="student_success.markov_diagrams.course_flows module" href="student_success.markov_diagrams.course_flows.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="student_success.html">student_success package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#module-student_success">Module contents</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="student_success.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="student_success.hazard_analysis.html">student_success.hazard_analysis package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="student_success.markov_diagrams.html#module-student_success.markov_diagrams">Module contents</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="student_success.markov_diagrams.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.metrics.html">student_success.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.utils.html">student_success.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="student_success.html">student_success package</a></li>
+          <li class="breadcrumb-item"><a href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a></li>
+      <li class="breadcrumb-item active">student_success.markov_diagrams.graph_builder module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/student_success.markov_diagrams.graph_builder.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-student_success.markov_diagrams.graph_builder">
+<span id="student-success-markov-diagrams-graph-builder-module"></span><h1>student_success.markov_diagrams.graph_builder module<a class="headerlink" href="#module-student_success.markov_diagrams.graph_builder" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.add_alternate_entry">
+<span class="sig-name descname"><span class="pre">add_alternate_entry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">course_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt_entry_count</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#add_alternate_entry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.add_alternate_entry" title="Link to this definition"></a></dt>
+<dd><p>Adds a node and edge to represent students entering a course without taking the prior prerequisite.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>pydot.Dot</em>) – The graph to which the alternate entry node and edge will be added.</p></li>
+<li><p><strong>course_name</strong> (<em>str</em>) – Name of the course receiving alternate entries.</p></li>
+<li><p><strong>alt_entry_count</strong> (<em>int</em>) – Number of students entering without prior course completion.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.add_course_edges">
+<span class="sig-name descname"><span class="pre">add_course_edges</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nodes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stats</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_did_not_take_next</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#add_course_edges"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.add_course_edges" title="Link to this definition"></a></dt>
+<dd><p>Adds outcome edges to a course graph, labeled with performance statistics.</p>
+<p>Edges are drawn from the course node to the “Pass” and “DFW” nodes,
+from “DFW” to “Retake”, and from “Retake” to both “Pass” and “Did Not Take Next”
+based on provided summary stats.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>graph</strong> (<em>pydot.Dot</em>) – The graph to which edges should be added.</p></li>
+<li><p><strong>nodes</strong> (<em>dict</em>) – Dictionary of node objects created by <cite>create_course_nodes()</cite>.</p></li>
+<li><p><strong>stats</strong> (<em>dict</em>) – Dictionary containing performance statistics (e.g., DFW rate, repeat pass rate).</p></li>
+<li><p><strong>include_did_not_take_next</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to include edges to a “Did Not Take Next” node (default is False).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.course_sequence_analysis">
+<span class="sig-name descname"><span class="pre">course_sequence_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">course_sequence</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">major_matriculation_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'major_term_earliest'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_major_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_pie</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">demographics_flag_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#course_sequence_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.course_sequence_analysis" title="Link to this definition"></a></dt>
+<dd><p>Generates a flow diagram showing student progression through a sequence of courses.</p>
+<p>The diagram includes labeled nodes and edges representing outcomes and transitions,
+with optional pie chart embeddings to visualize demographic breakdowns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>course_sequence</strong> (<em>list</em><em> of </em><em>str</em>) – Ordered list of course titles to include in the sequence.</p></li>
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – Dataset containing course attempts, grades, and demographics.</p></li>
+<li><p><strong>major_matriculation_column</strong> (<em>str</em><em>, </em><em>optional</em>) – Column name indicating students’ earliest major (default ‘major_term_earliest’).</p></li>
+<li><p><strong>target_major_code</strong> (<em>str</em><em>, </em><em>optional</em>) – If provided, limits analysis to students with this major.</p></li>
+<li><p><strong>node_pie</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to embed demographic pie charts in course nodes (default False).</p></li>
+<li><p><strong>demographics_flag_col</strong> (<em>str</em><em>, </em><em>optional</em>) – Column name for a binary or categorical demographic used in pie charts (required if node_pie is True).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Writes a PNG file of the course sequence diagram and displays it with matplotlib.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.create_course_node_with_image">
+<span class="sig-name descname"><span class="pre">create_course_node_with_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">course_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#create_course_node_with_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.create_course_node_with_image" title="Link to this definition"></a></dt>
+<dd><p>Creates a box-shaped pydot node with an embedded pie chart image and a label.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>course_name</strong> (<em>str</em>) – Label to display below the pie chart image.</p></li>
+<li><p><strong>image_path</strong> (<em>str</em>) – Path to the PNG image to embed within the node.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A box-shaped node embedding an image and labeled with the course name.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pydot.Node</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.create_course_nodes">
+<span class="sig-name descname"><span class="pre">create_course_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">course_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_did_not_take_next</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_pie</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pie_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#create_course_nodes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.create_course_nodes" title="Link to this definition"></a></dt>
+<dd><p>Creates labeled nodes for a course and its outcomes in a pydot graph.</p>
+<p>Depending on the parameters, this function adds a main course node (optionally with a demographic pie chart image),
+as well as nodes for “Pass”, “DFW”, “Retake”, and optionally “Did Not Take Next”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>course_name</strong> (<em>str</em>) – Name of the course to use in node labels.</p></li>
+<li><p><strong>include_did_not_take_next</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to include a “Did Not Take Next” outcome node (default is False).</p></li>
+<li><p><strong>node_pie</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to include a pie chart image inside the course node (default is False).</p></li>
+<li><p><strong>pie_data</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dictionary mapping color names to proportions, used to create pie chart (only if node_pie is True).</p></li>
+<li><p><strong>graph</strong> (<em>pydot.Dot</em><em>, </em><em>optional</em>) – The graph to which nodes should be added.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary of pydot.Node objects keyed by role (‘course’, ‘pass’, ‘dfw’, ‘retake’, ‘did_not_take_next’).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.get_combined_course_df">
+<span class="sig-name descname"><span class="pre">get_combined_course_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ids_1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ids_2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#get_combined_course_df"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.get_combined_course_df" title="Link to this definition"></a></dt>
+<dd><p>Returns a filtered DataFrame including only students present in at least one of two ID sets.</p>
+<p>Useful when combining students who progressed from one course to the next and those who entered from alternate pathways.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – The full dataset to filter.</p></li>
+<li><p><strong>ids_1</strong> (<em>iterable</em>) – Set of student_IDs (e.g., those who took the prerequisite).</p></li>
+<li><p><strong>ids_2</strong> (<em>iterable</em>) – Set of student_IDs (e.g., alternate entries).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Subset of <cite>df</cite> containing rows where student_ID is in either <cite>ids_1</cite> or <cite>ids_2</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.get_earliest_major">
+<span class="sig-name descname"><span class="pre">get_earliest_major</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#get_earliest_major"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.get_earliest_major" title="Link to this definition"></a></dt>
+<dd><p>Determines each student’s earliest major and merges it into the dataframe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>df</strong> (<em>pandas.DataFrame</em>) – A dataframe with at least [‘student_ID’, ‘course_term’, ‘major_matriculation’] columns.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>pandas.DataFrame</em> – Original dataframe with a new ‘major_matriculation’ column set to the earliest observed value.</p></li>
+<li><p><strong>Notes</strong> (<em>helper function that may be useful at some point…move to utils or delete?</em>)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.graph_builder.save_pie_chart">
+<span class="sig-name descname"><span class="pre">save_pie_chart</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pie_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/graph_builder.html#save_pie_chart"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.graph_builder.save_pie_chart" title="Link to this definition"></a></dt>
+<dd><p>Generates and saves a pie chart image from demographic proportions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pie_data</strong> (<em>dict</em>) – Dictionary mapping color names to proportions (e.g., {‘green’: 0.6, ‘blue’: 0.4}).</p></li>
+<li><p><strong>filepath</strong> (<em>str</em>) – Full path where the PNG image should be saved.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="student_success.markov_diagrams.course_flows.html" class="btn btn-neutral float-left" title="student_success.markov_diagrams.course_flows module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="student_success.markov_diagrams.preprocess.html" class="btn btn-neutral float-right" title="student_success.markov_diagrams.preprocess module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

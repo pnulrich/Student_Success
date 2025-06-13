@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.metrics.flagging &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">student_success.metrics.flagging</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for student_success.metrics.flagging</h1><div class="highlight"><pre>
+<span></span><span class="c1"># flagging.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Functions to assign categorical flags for student retention, inactivity, and graduation status.</span>
+<span class="sd">These are low-level utilities designed for reuse across retention summaries, hazard modeling,</span>
+<span class="sd">and visualization modules.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">student_success.utils.constants</span> <span class="kn">import</span> <span class="n">STEM_CORE_MAJORS</span>
+<span class="kn">from</span> <span class="nn">student_success.utils.validation</span> <span class="kn">import</span> <span class="n">safe_parse_tuple</span>
+
+<div class="viewcode-block" id="assign_retention_outcomes">
+<a class="viewcode-back" href="../../../student_success.metrics.flagging.html#student_success.metrics.flagging.assign_retention_outcomes">[docs]</a>
+<span class="k">def</span> <span class="nf">assign_retention_outcomes</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">major_col</span><span class="o">=</span><span class="s1">&#39;major_term&#39;</span><span class="p">,</span> <span class="n">reference_col</span><span class="o">=</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span>
+                              <span class="n">stem_majors</span><span class="o">=</span><span class="n">STEM_CORE_MAJORS</span><span class="p">,</span> <span class="n">flag_stem</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Assigns binary flags for major retention and (optionally) STEM field retention.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df (pd.DataFrame): Input DataFrame with student major history.</span>
+<span class="sd">        major_col (str): Column indicating current or observed major.</span>
+<span class="sd">        reference_col (str): Column indicating original or reference major (e.g., major at matriculation).</span>
+<span class="sd">        stem_majors (list): List of STEM major codes used to flag STEM retention (default = STEM_CORE_MAJORS).</span>
+<span class="sd">        flag_stem (bool): Whether to assign a STEM retention flag.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.DataFrame: A copy of the original DataFrame with two new columns:</span>
+<span class="sd">            - &#39;flag_retention_major&#39;: 1 if current major matches reference major, else 0.</span>
+<span class="sd">            - &#39;flag_retention_STEM&#39;:</span>
+<span class="sd">                - 1 if student began in a STEM major and is still in STEM,</span>
+<span class="sd">                - 0 if student left STEM,</span>
+<span class="sd">                - -1 if student did not start in STEM.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - Intended for use in longitudinal student tracking, retention summaries, and visualizations.</span>
+<span class="sd">        - Major codes should be standardized and matched to the `stem_majors` list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_retention_major&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">major_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">df</span><span class="p">[</span><span class="n">reference_col</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">flag_stem</span><span class="p">:</span>
+        <span class="c1"># initialize values with a -1 for all students; thus, default is that students didn&#39;t start in STEM</span>
+        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_retention_STEM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="c1"># for students who started in a core STEM major during their first term, set retention flag</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">reference_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">stem_majors</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="s1">&#39;flag_retention_STEM&#39;</span><span class="p">]</span> <span class="o">=</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span><span class="n">major_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">stem_majors</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="classify_dropout_term">
+<a class="viewcode-back" href="../../../student_success.metrics.flagging.html#student_success.metrics.flagging.classify_dropout_term">[docs]</a>
+<span class="k">def</span> <span class="nf">classify_dropout_term</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">term_col</span><span class="o">=</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">,</span> <span class="n">student_col</span><span class="o">=</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="n">student_level_col</span><span class="o">=</span><span class="s1">&#39;student_level&#39;</span><span class="p">,</span>
+                             <span class="n">graduation_flag_col</span><span class="o">=</span><span class="s1">&#39;flag_graduation&#39;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                             <span class="n">program_target_level</span><span class="o">=</span><span class="s1">&#39;US&#39;</span><span class="p">,</span> <span class="n">graduation_target_level</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">,</span>
+                             <span class="n">graduation_level_col</span><span class="o">=</span><span class="s1">&#39;graduation_level&#39;</span><span class="p">,</span> <span class="n">graduation_status_col</span><span class="o">=</span><span class="s1">&#39;graduation_status&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flags the final term of a student&#39;s enrollment as a dropout point under the following conditions:</span>
+<span class="sd">    - The student has not graduated at the specified level, AND</span>
+<span class="sd">    - EITHER they do not re-enroll for more than `threshold` terms,</span>
+<span class="sd">      OR they transition from the target student level (e.g., bachelor&#39;s &#39;US&#39;) to a lower level (e.g., associate &#39;AS&#39;).</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df (pd.DataFrame): DataFrame with one row per student per term.</span>
+<span class="sd">        term_col (str): Column indicating the academic term (e.g., &#39;demographics_term&#39;), formatted as YYYYMM.</span>
+<span class="sd">        student_col (str): Column identifying the student (e.g., &#39;student_ID&#39;).</span>
+<span class="sd">        student_level_col (str): Column indicating student level (e.g., &#39;US&#39;, &#39;AS&#39;).</span>
+<span class="sd">        graduation_flag_col (str): Column with binary graduation flag (1 = graduated).</span>
+<span class="sd">        threshold (int): Minimum number of terms without enrollment that defines a dropout (default = 3).</span>
+<span class="sd">        program_target_level (str): Student level used to assess dropout (default = &#39;US&#39; for bachelor&#39;s level).</span>
+<span class="sd">        graduation_target_level (str): Graduation level required to override dropout logic (default = &#39;B&#39;).</span>
+<span class="sd">        graduation_level_col (str): Column with graduation level(s), tuple or stringified tuple.</span>
+<span class="sd">        graduation_status_col (str): Column with graduation status(es), tuple or stringified tuple.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.Series: Binary indicator (1 = term where dropout occurred, 0 = otherwise).</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - Students who have graduated at the target level are not considered for dropout.</span>
+<span class="sd">        - Dropout is applied to the term preceding a level change or final term if no subsequent activity is found.</span>
+<span class="sd">        - Handles malformed tuples and stringified data gracefully.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">graduation_flag_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_graduation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">classify_graduation_status</span><span class="p">(</span>
+            <span class="n">df</span><span class="p">,</span>
+            <span class="n">grad_col</span><span class="o">=</span><span class="n">graduation_status_col</span><span class="p">,</span>
+            <span class="n">level_col</span><span class="o">=</span><span class="n">graduation_level_col</span><span class="p">,</span>
+            <span class="n">target_level</span><span class="o">=</span><span class="n">graduation_target_level</span>
+        <span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="p">[</span><span class="n">student_col</span><span class="p">,</span> <span class="n">term_col</span><span class="p">])</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;term_gap&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_dropout_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">max_term_overall</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">term_col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">student_id</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">student_col</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">group</span><span class="p">[</span><span class="n">graduation_flag_col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">continue</span>  <span class="c1"># skip graduated students</span>
+
+        <span class="n">group</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">by</span><span class="o">=</span><span class="n">term_col</span><span class="p">)</span>
+        <span class="n">terms</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">term_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">levels</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="n">student_level_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+
+        <span class="n">deltas</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">terms</span><span class="p">)):</span>
+            <span class="n">gap</span> <span class="o">=</span> <span class="n">terms</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">terms</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">gap_years</span> <span class="o">=</span> <span class="n">gap</span> <span class="o">//</span> <span class="mi">100</span>
+            <span class="n">gap_sem</span> <span class="o">=</span> <span class="n">gap</span> <span class="o">%</span> <span class="mi">100</span>
+            <span class="n">term_gap</span> <span class="o">=</span> <span class="n">gap_years</span> <span class="o">*</span> <span class="mi">3</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="n">gap_sem</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">gap_sem</span> <span class="o">==</span> <span class="mi">5</span> <span class="k">else</span> <span class="mi">3</span> <span class="k">if</span> <span class="n">gap_sem</span> <span class="o">==</span> <span class="mi">8</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">deltas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">term_gap</span><span class="p">)</span>
+
+        <span class="n">deltas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># No gap after last term</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">levels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">program_target_level</span> <span class="ow">and</span> <span class="n">levels</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">program_target_level</span><span class="p">:</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="s1">&#39;flag_dropout_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">group</span><span class="p">[</span><span class="n">student_col</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">in</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_dropout_term&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">][</span><span class="n">student_col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">:</span>
+            <span class="k">continue</span>  <span class="c1"># already flagged by level transition</span>
+
+        <span class="k">if</span> <span class="nb">max</span><span class="p">(</span><span class="n">deltas</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="n">max_idx</span> <span class="o">=</span> <span class="n">deltas</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">deltas</span><span class="p">))</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">iloc</span><span class="p">[[</span><span class="n">max_idx</span><span class="p">]]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="s1">&#39;flag_dropout_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">last_term</span> <span class="o">=</span> <span class="n">terms</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">gap</span> <span class="o">=</span> <span class="n">max_term_overall</span> <span class="o">-</span> <span class="n">last_term</span>
+            <span class="n">gap_years</span> <span class="o">=</span> <span class="n">gap</span> <span class="o">//</span> <span class="mi">100</span>
+            <span class="n">gap_sem</span> <span class="o">=</span> <span class="n">gap</span> <span class="o">%</span> <span class="mi">100</span>
+            <span class="n">future_gap</span> <span class="o">=</span> <span class="n">gap_years</span> <span class="o">*</span> <span class="mi">3</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="n">gap_sem</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">gap_sem</span> <span class="o">==</span> <span class="mi">5</span> <span class="k">else</span> <span class="mi">3</span> <span class="k">if</span> <span class="n">gap_sem</span> <span class="o">==</span> <span class="mi">8</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">future_gap</span> <span class="o">&gt;=</span> <span class="n">threshold</span><span class="p">:</span>
+                <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">group</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;flag_dropout_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_dropout_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="classify_graduation_status">
+<a class="viewcode-back" href="../../../student_success.metrics.flagging.html#student_success.metrics.flagging.classify_graduation_status">[docs]</a>
+<span class="k">def</span> <span class="nf">classify_graduation_status</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">grad_col</span><span class="o">=</span><span class="s1">&#39;graduation_status&#39;</span><span class="p">,</span> <span class="n">level_col</span><span class="o">=</span><span class="s1">&#39;graduation_level&#39;</span><span class="p">,</span> <span class="n">target_level</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determines whether a student graduated at the target degree level based on award status and level.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df (pd.DataFrame): DataFrame with columns for graduation level and status.</span>
+<span class="sd">        grad_col (str): Column containing tuple (or stringified tuple) of graduation statuses.</span>
+<span class="sd">        level_col (str): Column containing tuple (or stringified tuple) of degree levels (e.g., &#39;B&#39;, &#39;M&#39;).</span>
+<span class="sd">        target_level (str): Degree level to check for (default = &#39;B&#39; for bachelor&#39;s).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.Series: Binary indicator (1 = graduation at target level occurred, 0 = otherwise).</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - Mixed tuple/string data is normalized.</span>
+<span class="sd">        - Students are flagged if any tuple pair (level, status) matches (target_level, &#39;Awarded&#39;).</span>
+<span class="sd">        - Handles edge cases with truncated tuples or malformed strings gracefully.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">interpret_and_check</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">statuses</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">grad_col</span><span class="p">]</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">level_col</span><span class="p">]</span>
+
+            <span class="n">statuses</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">statuses</span><span class="p">)</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">statuses</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">levels</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[WARN] Tuple length mismatch: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span>
+                <span class="n">status</span> <span class="o">==</span> <span class="s1">&#39;Awarded&#39;</span> <span class="ow">and</span> <span class="n">level</span> <span class="o">==</span> <span class="n">target_level</span>
+                <span class="k">for</span> <span class="n">status</span><span class="p">,</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">statuses</span><span class="p">,</span> <span class="n">levels</span><span class="p">)</span>
+            <span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">interpret_and_check</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="classify_graduation_term">
+<a class="viewcode-back" href="../../../student_success.metrics.flagging.html#student_success.metrics.flagging.classify_graduation_term">[docs]</a>
+<span class="k">def</span> <span class="nf">classify_graduation_term</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">grad_date_col</span><span class="o">=</span><span class="s1">&#39;graduation_date&#39;</span><span class="p">,</span> <span class="n">level_col</span><span class="o">=</span><span class="s1">&#39;graduation_level&#39;</span><span class="p">,</span>
+                             <span class="n">status_col</span><span class="o">=</span><span class="s1">&#39;graduation_status&#39;</span><span class="p">,</span> <span class="n">term_col</span><span class="o">=</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">,</span> <span class="n">target_level</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">,</span>
+                             <span class="n">use_max_term_logic</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determines if a student graduated at the target level in the current term.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df (pd.DataFrame): DataFrame with one row per student per term.</span>
+<span class="sd">        grad_date_col (str): Column containing a tuple (or stringified tuple) of graduation dates.</span>
+<span class="sd">        level_col (str): Column containing a tuple (or stringified tuple) of graduation levels.</span>
+<span class="sd">        status_col (str): Column containing a tuple (or stringified tuple) of graduation statuses.</span>
+<span class="sd">        term_col (str): Column indicating the current term (e.g., &#39;demographics_term&#39;) in YYYYMM format.</span>
+<span class="sd">        target_level (str): Degree level to evaluate (default = &#39;B&#39; for bachelor&#39;s).</span>
+<span class="sd">        use_max_term_logic (bool): If True, aligns graduation with max enrolled term instead of comparing by date.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.Series: Binary flag (1 = student graduated at target level in this term, 0 = otherwise).</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">        - If `use_max_term_logic` is True:</span>
+<span class="sd">            - Assumes a &#39;max_course_term&#39; column exists.</span>
+<span class="sd">            - A graduation is flagged if any awarded date for the target level is ≥ that max term.</span>
+<span class="sd">        - If False:</span>
+<span class="sd">            - Compares parsed graduation dates directly to the term&#39;s datetime.</span>
+<span class="sd">        - Designed to handle malformed tuples and string representations robustly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">interpret_and_check</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">level_col</span><span class="p">])</span>
+            <span class="n">dates</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">grad_date_col</span><span class="p">])</span>
+            <span class="n">statuses</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">status_col</span><span class="p">])</span>
+
+            <span class="n">awarded_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">lvl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span>
+                               <span class="k">if</span> <span class="n">lvl</span> <span class="o">==</span> <span class="n">target_level</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">statuses</span><span class="p">)</span> <span class="ow">and</span> <span class="n">statuses</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Awarded&#39;</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">awarded_indices</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mi">0</span>
+
+            <span class="n">matching_dates</span> <span class="o">=</span> <span class="p">[</span><span class="n">dates</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">awarded_indices</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)]</span>
+            <span class="n">parsed_dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">matching_dates</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">use_max_term_logic</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s1">&#39;max_course_term&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">row</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;max_course_term&#39;</span><span class="p">]):</span>
+                    <span class="k">return</span> <span class="mi">0</span>
+                <span class="n">max_term</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;max_course_term&#39;</span><span class="p">])</span>
+                <span class="n">term_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">max_term</span><span class="p">),</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;%Y%m&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">term_col</span><span class="p">]</span> <span class="o">==</span> <span class="n">max_term</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">&gt;=</span> <span class="n">term_date</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">parsed_dates</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">term_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">term_col</span><span class="p">]),</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;%Y%m&#39;</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="ow">and</span> <span class="n">d</span> <span class="o">==</span> <span class="n">term_date</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">parsed_dates</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[DEBUG] Exception for </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Row data:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">interpret_and_check</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="classify_graduation_in_major">
+<a class="viewcode-back" href="../../../student_success.metrics.flagging.html#student_success.metrics.flagging.classify_graduation_in_major">[docs]</a>
+<span class="k">def</span> <span class="nf">classify_graduation_in_major</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">major_col</span><span class="o">=</span><span class="s1">&#39;major_graduation&#39;</span><span class="p">,</span> <span class="n">target_major</span><span class="o">=</span><span class="s1">&#39;BIO&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flags students whose graduation was in the specified target major.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df (pd.DataFrame): DataFrame containing a &#39;major_graduation&#39; column with final awarded majors.</span>
+<span class="sd">        major_col (str): Column indicating graduation majors (e.g., a tuple of majors).</span>
+<span class="sd">        target_major (str): Major of interest.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.Series: Binary flag where 1 = graduated in target major, 0 = otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">flag_graduated_in_target</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+        <span class="n">majors</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">major_col</span><span class="p">])</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">target_major</span> <span class="ow">in</span> <span class="n">majors</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">flag_graduated_in_target</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="classify_graduation_in_first_major">
+<a class="viewcode-back" href="../../../student_success.metrics.flagging.html#student_success.metrics.flagging.classify_graduation_in_first_major">[docs]</a>
+<span class="k">def</span> <span class="nf">classify_graduation_in_first_major</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">major_col</span><span class="o">=</span><span class="s1">&#39;major_graduation&#39;</span><span class="p">,</span> <span class="n">reference_col</span><span class="o">=</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flags students whose graduation includes their originally declared major.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df (pd.DataFrame): DataFrame with &#39;major_graduation&#39; and &#39;major_term_earliest&#39; columns.</span>
+<span class="sd">        major_col (str): Column containing graduation majors (stringified or real tuples/lists).</span>
+<span class="sd">        reference_col (str): Column with the student&#39;s original major (e.g., at matriculation).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.Series: Binary flag (1 = graduated in first major, 0 = otherwise)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">flag_graduated_in_first_major</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+        <span class="n">graduation_majors</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">major_col</span><span class="p">])</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">reference_col</span><span class="p">]</span> <span class="ow">in</span> <span class="n">graduation_majors</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">flag_graduated_in_first_major</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="classify_graduation_in_STEM">
+<a class="viewcode-back" href="../../../student_success.metrics.flagging.html#student_success.metrics.flagging.classify_graduation_in_STEM">[docs]</a>
+<span class="k">def</span> <span class="nf">classify_graduation_in_STEM</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">major_col</span><span class="o">=</span><span class="s1">&#39;major_graduation&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flags students whose graduation was in a core STEM major.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df (pd.DataFrame): DataFrame containing a &#39;major_graduation&#39; column with final awarded majors.</span>
+<span class="sd">        major_col (str): Column indicating graduation majors (e.g., a tuple of majors).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pd.Series: Binary flag where 1 = graduated in a core STEM major, 0 = otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">flag_graduated_in_STEM</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+        <span class="n">graduation_majors</span> <span class="o">=</span> <span class="n">safe_parse_tuple</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">major_col</span><span class="p">])</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="n">m</span> <span class="ow">in</span> <span class="n">STEM_CORE_MAJORS</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">graduation_majors</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">flag_graduated_in_STEM</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Placeholder for additional flagging logic to be ported from hazard_utils</span>
+<span class="c1"># e.g., assign_dropout_flags, classify_retention_in_major</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

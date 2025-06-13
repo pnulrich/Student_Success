@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.hazard_analysis.hazard_utils &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">student_success.hazard_analysis.hazard_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for student_success.hazard_analysis.hazard_utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Hazard analysis utilities for modeling student progression.</span>
+
+<span class="sd">Includes:</span>
+<span class="sd">- Filtering and preprocessing data for hazard modeling (`prepare_hazard_data`)</span>
+<span class="sd">- Outcome indicator assignment based on term-by-term academic history (`assign_outcome_indicators`)</span>
+<span class="sd">- Aggregation of course loads and outcome distributions (`prepare_and_process_data`)</span>
+<span class="sd">- Cumulative probability calculation (`calculate_probabilities`)</span>
+<span class="sd">- Logistic feature extraction for fitted curves (`extract_logistic_features`)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">curve_fit</span>
+<span class="kn">from</span> <span class="nn">student_success.utils.validation</span> <span class="kn">import</span> <span class="n">validate_columns</span><span class="p">,</span> <span class="n">safe_parse_tuple</span>
+<span class="kn">from</span> <span class="nn">student_success.utils.time_utils</span> <span class="kn">import</span> <span class="n">calculate_semester_interval</span>
+<span class="kn">from</span> <span class="nn">student_success.metrics.flagging</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">classify_graduation_term</span><span class="p">,</span>
+    <span class="n">classify_graduation_in_first_major</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="prepare_hazard_data">
+<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_utils.html#student_success.hazard_analysis.hazard_utils.prepare_hazard_data">[docs]</a>
+<span class="k">def</span> <span class="nf">prepare_hazard_data</span><span class="p">(</span><span class="n">df</span><span class="p">,</span>
+                        <span class="n">target_major</span><span class="p">,</span>
+                        <span class="n">transfer_credit_max</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+                        <span class="n">transfer_credit_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                        <span class="n">fall_start</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="n">academic_year_min</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="n">academic_year_max</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prepares and filters student data for hazard analysis.</span>
+
+<span class="sd">    This function filters students based on their earliest declared major,</span>
+<span class="sd">    transfer credit range, earliest term, and optionally their start in a fall term.</span>
+<span class="sd">    Additionally, it can restrict the dataset based on a range of academic years.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pandas.DataFrame</span>
+<span class="sd">        The input DataFrame containing student records. Required columns:</span>
+<span class="sd">        - &#39;major_term_earliest&#39;: The earliest major declared by the student.</span>
+<span class="sd">        - &#39;transfer_hours_term&#39;: Transfer credit hours earned by the student.</span>
+<span class="sd">        - &#39;demographics_term&#39;: The term for the student&#39;s demographic record.</span>
+<span class="sd">        - &#39;term_earliest&#39;: The earliest term the student enrolled.</span>
+<span class="sd">        - &#39;academic_year&#39;: The academic year associated with the term.</span>
+<span class="sd">        - &#39;student_ID&#39;: A unique identifier for each student.</span>
+
+<span class="sd">    target_major : str</span>
+<span class="sd">        The target major to filter students by, based on their earliest declared major.</span>
+
+<span class="sd">    transfer_credit_max : int, optional</span>
+<span class="sd">        The maximum number of transfer credit hours a student can have to be included</span>
+<span class="sd">        in the dataset. Default is 30.</span>
+
+<span class="sd">    transfer_credit_min : int, optional</span>
+<span class="sd">        The minimum number of transfer credit hours a student must have to be included.</span>
+<span class="sd">        Default is 0.</span>
+
+<span class="sd">    fall_start : int, optional</span>
+<span class="sd">        If set to 1, filters students to those whose earliest term ends with `8`,</span>
+<span class="sd">        indicating a fall start term. If set to 0, all terms are included. Default is 1.</span>
+
+<span class="sd">    academic_year_min : int, optional</span>
+<span class="sd">        The minimum academic year to include in the filtered dataset. If None, no</span>
+<span class="sd">        lower limit is applied. Default is None.</span>
+
+<span class="sd">    academic_year_max : int, optional</span>
+<span class="sd">        The maximum academic year to include in the filtered dataset. If None, no</span>
+<span class="sd">        upper limit is applied. Default is None.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        A DataFrame of filtered student records meeting the specified criteria.</span>
+
+<span class="sd">    Prints</span>
+<span class="sd">    ------</span>
+<span class="sd">    - The number of unique students meeting the transfer credit and target major criteria.</span>
+<span class="sd">    - If `fall_start` is set to 1, the number of unique students who also started</span>
+<span class="sd">      in a fall term.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Assumes term codes ending in `8` correspond to fall semesters.</span>
+<span class="sd">    - Designed for use in hazard analysis, focusing on student retention and progression.</span>
+<span class="sd">    - If `academic_year_min` or `academic_year_max` are specified, filters the dataset</span>
+<span class="sd">      to include only records within the specified academic year range.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; filtered_df = prepare_hazard_data(</span>
+<span class="sd">    ...     df, &quot;BIO&quot;, transfer_credit_max=30, transfer_credit_min=10,</span>
+<span class="sd">    ...     fall_start=1, academic_year_min=2010, academic_year_max=2024</span>
+<span class="sd">    ... )</span>
+<span class="sd">    [INFO] 100 students started in BIO with 10–30 transfer credits.</span>
+<span class="sd">    [INFO] 75 students began in Fall terms.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Confirm that essential fields are present in the input dataframe</span>
+    <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span> <span class="s1">&#39;transfer_hours_term&#39;</span><span class="p">,</span> <span class="s1">&#39;demographics_term&#39;</span><span class="p">,</span> <span class="s1">&#39;term_earliest&#39;</span><span class="p">,</span>
+                         <span class="s1">&#39;academic_year&#39;</span><span class="p">,</span> <span class="s1">&#39;student_ID&#39;</span><span class="p">]</span>
+    <span class="n">validate_columns</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">required_cols</span><span class="p">)</span>
+
+
+    <span class="c1"># Filter students based on criteria</span>
+    <span class="n">student_list</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span>
+        <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">target_major</span><span class="p">)</span> <span class="o">&amp;</span> <span class="c1"># this only looks at those students starting as target_major</span>
+        <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;transfer_hours_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">between</span><span class="p">(</span><span class="n">transfer_credit_min</span><span class="p">,</span> <span class="n">transfer_credit_max</span><span class="p">,</span> <span class="n">inclusive</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">))</span> <span class="o">&amp;</span>
+        <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;term_earliest&#39;</span><span class="p">])</span> <span class="o">&amp;</span>
+        <span class="p">((</span><span class="n">academic_year_min</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;academic_year&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">academic_year_min</span><span class="p">))</span> <span class="o">&amp;</span>
+        <span class="p">((</span><span class="n">academic_year_max</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;academic_year&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">academic_year_max</span><span class="p">))</span>
+        <span class="p">][</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+
+
+    <span class="c1"># Filter the main DataFrame</span>
+    <span class="n">filtered_df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">student_list</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">student_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> students started in </span><span class="si">{</span><span class="n">target_major</span><span class="si">}</span><span class="s2"> &quot;</span>
+          <span class="sa">f</span><span class="s2">&quot;with </span><span class="si">{</span><span class="n">transfer_credit_min</span><span class="si">}</span><span class="s2">–</span><span class="si">{</span><span class="n">transfer_credit_max</span><span class="si">}</span><span class="s2"> transfer credits.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Further filter by Fall start if required</span>
+    <span class="k">if</span> <span class="n">fall_start</span><span class="p">:</span>
+        <span class="n">filtered_df</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="p">[</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;term_earliest&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">8</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] </span><span class="si">{</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">}</span><span class="s2"> students began in Fall terms.&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">filtered_df</span></div>
+
+
+
+<div class="viewcode-block" id="assign_outcome_indicators">
+<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_utils.html#student_success.hazard_analysis.hazard_utils.assign_outcome_indicators">[docs]</a>
+<span class="k">def</span> <span class="nf">assign_outcome_indicators</span><span class="p">(</span><span class="n">student_df</span><span class="p">,</span> <span class="n">max_demographics_term</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process a student&#39;s academic data and assign outcome indicators.</span>
+
+<span class="sd">    This function processes a DataFrame containing a student&#39;s academic records,</span>
+<span class="sd">    assigning an outcome indicator for each term based on changes in major,</span>
+<span class="sd">    graduation status, and long enrollment gaps.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    student_df : pandas.DataFrame</span>
+<span class="sd">        A DataFrame containing a student&#39;s term-by-term academic data.</span>
+<span class="sd">        Required columns:</span>
+<span class="sd">        - &#39;major_term_earliest&#39;: The student’s original declared major.</span>
+<span class="sd">        - &#39;term_earliest&#39;: The student’s first term of enrollment.</span>
+<span class="sd">        - &#39;semester_number&#39;: The normalized sequence of academic semesters.</span>
+<span class="sd">        - &#39;major_term&#39;: The declared major during each term.</span>
+<span class="sd">        - &#39;demographics_term&#39;: Term code for the current record.</span>
+<span class="sd">        - &#39;flag_graduation_term&#39;: 1 if student graduates in this term; 0 otherwise.</span>
+<span class="sd">        - Optionally: &#39;flag_graduated_in_first_major&#39; (1 if graduated in original major)</span>
+
+<span class="sd">    max_demographics_term : int</span>
+<span class="sd">        The maximum term in the dataset. Used to assess potential dropouts</span>
+<span class="sd">        based on enrollment gaps.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of int</span>
+<span class="sd">        A list of assigned outcome indicators for each row in `student_df`.</span>
+<span class="sd">        The list is in the same order as `student_df` and can be assigned as a new column (e.g., &#39;outcome_indicator&#39;).</span>
+
+<span class="sd">    Outcome Logic</span>
+<span class="sd">    -------------</span>
+<span class="sd">    - Each outcome indicator reflects what happened *after* the given term.</span>
+<span class="sd">    - Outcome is assigned based on change between the current and previous term,</span>
+<span class="sd">      or based on whether the term is the student’s last known semester.</span>
+
+<span class="sd">    Indicators:</span>
+<span class="sd">        - -1 : No change from prior term; student continues in same major.</span>
+<span class="sd">        -  1 : Left the university after this term (inactivity for 2+ terms, no graduation).</span>
+<span class="sd">        -  2 : Graduated in their original declared major in this term.</span>
+<span class="sd">        -  3 : Graduated in a different major in this term.</span>
+<span class="sd">        -  4 : Actively changed major in this term (compared to previous term).</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - First term is always coded as -1 since no prior record exists.</span>
+<span class="sd">    - Graduation and dropout are only assessed in the student’s final semester.</span>
+<span class="sd">    - A long gap is defined as ≥2 terms without further enrollment.</span>
+<span class="sd">    - This function supersedes earlier logic in `process_student_data()`.</span>
+<span class="sd">    - Outcome indicator values are determined one row at a time but require knowledge of the full student history.</span>
+
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; student_data_df = pd.DataFrame({</span>
+<span class="sd">    ...     &#39;major_term_earliest&#39;: [&#39;BIO&#39;] * 3,</span>
+<span class="sd">    ...     &#39;term_earliest&#39;: [202001, 202005, 202008],</span>
+<span class="sd">    ...     &#39;semester_number&#39;: [1, 2, 3],</span>
+<span class="sd">    ...     &#39;major_term&#39;: [&#39;BIO&#39;, &#39;BIO&#39;, &#39;CHEM&#39;],</span>
+<span class="sd">    ...     &#39;demographics_term&#39;: [202001, 202005, 202008],</span>
+<span class="sd">    ...     &#39;flag_graduation_term&#39;: [0, 0, 0]</span>
+<span class="sd">    ... })</span>
+<span class="sd">    &gt;&gt;&gt; assign_outcome_indicators(student_data_df, 202008)</span>
+<span class="sd">    [-1, -1, 4]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">student_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span> <span class="s1">&#39;term_earliest&#39;</span><span class="p">,</span> <span class="s1">&#39;semester_number&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;major_term&#39;</span><span class="p">,</span> <span class="s1">&#39;demographics_term&#39;</span><span class="p">,</span> <span class="s1">&#39;flag_graduation_term&#39;</span>
+    <span class="p">]</span>
+    <span class="n">validate_columns</span><span class="p">(</span><span class="n">student_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">required_cols</span><span class="p">)</span>
+
+    <span class="c1"># Add &#39;flag_graduated_in_first_major&#39; if not already present</span>
+    <span class="k">if</span> <span class="s1">&#39;flag_graduated_in_first_major&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">student_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">student_df</span><span class="p">[</span><span class="s1">&#39;flag_graduated_in_first_major&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">classify_graduation_in_first_major</span><span class="p">(</span><span class="n">student_df</span><span class="p">)</span>
+
+    <span class="c1"># Basic student metadata</span>
+    <span class="n">term_earliest</span> <span class="o">=</span> <span class="n">student_df</span><span class="p">[</span><span class="s1">&#39;term_earliest&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>  <span class="c1"># earliest semester code</span>
+    <span class="n">last_semester_number</span> <span class="o">=</span> <span class="n">student_df</span><span class="p">[</span><span class="s1">&#39;semester_number&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>  <span class="c1"># Last semester number</span>
+
+    <span class="c1"># max_demographics_term = student_df[&#39;demographics_term&#39;].max()</span>
+    <span class="c1"># print(&quot;Max demographics term = &quot;, max_demographics_term)</span>
+    <span class="n">indicators</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">major_prev_term</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Track the previous semester&#39;s major</span>
+
+    <span class="c1"># Iterate over semesters</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">student_df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">is_last_semester</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;semester_number&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">last_semester_number</span>
+        <span class="n">current_term</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">]</span>
+        <span class="n">major</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;major_term&#39;</span><span class="p">]</span>
+        <span class="n">graduated</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;flag_graduation_term&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="n">graduated_in_first_major</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;flag_graduated_in_first_major&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+
+
+        <span class="c1"># Check: final record in student history</span>
+        <span class="k">if</span> <span class="n">is_last_semester</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">graduated</span><span class="p">:</span>
+                <span class="c1"># Graduated in original major or another major</span>
+                <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">2</span> <span class="k">if</span> <span class="n">graduated_in_first_major</span> <span class="k">else</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">calculate_semester_interval</span><span class="p">(</span><span class="n">current_term</span><span class="p">,</span> <span class="n">max_demographics_term</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># not graduated and a long enrollment gap --&gt; left university/dropout</span>
+                <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># still active</span>
+                <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">major_prev_term</span> <span class="o">=</span> <span class="n">major</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># For the earliest term of student records, set value to -1 as a baseline</span>
+        <span class="k">if</span> <span class="n">current_term</span> <span class="o">==</span> <span class="n">term_earliest</span><span class="p">:</span>
+            <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">major_prev_term</span> <span class="o">=</span> <span class="n">major</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">major</span> <span class="o">!=</span> <span class="n">major_prev_term</span><span class="p">:</span>
+            <span class="c1"># active but major changed from major in the previous term</span>
+            <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+            <span class="n">major_prev_term</span> <span class="o">=</span> <span class="n">major</span>
+            <span class="k">continue</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># no change</span>
+            <span class="n">indicators</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">major_prev_term</span> <span class="o">=</span> <span class="n">major</span>
+
+
+
+    <span class="k">return</span> <span class="n">indicators</span></div>
+
+
+
+<div class="viewcode-block" id="prepare_and_process_data">
+<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_utils.html#student_success.hazard_analysis.hazard_utils.prepare_and_process_data">[docs]</a>
+<span class="k">def</span> <span class="nf">prepare_and_process_data</span><span class="p">(</span><span class="n">student_major_data_df</span><span class="p">,</span>
+                             <span class="n">coursework_df</span><span class="p">,</span>
+                             <span class="n">target_major</span><span class="p">,</span>
+                             <span class="n">transfer_credit_min</span><span class="p">,</span>
+                             <span class="n">transfer_credit_max</span><span class="p">,</span>
+                             <span class="n">target_major_course_prefix</span><span class="p">,</span>
+                             <span class="n">academic_year_min</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                             <span class="n">academic_year_max</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prepares and processes data for hazard analysis.</span>
+
+<span class="sd">    This function filters, processes, and aggregates student and coursework data</span>
+<span class="sd">    to support hazard analysis, focusing on academic progression, major changes,</span>
+<span class="sd">    and course load statistics for a specified target major.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    student_major_data_df : pandas.DataFrame</span>
+<span class="sd">        A DataFrame containing student demographic and academic information.</span>
+<span class="sd">        Required columns include:</span>
+<span class="sd">        - &#39;student_ID&#39;: Unique identifier for students.</span>
+<span class="sd">        - &#39;demographics_term&#39;: Term of demographic data.</span>
+<span class="sd">        - &#39;major_term&#39;: Current major for the term.</span>
+<span class="sd">        - &#39;major_graduation&#39;: Graduation status or term.</span>
+<span class="sd">        - &#39;semester_number&#39;: Sequential outcome indicator.</span>
+<span class="sd">        - &#39;term_earliest&#39;: Earliest term of enrollment.</span>
+
+<span class="sd">    coursework_df : pandas.DataFrame</span>
+<span class="sd">        A DataFrame containing detailed course information.</span>
+<span class="sd">        Required columns include:</span>
+<span class="sd">        - &#39;student_ID&#39;: Unique identifier for students.</span>
+<span class="sd">        - &#39;course_prefix&#39;: Prefix of the course (e.g., &#39;BIO&#39;).</span>
+<span class="sd">        - &#39;course_credits&#39;: Credit hours for each course.</span>
+<span class="sd">        - &#39;demographics_term&#39;: Term in which the course was taken.</span>
+
+<span class="sd">    target_major : str</span>
+<span class="sd">        The target major to filter and analyze (e.g., &#39;BIO&#39;).</span>
+
+<span class="sd">    transfer_credit_max : int</span>
+<span class="sd">        Maximum number of transfer credit hours allowed for students</span>
+<span class="sd">        to be included in the analysis.</span>
+
+<span class="sd">    target_major_course_prefix : str</span>
+<span class="sd">        The course prefix associated with the target major (e.g., &#39;BIOL&#39;).</span>
+
+<span class="sd">    academic_year_min : int, optional (e.g., 2018, YYYY)</span>
+<span class="sd">        The minimum academic year to include in the analysis. If None, no</span>
+<span class="sd">        lower limit is applied.</span>
+
+<span class="sd">    academic_year_max : int, optional (e.g., 2018, YYYY)</span>
+<span class="sd">        The maximum academic year to include in the analysis. If None, no</span>
+<span class="sd">        upper limit is applied.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        - filtered_df (pandas.DataFrame): All terms for students who met inclusion criteria</span>
+<span class="sd">          with outcome indicators and course metrics merged in.</span>
+<span class="sd">        - target_major_courseload_df (pandas.DataFrame): Summary statistics</span>
+<span class="sd">          of target major course load by semester, including mean and standard</span>
+<span class="sd">          deviation for course credits and course counts.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Filters students based on target major, transfer credit limits, and fall-term starts.</span>
+<span class="sd">    - Assigns outcome indicators to track progression, major changes, gaps in enrollment, and graduation status. Only the first major change is flagged.</span>
+<span class="sd">    - Aggregates course load data for the target major, calculating:</span>
+<span class="sd">        - Number of courses taken per semester.</span>
+<span class="sd">        - Total credits earned per semester.</span>
+<span class="sd">        - Summary statistics (mean and standard deviation) for course credits and course counts by semester.</span>
+<span class="sd">    - Assumes terms ending with &#39;8&#39; correspond to fall semesters.</span>
+<span class="sd">    - Filters and processes coursework data to focus only on the target major.</span>
+<span class="sd">    - Outcome indicators are assigned on a per-student, per-semester basis.</span>
+<span class="sd">    - Only the first instance of a major change (outcome 4) is retained; subsequent major changes are reset to -1 (no change).</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; filtered_data_df, stats_df = prepare_and_process_data(</span>
+<span class="sd">    ...     student_major_data_df, coursework_df, &quot;BIO&quot;, 30, &quot;BIOL&quot;, 2010, 2024</span>
+<span class="sd">    ... )</span>
+<span class="sd">    &gt;&gt;&gt; print(filtered_data_df.head())</span>
+<span class="sd">    &gt;&gt;&gt; print(stats_df)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">required_student_cols</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;transfer_hours_term&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;demographics_term&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;term_earliest&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;academic_year&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;student_ID&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;major_term&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;major_graduation&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;semester_number&#39;</span>
+    <span class="p">]</span>
+
+    <span class="n">required_coursework_cols</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s1">&#39;student_ID&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;course_prefix&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;course_credits&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;course_number&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;course_suffix&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;demographics_term&#39;</span>
+    <span class="p">]</span>
+
+    <span class="n">validate_columns</span><span class="p">(</span><span class="n">student_major_data_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">required_student_cols</span><span class="p">)</span>
+    <span class="n">validate_columns</span><span class="p">(</span><span class="n">coursework_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">required_coursework_cols</span><span class="p">)</span>
+
+    <span class="c1"># Filter student data based on arguments passed to function</span>
+    <span class="n">filtered_df</span> <span class="o">=</span> <span class="n">prepare_hazard_data</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">student_major_data_df</span><span class="p">,</span>
+        <span class="n">target_major</span><span class="o">=</span><span class="n">target_major</span><span class="p">,</span>
+        <span class="n">transfer_credit_min</span><span class="o">=</span><span class="n">transfer_credit_min</span><span class="p">,</span>
+        <span class="n">transfer_credit_max</span><span class="o">=</span><span class="n">transfer_credit_max</span><span class="p">,</span>
+        <span class="n">fall_start</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># Include only students who started in fall terms</span>
+        <span class="n">academic_year_min</span><span class="o">=</span><span class="n">academic_year_min</span><span class="p">,</span>
+        <span class="n">academic_year_max</span><span class="o">=</span><span class="n">academic_year_max</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;major_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
+
+    <span class="c1"># Normalize major_graduation to parsed tuples</span>
+    <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;major_graduation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;major_graduation&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">safe_parse_tuple</span><span class="p">)</span>
+
+    <span class="c1"># Compute graduation flags</span>
+    <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;flag_graduation_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">classify_graduation_term</span><span class="p">(</span><span class="n">filtered_df</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;flag_graduated_in_first_major&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">filtered_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;flag_graduated_in_first_major&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">classify_graduation_in_first_major</span><span class="p">(</span><span class="n">filtered_df</span><span class="p">)</span>
+
+    <span class="c1"># Identify the latest term in the dataset for reference in processing</span>
+    <span class="n">max_demographics_term</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+    <span class="c1"># Assign outcome indicators to track student status by semester</span>
+    <span class="n">filtered_df</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">filtered_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="n">group_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span>
+            <span class="n">outcome_indicator</span><span class="o">=</span><span class="n">assign_outcome_indicators</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;semester_number&#39;</span><span class="p">),</span> <span class="n">max_demographics_term</span><span class="p">)</span>
+        <span class="p">))</span>
+    <span class="p">)</span>
+
+
+
+    <span class="c1"># Ensure only the first major change is flagged as 4</span>
+    <span class="c1"># Identify the earliest major change for each student and set all subsequent major changes to -1</span>
+    <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;earliest_major_change&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">filtered_df</span><span class="p">[</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;outcome_indicator&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;student_ID&#39;</span><span class="p">)[</span><span class="s1">&#39;semester_number&#39;</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s1">&#39;min&#39;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;outcome_indicator_original&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;outcome_indicator&#39;</span><span class="p">]</span>
+
+    <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;outcome_indicator&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">current_row</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">current_row</span><span class="p">[</span><span class="s1">&#39;outcome_indicator&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span> <span class="ow">and</span> <span class="n">current_row</span><span class="p">[</span><span class="s1">&#39;semester_number&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">current_row</span><span class="p">[</span><span class="s1">&#39;earliest_major_change&#39;</span><span class="p">]</span>
+        <span class="k">else</span> <span class="n">current_row</span><span class="p">[</span><span class="s1">&#39;outcome_indicator&#39;</span><span class="p">],</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+    <span class="c1"># Drop helper column</span>
+    <span class="n">filtered_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;earliest_major_change&#39;</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Filter coursework to include only courses in the target major</span>
+    <span class="n">filtered_coursework_df</span> <span class="o">=</span> <span class="n">coursework_df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">filtered_coursework_df</span> <span class="o">=</span> <span class="n">filtered_coursework_df</span><span class="p">[</span>
+        <span class="n">filtered_coursework_df</span><span class="p">[</span><span class="s1">&#39;course_prefix&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">target_major_course_prefix</span>
+    <span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="c1"># Create full course number codes (e.g., BIOL1104K)</span>
+    <span class="n">filtered_coursework_df</span><span class="p">[</span><span class="s1">&#39;course_fullcode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">filtered_coursework_df</span><span class="p">[</span><span class="s1">&#39;course_prefix&#39;</span><span class="p">]</span> <span class="o">+</span>
+        <span class="n">filtered_coursework_df</span><span class="p">[</span><span class="s1">&#39;course_number&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">+</span>
+        <span class="n">filtered_coursework_df</span><span class="p">[</span><span class="s1">&#39;course_suffix&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Aggregate course load metrics (number of courses, total credits, course list) by semester</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">filtered_coursework_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="s1">&#39;demographics_term&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+        <span class="n">semester_courses_target_major</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;course_prefix&#39;</span><span class="p">,</span> <span class="s1">&#39;count&#39;</span><span class="p">),</span>
+        <span class="n">semester_credits_target_major</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;course_credits&#39;</span><span class="p">,</span> <span class="s1">&#39;sum&#39;</span><span class="p">),</span>
+        <span class="n">course_list</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;course_fullcode&#39;</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="c1"># Merge course load data into the filtered student DataFrame</span>
+    <span class="n">filtered_df</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="s1">&#39;demographics_term&#39;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+    <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;semester_courses_target_major&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;semester_courses_target_major&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;semester_credits_target_major&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;semester_credits_target_major&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Calculate descriptive statistics for credit hours by semester</span>
+    <span class="c1"># TODO: Assess how this will be impacted by anyone one who changed out of the target major but took target major courses after changing</span>
+    <span class="n">credits_stats</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">filtered_df</span><span class="p">[</span>
+            <span class="p">(</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;outcome_indicator&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span>
+            <span class="p">(</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;major_term&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">target_major</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;semester_number&#39;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+            <span class="n">avg_semester_credits_target_major</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;semester_credits_target_major&#39;</span><span class="p">,</span> <span class="s1">&#39;mean&#39;</span><span class="p">),</span>
+            <span class="n">std_semester_credits_target_major</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;semester_credits_target_major&#39;</span><span class="p">,</span> <span class="s1">&#39;std&#39;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Calculate descriptive statistics for course counts by semester</span>
+    <span class="n">courses_stats</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">filtered_df</span><span class="p">[</span>
+            <span class="p">(</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;outcome_indicator&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span>
+            <span class="p">(</span><span class="n">filtered_df</span><span class="p">[</span><span class="s1">&#39;major_term&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">target_major</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;semester_number&#39;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+            <span class="n">avg_semester_courses_target_major</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;semester_courses_target_major&#39;</span><span class="p">,</span> <span class="s1">&#39;mean&#39;</span><span class="p">),</span>
+            <span class="n">std_semester_courses_target_major</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;semester_courses_target_major&#39;</span><span class="p">,</span> <span class="s1">&#39;std&#39;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Combine credit and course statistics into a single DataFrame</span>
+    <span class="n">target_major_courseload_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">credits_stats</span><span class="p">,</span> <span class="n">courses_stats</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s1">&#39;semester_number&#39;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">filtered_df</span><span class="p">,</span> <span class="n">target_major_courseload_df</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_probabilities">
+<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_utils.html#student_success.hazard_analysis.hazard_utils.calculate_probabilities">[docs]</a>
+<span class="k">def</span> <span class="nf">calculate_probabilities</span><span class="p">(</span><span class="n">input_df</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate proportions, cumulative probabilities, and active student counts by semester.</span>
+
+<span class="sd">    This function computes:</span>
+<span class="sd">    1. Proportions of students by `outcome_indicator` for each semester.</span>
+<span class="sd">    2. Cumulative probabilities of various outcomes, adjusted for the active population.</span>
+<span class="sd">    3. Total active student counts per semester.</span>
+<span class="sd">    4. A filtered DataFrame (`masked_df`) filtered version of &#39;input_df&#39; with rows only where outcome != -1. Use this to focus on transition or terminal events.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    input_df : pandas.DataFrame</span>
+<span class="sd">        A DataFrame containing student data with the following required columns:</span>
+<span class="sd">        - &#39;semester_number&#39;: Identifier for the semester.</span>
+<span class="sd">        - &#39;outcome_indicator&#39;: Outcome indicator for each student.</span>
+<span class="sd">        - &#39;student_ID&#39;: Unique identifier for students.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        A dictionary containing:</span>
+<span class="sd">        - &quot;proportions_df&quot;: pandas.DataFrame</span>
+<span class="sd">            Proportions of each outcome (`outcome_indicator`) by semester.</span>
+<span class="sd">        - &quot;cumulative_df&quot;: pandas.DataFrame</span>
+<span class="sd">            Cumulative probabilities for each outcome by semester.</span>
+<span class="sd">        - &quot;active_student_counts&quot;: pandas.Series</span>
+<span class="sd">            Total number of active students per semester.</span>
+<span class="sd">        - &quot;masked_df&quot;: pandas.DataFrame</span>
+<span class="sd">            Filtered DataFrame excluding rows with `outcome_indicator == -1`.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - The function assumes that outcomes are represented by specific values of `outcome_indicator`.</span>
+<span class="sd">    - Cumulative probabilities are calculated for each outcome in the following order:</span>
+<span class="sd">      1 (Left College), 4 (Changed Major), 2 (Graduated in Target Major), 3 (Graduated Other).</span>
+<span class="sd">    - Active student counts are used to normalize proportions.</span>
+<span class="sd">    - Active population is modeled as those with outcome -1 (continued) or 4 (changed major).</span>
+<span class="sd">    - The proportions and cumulative probabilities are calculated relative to this active base.</span>
+
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; result = calculate_probabilities(student_df)</span>
+<span class="sd">    &gt;&gt;&gt; print(result[&quot;proportions_df&quot;].head())</span>
+<span class="sd">    &gt;&gt;&gt; print(result[&quot;cumulative_df&quot;].head())</span>
+<span class="sd">    &gt;&gt;&gt; print(result[&quot;active_student_counts&quot;])</span>
+<span class="sd">    &gt;&gt;&gt; print(result[&quot;masked_df&quot;].head())</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">required_input_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;semester_number&#39;</span><span class="p">,</span> <span class="s1">&#39;outcome_indicator&#39;</span><span class="p">,</span> <span class="s1">&#39;student_ID&#39;</span><span class="p">]</span>
+    <span class="n">validate_columns</span><span class="p">(</span><span class="n">input_df</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">required_input_cols</span><span class="p">)</span>
+
+    <span class="c1"># Calculate the proportions of active students by semester and status</span>
+    <span class="n">proportions_df</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">input_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;semester_number&quot;</span><span class="p">)[</span><span class="s2">&quot;outcome_indicator&quot;</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">value_counts</span><span class="p">(</span><span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Calculate cumulative probabilities</span>
+    <span class="n">cumulative_df</span> <span class="o">=</span> <span class="n">proportions_df</span><span class="p">[[</span><span class="s2">&quot;semester_number&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">active_population</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># Start with 100% of the population active</span>
+    <span class="n">cumulative_outcomes</span> <span class="o">=</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="p">[],</span> <span class="mi">2</span><span class="p">:</span> <span class="p">[],</span> <span class="mi">3</span><span class="p">:</span> <span class="p">[],</span> <span class="mi">4</span><span class="p">:</span> <span class="p">[]}</span>
+
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">proportions_df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="c1"># Update cumulative probabilities based on remaining active population</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]:</span>
+            <span class="n">current_prob</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">active_population</span>
+            <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">cumulative_outcomes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_prob</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">cumulative_outcomes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">cumulative_outcomes</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">current_prob</span>
+                <span class="p">)</span>
+        <span class="c1"># Update active population based on -1 (active) + 4 (changed major)</span>
+        <span class="n">active_population</span> <span class="o">*=</span> <span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>  <span class="c1"># avoids errors that occur when no one is in category -1 or 4</span>
+
+    <span class="c1"># Calculate -1 as the remaining active population</span>
+    <span class="n">cumulative_outcomes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">cumulative_outcomes</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">cumulative_outcomes</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">cumulative_outcomes</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">proportions_df</span><span class="p">))</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cumulative_outcomes</span><span class="p">:</span>
+        <span class="n">cumulative_df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">cumulative_outcomes</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+
+    <span class="n">active_student_counts</span> <span class="o">=</span> <span class="n">input_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;semester_number&#39;</span><span class="p">])[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;proportions_df&quot;</span><span class="p">:</span> <span class="n">proportions_df</span><span class="p">,</span>
+        <span class="s2">&quot;cumulative_df&quot;</span><span class="p">:</span> <span class="n">cumulative_df</span><span class="p">,</span>
+        <span class="s2">&quot;active_student_counts&quot;</span><span class="p">:</span> <span class="n">active_student_counts</span>
+<span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="extract_logistic_features">
+<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_utils.html#student_success.hazard_analysis.hazard_utils.extract_logistic_features">[docs]</a>
+<span class="k">def</span> <span class="nf">extract_logistic_features</span><span class="p">(</span><span class="n">outcome_indicator</span><span class="p">,</span> <span class="n">semester_numbers</span><span class="p">,</span> <span class="n">cumulative_probabilities</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fit a logistic model and extract features.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    outcome_indicator : int</span>
+<span class="sd">        outcome indicator code</span>
+<span class="sd">        - -1 : No change from the previous term</span>
+<span class="sd">        - 1  : Left university</span>
+<span class="sd">        - 2  : Graduated in first major</span>
+<span class="sd">        - 3  : Graduated in different major</span>
+<span class="sd">        - 4  : Changed to different major (still active)</span>
+<span class="sd">    semester_numbers : array-like</span>
+<span class="sd">        The semester numbers.</span>
+<span class="sd">    cumulative_probabilities : array-like</span>
+<span class="sd">        The cumulative probabilities for a given outcome.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        A dictionary containing the logistic model parameters:</span>
+<span class="sd">        - &quot;K&quot;: Maximum cumulative probability</span>
+<span class="sd">        - &quot;r&quot;: Growth rate</span>
+<span class="sd">        - &quot;t_half&quot;: Half-max semester number</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">logistic_function</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">t_half</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">K</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">r</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span> <span class="o">-</span> <span class="n">t_half</span><span class="p">)))</span>
+
+    <span class="c1"># Fit the logistic model</span>
+    <span class="n">params</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">curve_fit</span><span class="p">(</span><span class="n">logistic_function</span><span class="p">,</span> <span class="n">semester_numbers</span><span class="p">,</span> <span class="n">cumulative_probabilities</span><span class="p">,</span> <span class="n">maxfev</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+
+    <span class="c1"># Extract parameters</span>
+    <span class="n">K</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">t_half</span> <span class="o">=</span> <span class="n">params</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Outcome&quot;</span><span class="p">:</span> <span class="n">outcome_indicator</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">:</span> <span class="n">K</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span> <span class="s2">&quot;t_half&quot;</span><span class="p">:</span> <span class="n">t_half</span><span class="p">}</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

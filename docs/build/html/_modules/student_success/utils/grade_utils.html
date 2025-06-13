@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.utils.grade_utils &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="../../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">student_success.utils.grade_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for student_success.utils.grade_utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<div class="viewcode-block" id="strip_grade_suffixes">
+<a class="viewcode-back" href="../../../student_success.utils.grade_utils.html#student_success.utils.grade_utils.strip_grade_suffixes">[docs]</a>
+<span class="k">def</span> <span class="nf">strip_grade_suffixes</span><span class="p">(</span><span class="n">grade</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove common suffixes from grade strings that indicate special academic status.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    grade : str or any</span>
+<span class="sd">        The raw grade input. May be a string with suffixes (e.g., &#39;B^R&#39;, &#39;C*&#39;, &#39;A%&#39;) or a non-string (e.g., None, NaN).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        The cleaned grade string with suffixes removed. If input is None, returns None.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    This function removes:</span>
+<span class="sd">    - Repeat indicators (e.g., &quot;^R&quot;)</span>
+<span class="sd">    - Transfer/dishonesty/renewal flags (&quot;% @ # *&quot;)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">grade</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">grade</span>
+
+    <span class="n">grade_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">grade</span><span class="p">)</span>
+
+    <span class="c1"># Strip suffix characters and substrings: %, @, *, ^R, #, etc.</span>
+    <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\^R|[%#@*]&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">grade_str</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="num_grade_institutional">
+<a class="viewcode-back" href="../../../student_success.utils.grade_utils.html#student_success.utils.grade_utils.num_grade_institutional">[docs]</a>
+<span class="k">def</span> <span class="nf">num_grade_institutional</span><span class="p">(</span><span class="n">grade</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a letter or symbolic grade into its numeric equivalent using institutional GPA rules.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    grade : str or float</span>
+<span class="sd">        The course grade to be evaluated. May include suffixes, be missing (None/NaN), or be a special code (e.g., &quot;WM&quot;, &quot;S&quot;).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        The corresponding numeric value:</span>
+<span class="sd">        - GPA values (e.g., 4.33 for A+, 2.0 for C)</span>
+<span class="sd">        - -1 for withdrawals or unrecognized grades</span>
+<span class="sd">        - -2 for incomplete/in-progress/military withdrawal/special codes</span>
+<span class="sd">        - -3 for pass/fail grades</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Removes grade suffixes via `strip_grade_suffixes()` before processing.</span>
+<span class="sd">    - &quot;WM&quot; = Military withdrawal (–2)</span>
+<span class="sd">    - &quot;W&quot;, &quot;WF&quot;, etc. = Withdrawal (–1)</span>
+<span class="sd">    - &quot;S&quot;, &quot;U&quot; = Pass/Fail (–3)</span>
+<span class="sd">    - &quot;IP&quot;, &quot;GP&quot;, &quot;GH&quot;, &quot;I&quot; = Incomplete/in-progress (–2)</span>
+<span class="sd">    - &quot;V&quot; or &quot;N&quot; =  audits and continuing education (-2)</span>
+<span class="sd">    - Null values and unrecognized grades default to –1</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_institutional(&quot;A+&quot;)</span>
+<span class="sd">    4.33</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_institutional(&quot;C*&quot;)</span>
+<span class="sd">    2.0</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_institutional(&quot;W&quot;)</span>
+<span class="sd">    -1</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_institutional(&quot;WM&quot;)</span>
+<span class="sd">    -2</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_institutional(&quot;S&quot;)</span>
+<span class="sd">    -3</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># by default, unknown or missing situations will be coded as -1</span>
+    <span class="n">simp</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isnull</span><span class="p">(</span><span class="n">grade</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">simp</span>
+
+    <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">grade</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;nan&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">2</span>
+
+    <span class="n">grade</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">grade</span><span class="p">)</span> <span class="c1"># safely handle non-string situations</span>
+
+    <span class="c1"># Manage situations where the transfer indicator (%), academic renewal indicator (#), dishonesty indicator (@), repeat to replace indicator (^R) and asterisk (*)are present</span>
+    <span class="n">grade</span> <span class="o">=</span> <span class="n">strip_grade_suffixes</span><span class="p">(</span><span class="n">grade</span><span class="p">)</span>
+
+    <span class="c1"># Code all types of withdrawals as -1 except military withdrawals</span>
+    <span class="k">if</span> <span class="n">grade</span> <span class="o">==</span> <span class="s1">&#39;WM&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">2</span>
+    <span class="k">if</span> <span class="s1">&#39;W&#39;</span> <span class="ow">in</span> <span class="n">grade</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">simp</span>
+    <span class="c1"># code audits and continuing ed as a miscellaneous category (-2)</span>
+    <span class="k">if</span> <span class="s1">&#39;V&#39;</span> <span class="ow">in</span> <span class="n">grade</span> <span class="ow">or</span> <span class="s1">&#39;N&#39;</span> <span class="ow">in</span> <span class="n">grade</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">2</span>
+    <span class="c1"># code pass/fail course grades as -3</span>
+    <span class="k">if</span> <span class="s1">&#39;S&#39;</span> <span class="ow">in</span> <span class="n">grade</span> <span class="ow">or</span> <span class="s1">&#39;U&#39;</span> <span class="ow">in</span> <span class="n">grade</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">3</span>
+
+    <span class="c1"># IP = in progress</span>
+    <span class="c1"># GP = grade pending</span>
+    <span class="c1"># GH (unclear what this grade means) = ?</span>
+    <span class="c1"># I = incomplete</span>
+    <span class="c1"># nan = ?</span>
+    <span class="n">grade_map</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;A+&quot;</span><span class="p">:</span> <span class="mf">4.33</span><span class="p">,</span> <span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;A-&quot;</span><span class="p">:</span> <span class="mf">3.67</span><span class="p">,</span>
+        <span class="s2">&quot;B+&quot;</span><span class="p">:</span> <span class="mf">3.33</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;B-&quot;</span><span class="p">:</span> <span class="mf">2.67</span><span class="p">,</span>
+        <span class="s2">&quot;C+&quot;</span><span class="p">:</span> <span class="mf">2.33</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;C-&quot;</span><span class="p">:</span> <span class="mf">1.67</span><span class="p">,</span>
+        <span class="s2">&quot;D&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;IP&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;GP&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;GH&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="s2">&quot;I&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">2</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">grade_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">grade</span><span class="p">,</span> <span class="n">simp</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="num_grade_normalized">
+<a class="viewcode-back" href="../../../student_success.utils.grade_utils.html#student_success.utils.grade_utils.num_grade_normalized">[docs]</a>
+<span class="k">def</span> <span class="nf">num_grade_normalized</span><span class="p">(</span><span class="n">num_grade</span><span class="p">,</span> <span class="n">institutional_max</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Normalize a numeric grade to a 4.00 scale for cross-institutional comparisons.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    num_grade : int or float</span>
+<span class="sd">        The student&#39;s numeric grade (e.g., 85 or 3.5).</span>
+<span class="sd">    institutional_max : int or float</span>
+<span class="sd">        The maximum possible grade at the institution (e.g., 100 or 4.33).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        A normalized grade on a 4.00 scale.</span>
+<span class="sd">        Returns -1 if either input is invalid or normalization cannot be performed.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - If `num_grade` or `institutional_max` is missing, negative, or not a number, returns -1.</span>
+<span class="sd">    - Grades above the maximum are also invalid and return -1.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_normalized(85, 100)</span>
+<span class="sd">    3.4</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_normalized(4.33, 4.33)</span>
+<span class="sd">    4.0</span>
+<span class="sd">    &gt;&gt;&gt; num_grade_normalized(None, 4.0)</span>
+<span class="sd">    -1</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">grade_normalized</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># default to a -1 numeric grade</span>
+
+    <span class="c1"># If num_grade or institutional_max is invalid, return -1 flag</span>
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="n">num_grade</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="ow">or</span> <span class="n">num_grade</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">num_grade</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+        <span class="ow">or</span> <span class="n">institutional_max</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">institutional_max</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">grade_normalized</span>
+    <span class="k">elif</span> <span class="n">institutional_max</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">institutional_max</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="ow">or</span> <span class="n">num_grade</span> <span class="o">&gt;</span> <span class="n">institutional_max</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">grade_normalized</span>
+
+    <span class="n">grade_normalized</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">num_grade</span> <span class="o">/</span> <span class="n">institutional_max</span>  <span class="c1"># This normalizes to a 4.00</span>
+    <span class="k">return</span> <span class="n">grade_normalized</span></div>
+
+
+<div class="viewcode-block" id="letter_grade_simplify">
+<a class="viewcode-back" href="../../../student_success.utils.grade_utils.html#student_success.utils.grade_utils.letter_grade_simplify">[docs]</a>
+<span class="k">def</span> <span class="nf">letter_grade_simplify</span><span class="p">(</span><span class="n">dataframe</span><span class="p">,</span> <span class="n">c_minus_flag</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simplify letter grades into general categories, optionally treating &#39;C-&#39; as non-passing.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        A DataFrame with a &#39;course_grade_letter&#39; column to simplify.</span>
+<span class="sd">    c_minus_flag : bool, optional</span>
+<span class="sd">        If True (default), treat &#39;C-&#39; as equivalent to &#39;D&#39; (non-passing).</span>
+<span class="sd">        If False, treat &#39;C-&#39; as equivalent to &#39;C&#39; (passing).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        A copy of the DataFrame with a new column &#39;course_grade_letter_simp&#39; containing simplified grades.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Removes suffixes before simplification (via `strip_grade_suffixes()`).</span>
+<span class="sd">    - Merges A+, A, and A- into A, and similarly for other grades.</span>
+<span class="sd">    - Converts withdrawal codes and failure codes to &#39;W&#39; or &#39;F&#39;.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &#39;B-&#39; → &#39;B&#39;</span>
+<span class="sd">    &#39;C*&#39; → &#39;C&#39;</span>
+<span class="sd">    &#39;C-&#39; → &#39;D&#39; (if `c_minus_flag=True`)</span>
+<span class="sd">    &#39;WM&#39; → &#39;W&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">grade_mapping</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;A+&quot;</span><span class="p">:</span> <span class="s2">&quot;A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="s2">&quot;A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;A-&quot;</span><span class="p">:</span> <span class="s2">&quot;A&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;B+&quot;</span><span class="p">:</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;B-&quot;</span><span class="p">:</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;C+&quot;</span><span class="p">:</span> <span class="s2">&quot;C&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="s2">&quot;C&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;C-&quot;</span><span class="p">:</span> <span class="s2">&quot;C&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">c_minus_flag</span> <span class="k">else</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span> <span class="c1"># handles situations where C- are considered non-passing</span>
+        <span class="s2">&quot;D+&quot;</span><span class="p">:</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;D&quot;</span><span class="p">:</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;D-&quot;</span><span class="p">:</span> <span class="s2">&quot;D&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;FSA&quot;</span><span class="p">:</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;F&quot;</span><span class="p">:</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;WF&quot;</span><span class="p">:</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;IF&quot;</span><span class="p">:</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;UF&quot;</span><span class="p">:</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;W&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;-W&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;WM&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;PW&quot;</span><span class="p">:</span> <span class="s2">&quot;W&quot;</span>
+        <span class="c1">#GP = grade pending (typically during dishonesty charge process)</span>
+        <span class="c1">#WM = military withdrawal</span>
+        <span class="c1">#V = audit</span>
+        <span class="c1">#N = continuing education grade (Perimeter College, legacy grade?)</span>
+        <span class="c1">#@ suffix = dishonesty</span>
+        <span class="c1">#% suffix = [don&#39;t know]</span>
+        <span class="c1">## suffix = [don&#39;t know]</span>
+    <span class="p">}</span>
+
+    <span class="n">df_copy</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df_copy</span><span class="p">[</span><span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">df_copy</span><span class="p">[</span><span class="s1">&#39;course_grade_letter&#39;</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">strip_grade_suffixes</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">grade_mapping</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">df_copy</span><span class="p">[</span><span class="s1">&#39;course_grade_letter&#39;</span><span class="p">])</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_copy</span></div>
+
+
+
+<div class="viewcode-block" id="letter_grade_clean">
+<a class="viewcode-back" href="../../../student_success.utils.grade_utils.html#student_success.utils.grade_utils.letter_grade_clean">[docs]</a>
+<span class="k">def</span> <span class="nf">letter_grade_clean</span><span class="p">(</span><span class="n">dataframe</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clean raw letter grades by removing suffixes while preserving original grade distinctions. This is a thin wrapper function that could be repalced in code by df[&#39;course_grade_letter&#39;] = df[&#39;course_grade_letter&#39;].apply(strip_grade_suffixes)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataframe : pandas.DataFrame</span>
+<span class="sd">        A DataFrame with a &#39;course_grade_letter&#39; column to clean.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        A copy of the DataFrame with the &#39;course_grade_letter&#39; column cleaned.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    - Does not collapse grades (e.g., A- stays A-).</span>
+<span class="sd">    - Removes suffixes like &#39;*&#39;, &#39;%&#39;, &#39;@&#39;, &#39;#&#39;, &#39;^R&#39;.</span>
+<span class="sd">    - Intended for use before applying ordered grade logic (e.g., sorting or plotting).</span>
+<span class="sd">    - Developed 2024-12-06 by Paul Ulrich because grades were being missed in calculus analyses if a student did repeat to replace or had some other not grade distinction</span>
+<span class="sd">    listed. This was creating problems with ordered categories.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &#39;B*&#39; → &#39;B&#39;</span>
+<span class="sd">    &#39;C#&#39; → &#39;C&#39;</span>
+<span class="sd">    &#39;A^R&#39; → &#39;A&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">df_copy</span> <span class="o">=</span> <span class="n">dataframe</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df_copy</span><span class="p">[</span><span class="s1">&#39;course_grade_letter&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_copy</span><span class="p">[</span><span class="s1">&#39;course_grade_letter&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">strip_grade_suffixes</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_copy</span></div>
+
+
+
+<div class="viewcode-block" id="filter_valid_letter_grades">
+<a class="viewcode-back" href="../../../student_success.utils.grade_utils.html#student_success.utils.grade_utils.filter_valid_letter_grades">[docs]</a>
+<span class="k">def</span> <span class="nf">filter_valid_letter_grades</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">grade_col</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">,</span> <span class="n">valid_grades</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">,</span> <span class="s1">&#39;D&#39;</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">]</span> <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter rows to only include valid course grades.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    df : pd.DataFrame</span>
+<span class="sd">        Input DataFrame containing course attempts.</span>
+<span class="sd">    grade_col : str, optional</span>
+<span class="sd">        Name of the column with letter grades. Default is &#39;course_grade_letter_simp&#39;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pd.DataFrame</span>
+<span class="sd">        Filtered DataFrame including only rows with valid grades.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">grade_col</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">valid_grades</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

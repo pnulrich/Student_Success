@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>student_success.markov_diagrams.course_flows module &mdash; student_success 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=f2a433a1"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="student_success.markov_diagrams.graph_builder module" href="student_success.markov_diagrams.graph_builder.html" />
+    <link rel="prev" title="student_success.markov_diagrams package" href="student_success.markov_diagrams.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            student_success
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="student_success.html">student_success package</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#module-student_success">Module contents</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="student_success.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="student_success.hazard_analysis.html">student_success.hazard_analysis package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="student_success.markov_diagrams.html#module-student_success.markov_diagrams">Module contents</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="student_success.markov_diagrams.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.metrics.html">student_success.metrics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="student_success.utils.html">student_success.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="student_success.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">student_success</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="student_success.html">student_success package</a></li>
+          <li class="breadcrumb-item"><a href="student_success.markov_diagrams.html">student_success.markov_diagrams package</a></li>
+      <li class="breadcrumb-item active">student_success.markov_diagrams.course_flows module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/student_success.markov_diagrams.course_flows.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-student_success.markov_diagrams.course_flows">
+<span id="student-success-markov-diagrams-course-flows-module"></span><h1>student_success.markov_diagrams.course_flows module<a class="headerlink" href="#module-student_success.markov_diagrams.course_flows" title="Link to this heading"></a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.course_flows.analyze_course">
+<span class="sig-name descname"><span class="pre">analyze_course</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">course_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">major_matriculation_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'major_term_earliest'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_major_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prerequisite_course</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_pie</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">demographics_flag_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/course_flows.html#analyze_course"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.course_flows.analyze_course" title="Link to this definition"></a></dt>
+<dd><p>Analyze student performance, repeat rates, and (optionally) demographic composition for a specific course.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>course_name</strong> (<em>str</em>) – The course title to analyze (e.g., ‘Principles of Chemistry I’).</p></li>
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – Input dataframe containing student course records.</p></li>
+<li><p><strong>major_matriculation_column</strong> (<em>str</em><em>, </em><em>optional</em>) – Column indicating each student’s major at matriculation. Default is ‘major_term_earliest’.</p></li>
+<li><p><strong>target_major_code</strong> (<em>str</em><em>, </em><em>optional</em>) – If specified, restricts analysis to students with this major.</p></li>
+<li><p><strong>prerequisite_course</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether the course is treated as a prerequisite (default is False).</p></li>
+<li><p><strong>node_pie</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, compute demographic breakdowns for use in pie charts.</p></li>
+<li><p><strong>demographics_flag_col</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of binary demographic column used to generate pie charts (e.g., ‘flag_sex’).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary with course performance and (optional) demographic breakdowns:</dt><dd><ul class="simple">
+<li><p>’first_pass_number’: Count of students passing on first attempt.</p></li>
+<li><p>’first_pass_proportion’: Proportion passing on first attempt.</p></li>
+<li><p>’first_DFW_number’: Count receiving D, F, or W on first attempt.</p></li>
+<li><p>’first_DFW_proportion’: Proportion with D, F, or W on first attempt.</p></li>
+<li><p>’proportion_DFW_repeat’: Proportion of DFW students who repeated.</p></li>
+<li><p>’second_attempt_number’: Count of second attempts.</p></li>
+<li><p>’second_pass_number’: Count passing on second attempt.</p></li>
+<li><p>’second_pass_proportion’: Proportion passing on second attempt.</p></li>
+<li><p>’second_DFW_number’: Count with D/F/W on second attempt.</p></li>
+<li><p>’second_DFW_proportion’: Proportion with D/F/W on second attempt.</p></li>
+<li><p>’first_attempt_demographic_proportions’: Optional dict of {color: proportion} for pie node.</p></li>
+<li><p>’second_attempt_demographic_proportions’: Optional dict of {color: proportion} for pie node.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Returns None if the course is not found in the dataset.</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.course_flows.calculate_alternate_entry">
+<span class="sig-name descname"><span class="pre">calculate_alternate_entry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_course</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prior_course</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_major_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">major_matriculation_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'major_term_earliest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/course_flows.html#calculate_alternate_entry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.course_flows.calculate_alternate_entry" title="Link to this definition"></a></dt>
+<dd><p>Identify students who enrolled in a course without passing the expected prerequisite.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>current_course</strong> (<em>str</em>) – The downstream course (e.g., ‘CHEM 1212K’).</p></li>
+<li><p><strong>prior_course</strong> (<em>str</em>) – The expected prerequisite course (e.g., ‘CHEM 1211K’).</p></li>
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – DataFrame containing student course history. Must include ‘student_ID’, ‘course_title’,
+‘course_grade_letter_simp’, and the specified major column.</p></li>
+<li><p><strong>target_major_code</strong> (<em>str</em><em>, </em><em>optional</em>) – If provided, limits analysis to students with this major at matriculation.</p></li>
+<li><p><strong>major_matriculation_column</strong> (<em>str</em><em>, </em><em>optional</em>) – Column name for student’s matriculation major (default is ‘major_term_earliest’).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary summarizing alternate entries:</dt><dd><ul class="simple">
+<li><p>’n_total’: Total number of students in the current course.</p></li>
+<li><p>’n_without_prior_pass’: Count of students who skipped or failed the prerequisite.</p></li>
+<li><p>’pct_alternate_entry’: % of students without prior course pass.</p></li>
+<li><p>’alt_entry_ids’: List of student_IDs who did not pass the prerequisite.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="student_success.markov_diagrams.course_flows.calculate_progression_to_next_course">
+<span class="sig-name descname"><span class="pre">calculate_progression_to_next_course</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_course</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">next_course</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_major_code</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">major_matriculation_column</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'major_term_earliest'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/student_success/markov_diagrams/course_flows.html#calculate_progression_to_next_course"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#student_success.markov_diagrams.course_flows.calculate_progression_to_next_course" title="Link to this definition"></a></dt>
+<dd><p>Calculate how many students progressed from one course to the next after passing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>current_course</strong> (<em>str</em>) – Course the student completed first (e.g., ‘CHEM 1211K’).</p></li>
+<li><p><strong>next_course</strong> (<em>str</em>) – Course that follows in the sequence (e.g., ‘CHEM 1212K’).</p></li>
+<li><p><strong>df</strong> (<em>pandas.DataFrame</em>) – DataFrame with student course records.</p></li>
+<li><p><strong>target_major_code</strong> (<em>str</em><em>, </em><em>optional</em>) – If provided, restricts analysis to students with this major at matriculation.</p></li>
+<li><p><strong>major_matriculation_column</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of column identifying the student’s entry major (default is ‘major_term_earliest’).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary containing:</dt><dd><ul class="simple">
+<li><p>’proportion_not_taking_next’: % of passed students who did not take the next course.</p></li>
+<li><p>’number_not_taking_next’: Raw count of these students.</p></li>
+<li><p>’proportion_taking_next’: % of passed students who continued.</p></li>
+<li><p>’number_taking_next’: Raw count of these students.</p></li>
+<li><p>’students_who_did_take_next’: List of student_IDs who progressed.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="student_success.markov_diagrams.html" class="btn btn-neutral float-left" title="student_success.markov_diagrams package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="student_success.markov_diagrams.graph_builder.html" class="btn btn-neutral float-right" title="student_success.markov_diagrams.graph_builder module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Paul Ulrich.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
