@@ -135,16 +135,18 @@ used in your institution by changing the number or character associated with tha
    .. code-block:: python
 
       import os
-      from dotenv import load_dotenv
+
       import pandas as pd
       import sys
 
-      sys.path.append("../../")  # Adjust relative path as needed
+      # Make sure your path is such that Python knows where to find the student_success packages
+      sys.path.append("..") # this path works if you launched your python terminal from HHMI_student_success/student_success
+      # if you opened your python terminal from HHMI_student_success, then delete the line above and uncomment the one below
+      # sys.path.append(".")
 
       from student_success.utils.io_utils import rename_columns_in_bulk
       from student_success.utils.scrambler import scramble_ID
 
-      load_dotenv()
       column_mapping_file_path = "./student_success/HHMI_IE3_codebook.xlsx"
       data_filepath = "path_to_your_data.csv" # replace this with the path for your local datafile
 

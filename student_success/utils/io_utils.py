@@ -1,6 +1,6 @@
 import pandas as pd
 from tkinter import filedialog as fd
-
+import openpyxl # necessary for importing the Excel column naming file; placing here so it isn't missed in requirements_essential.txt
 
 def concatenate_csv_files(filenames, low_memory=False):
     # Create an empty list to hold each dataframe

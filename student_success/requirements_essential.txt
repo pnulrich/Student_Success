@@ -4,7 +4,7 @@
 # Suitable for production or deployment environments.
 
 # Created: 2025-06-13
-dotenv
+openpyxl
 aiohttp==3.8.5
 bokeh==3.6.0
 census==0.8.21
