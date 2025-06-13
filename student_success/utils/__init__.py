@@ -14,6 +14,7 @@ Included components:
 - grades, time_utils, matriculation, etc. :
      - Additional support modules
 """
+from dotenv import load_dotenv # included because users will need to have this installed to anonymize IDs
 
 from .validation import (
     validate_columns,
