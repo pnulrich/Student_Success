@@ -1,8 +1,7 @@
 Getting Started
 ===============
 
-Ready to start using the Student Success tools generated for Project B?
-To use these tools, you will need to install Python on your computer and set up the appropriate modules.
+Ready to start using the Student Success tools? This guide will walk you through installing Python, setting up required modules, configuring environment variables, and importing your first dataset.
 
 Installing Python
 -----------------
@@ -12,105 +11,142 @@ Installing Python
 1. **Download and install Python**:
    - Go to the `https://www.python.org/downloads/`
    - Download the latest version for Windows.
-   - Run the installer. Be sure to **check** the box labeled **"Add Python to PATH"**.
+   - Run the installer. **Ensure** the checkbox **“Add Python to PATH”** is selected.
 
 2. **Verify installation**:
-   - Open Command Prompt (`Win + R`, type `cmd`, press Enter).
-   - Type `python --version`. You should see the installed version.
+   - Open Command Prompt (`Win + R`, then type `cmd`)
+   - Run:
+
+     .. code-block:: bash
+
+        python --version
 
 ### For Mac
 
 1. **Install Homebrew (if not already installed)**:
-   - Open Terminal.
-   - Paste and run:
-     ::
-       /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+   .. code-block:: bash
+
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 2. **Install Python using Homebrew**:
-   ::
-     brew install python
+
+   .. code-block:: bash
+
+      brew install python
 
 3. **Verify installation**:
-   ::
-     python --version
 
-Installing Python Modules and Setting Up Environment Variables
---------------------------------------------------------------
+   .. code-block:: bash
 
-1. **Install required modules**:
-   ::
-     pip install pandas numpy matplotlib tabulate statsmodels pydot pygraphviz
+      python --version
 
-2. **Test module import**:
-   ::
-     import institutionaldata.successmetrics
-     import institutionaldata.utilityfunctions
+Installing Required Python Modules
+----------------------------------
 
-3. **Set up the `STUDENT_SUCCESS_CIPHER` environment variable**:
+The Student Success project uses a curated list of essential modules defined in a `requirements_essential.txt` file.
 
-   **For Windows**:
-   - Open Control Panel → System and Security → System
-   - Click **Advanced system settings**
+1. **Ensure you're in a virtual environment** (optional but recommended):
+
+   .. code-block:: bash
+
+      python -m venv venv
+      source venv/bin/activate   # On Windows use: venv\Scripts\activate
+
+2. **Install modules from the requirements file**:
+
+   .. code-block:: bash
+
+      pip install -r requirements_essential.txt
+
+3. **Test module import**:
+
+   .. code-block:: python
+
+      import pandas
+      import numpy
+      import student_success
+
+Setting Up the Cipher Environment Variable
+------------------------------------------
+
+1. **Define the `STUDENT_SUCCESS_CIPHER` environment variable**, which is used to anonymize student IDs.
+
+   ### For Windows
+
+   - Control Panel → System and Security → System
+   - Click *Advanced system settings*
    - Under *System Variables*, click **New**
-   - Set:
      - Name: `STUDENT_SUCCESS_CIPHER`
-     - Value: (your custom cipher)
+     - Value: (an alphanumeric cipher of the same length as your student IDs)
 
-   **For macOS**:
-   - Open Terminal.
-   - Run:
-     ::
-       nano ~/.bash_profile
+   ### For macOS / Linux
 
-   - Add this line to the bottom:
-     ::
-       export STUDENT_SUCCESS_CIPHER="your_cipher_here"
+   .. code-block:: bash
 
-   - Save and exit (`Ctrl+X`, then `Y`, then `Enter`)
-   - Reload the profile:
-     ::
-       source ~/.bash_profile
+      nano ~/.bash_profile
 
-Importing Your Data
--------------------
+   Add this line:
 
-1. **Set up column mapping**:
+   .. code-block:: bash
+
+      export STUDENT_SUCCESS_CIPHER="your_cipher_here"
+
+   Then:
+
+   .. code-block:: bash
+
+      source ~/.bash_profile
+
+Importing and Preparing Your Data
+---------------------------------
+
+1. **Set up your column mapping**:
    - Open `columnmapping.tsv`
-   - Ensure the `variable_name_institution` column lists your dataset's actual column names for each standardized field.
+   - Update the `variable_name_institution` column to reflect the exact names from your dataset.
 
-2. **In Python, load and clean your data**:
-   ::
-     import os
-     from dotenv import load_dotenv
-     import pandas as pd
-     import numpy as np
-     import sys
-     sys.path.append('../../')  # adjust as needed
-     import institutionaldata.successmetrics
-     import institutionaldata.utilityfunctions
-     import statsmodels.api as sm
+2. **Run the setup in Python**:
 
-     load_dotenv()
-     column_mapping_file_path = './institutionaldata/column_mapping.tsv'
-     data_filepath = "path_to_your_data.csv"
+   .. code-block:: python
 
-     dataset_df = pd.read_csv(data_filepath)
-     dataset_df = institutionaldata.utilityfunctions.rename_columns_in_bulk(
-         dataset_df,
-         column_mapping_filepath=column_mapping_file_path
-     )
+      import os
+      from dotenv import load_dotenv
+      import pandas as pd
+      import sys
 
-     dataset_df = institutionaldata.utilityfunctions.scramble_ID(
-         dataset_df,
-         cipher=os.environ['STUDENT_SUCCESS_CIPHER']
-     )
+      sys.path.append("../../")  # Adjust relative path as needed
 
-3. **Verify renaming**:
-   ::
-     print(list(dataset_df))
+      from student_success.utils.io_utils import rename_columns_in_bulk
+      from student_success.utils.scrambler import scramble_ID
 
-4. **Next steps**:
-   Explore the functions in `successmetrics.py` and `utilityfunctions.py`.
-   Expect some early data-cleaning errors — these vary based on how your institution structures data.
-   Reach out to the Project B team or use ChatGPT for troubleshooting.
+      load_dotenv()
+      column_mapping_file_path = "./institutionaldata/column_mapping.tsv"
+      data_filepath = "path_to_your_data.csv"
 
+      dataset_df = pd.read_csv(data_filepath)
+      dataset_df = rename_columns_in_bulk(dataset_df, column_mapping_filepath=column_mapping_file_path)
+      dataset_df = scramble_ID(dataset_df, cipher=os.environ['STUDENT_SUCCESS_CIPHER'])
+
+3. **Check that column names were changed**:
+
+   .. code-block:: python
+
+      print(list(dataset_df))
+
+Next Steps
+----------
+
+You are now ready to explore the modules within `student_success`, including:
+
+- `metrics` for graduation and retention flags
+- `hazard_analysis` for modeling time-based transitions
+- `markov_diagrams` for visualizing course flows
+- `utils` for I/O, time, and demographic utilities
+
+Troubleshooting and Questions
+-----------------------------
+
+Errors are a normal part of setup. For help:
+
+- Contact the Project B team via Slack (#project-b)
+- Paste any error messages into ChatGPT for quick debugging help
