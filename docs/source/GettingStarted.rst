@@ -130,7 +130,7 @@ These include demographics, major codes, major names, and color maps for various
 I suggest working with the dictionaries for lookup of sex and PEER status to become familiar with how they are used. Adjust
 used in your institution by changing the number or character associated with that variable name.
 
-2. **Load some data and run the tools to rename your columns and anonymize student_ID's**:
+2. **Open a python terminal, load some data, and rename your columns and anonymize student_ID's**:
 
    .. code-block:: python
 

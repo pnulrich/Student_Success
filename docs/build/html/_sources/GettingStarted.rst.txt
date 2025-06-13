@@ -63,7 +63,7 @@ I recommend that you work within a Python virtual environmnent.
       python -m venv venv
       source venv/bin/activate   # On Windows use: venv\Scripts\activate
 
-2. **Install modules from the requirements file**:
+2. **Navigate to the student_success subfolder and install essential packages requirements_essential.txt**:
 
    .. code-block:: bash
 
