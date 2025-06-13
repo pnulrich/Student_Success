@@ -2,8 +2,8 @@ import pandas
 import pandas as pd
 import numpy as np
 
-import student_success.utilityfunctions
-import student_success.utilityfunctions as utilityfunctions
+import student_success.deprecated_utilityfunctions
+import student_success.deprecated_utilityfunctions as utilityfunctions
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 from tkinter import filedialog as fd
@@ -459,7 +459,7 @@ def course_performance(course_list, major_code_list, years, demographics_df):
 
     for course_input in course_list:
         for major_code_input in major_code_list:
-            testresults = student_success.successmetrics.time_before_math_course(
+            testresults = student_success.deprecated_successmetrics.time_before_math_course(
                 demographics_df, course=course_input, math_grades_df=math_grades_df, major_code=major_code_input,
                 years=years, ftfy=True)
 

@@ -19,6 +19,7 @@ from student_success.metrics.flagging import (
     classify_graduation_in_first_major
 )
 
+
 def prepare_hazard_data(df,
                         target_major,
                         transfer_credit_max=30,
@@ -323,18 +324,15 @@ def prepare_and_process_data(student_major_data_df,
     Notes
     -----
     - Filters students based on target major, transfer credit limits, and fall-term starts.
-    - Assigns outcome indicators to track progression, major changes, gaps in enrollment,
-      and graduation status. Only the first major change is flagged.
+    - Assigns outcome indicators to track progression, major changes, gaps in enrollment, and graduation status. Only the first major change is flagged.
     - Aggregates course load data for the target major, calculating:
-      - Number of courses taken per semester.
-      - Total credits earned per semester.
-      - Summary statistics (mean and standard deviation) for course credits
-        and course counts by semester.
+        - Number of courses taken per semester.
+        - Total credits earned per semester.
+        - Summary statistics (mean and standard deviation) for course credits and course counts by semester.
     - Assumes terms ending with '8' correspond to fall semesters.
     - Filters and processes coursework data to focus only on the target major.
     - Outcome indicators are assigned on a per-student, per-semester basis.
     - Only the first instance of a major change (outcome 4) is retained; subsequent major changes are reset to -1 (no change).
-
 
     Examples
     --------
@@ -560,7 +558,7 @@ def calculate_probabilities(input_df):
                     cumulative_outcomes[col][-1] + current_prob
                 )
         # Update active population based on -1 (active) + 4 (changed major)
-        active_population *= (row.get(-1,0) + row.get(4,0)) # avoids errors that occur when no one is in category -1 or 4
+        active_population *= (row.get(-1, 0) + row.get(4, 0))  # avoids errors that occur when no one is in category -1 or 4
 
     # Calculate -1 as the remaining active population
     cumulative_outcomes[-1] = [
@@ -578,6 +576,7 @@ def calculate_probabilities(input_df):
         "cumulative_df": cumulative_df,
         "active_student_counts": active_student_counts
 }
+
 
 def extract_logistic_features(outcome_indicator, semester_numbers, cumulative_probabilities):
     """

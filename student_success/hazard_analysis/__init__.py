@@ -1,11 +1,38 @@
 """
-Tools for performing and visualizing hazard analysis.
+Hazard analysis tools for modeling student progression, attrition, and major-specific outcomes.
 
-Submodules included:
-- hazard_utils: Functions for filtering, assigning outcomes (graduated, not graduated, left major, ect), probability, and calculating K, r, and t1/2 from logistic data
-- hazard_plots: Functions for plotting hazard ratio, cumulative probability, and curricular heatmaps
+The `hazard_analysis` subpackage provides a framework for analyzing academic persistence using hazard-based methods.
+It includes tools for calculating cumulative probabilities, estimating logistic survival parameters (K, r, t1/2),
+and visualizing dropout, graduation, and course progression dynamics.
 
+Included components:
+--------------------
+- `hazard_utils`:
+    - Filters and prepares data for analysis
+    - Assigns outcome indicators (e.g., graduation, major switching, dropout)
+    - Calculates cumulative probabilities and fits logistic curves
+
+- `hazard_plots`:
+    - Visualizes hazard ratios and cumulative probabilities across terms
+    - Generates heatmaps of course enrollment patterns among active students
+
+- `sankey`:
+    - Constructs Sankey diagrams illustrating student pathways from matriculation through completion or departure
+
+Utility integrations:
+---------------------
+- Functions from `student_success.metrics.flagging` support classification of graduation and dropout behavior
+- Validation and time utilities ensure proper formatting, column validation, and semester alignment
+
+Example Use:
+------------
+This module supports full hazard pipelines such as:
+
+- Preparing and processing a student-major dataset for a given target major (e.g., "BIO")
+- Computing progression metrics across semesters
+- Visualizing patterns of course enrollment or attrition using heatmaps and Sankey plots
 """
+
 
 from .hazard_utils import (
     prepare_and_process_data,

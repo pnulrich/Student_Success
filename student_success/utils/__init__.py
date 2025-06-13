@@ -1,12 +1,18 @@
 """
 Utility functions for data wrangling and processing in student_success.
 
-Submodules included:
-- io_utils: Tools for file I/O, including column renaming from codebooks.
-- scrambler: Functions for anonymizing and restoring student IDs.
-- program_utils: Functions for metadata assignment, labeling, and lookup of information associated with majors and programs
-- grade_utils: functions for manipulation and cleaning of grade columns
-- grades, time_utils, matriculation, etc.: Additional support modules.
+Included components:
+--------------------
+- io_utils :
+    - Tools for file I/O, including column renaming from codebooks.
+- scrambler :
+    - Functions for anonymizing and restoring student IDs.
+- program_utils :
+    - Functions for metadata assignment, labeling, and lookup of information associated with majors and programs
+- grade_utils :
+     - functions for manipulation and cleaning of grade columns
+- grades, time_utils, matriculation, etc. :
+     - Additional support modules
 """
 
 from .validation import (

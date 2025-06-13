@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 from tkinter import filedialog as fd
 import tkinter as tk
-import student_success.utilityfunctions as utilityfunctions
+import student_success.deprecated_utilityfunctions as utilityfunctions
 
 
 #collate rows from CSV files of user-selected math courses and drop unnecessary columns
