@@ -147,11 +147,13 @@ used in your institution by changing the number or character associated with tha
       from student_success.utils.io_utils import rename_columns_in_bulk
       from student_success.utils.scrambler import scramble_ID
 
-      column_mapping_file_path = "./student_success/HHMI_IE3_codebook.xlsx"
+      column_mapping_filepath = "HHMI_IE3_codebook.xlsx"
       data_filepath = "path_to_your_data.csv" # replace this with the path for your local datafile
 
       dataset_df = pd.read_csv(data_filepath)
-      dataset_df = rename_columns_in_bulk(dataset_df, column_mapping_filepath=column_mapping_file_path)
+      print(f"The columns in your dataset are {dataset_df.columns}")
+
+      dataset_df = rename_columns_in_bulk(df = dataset_df, column_mapping_filepath=column_mapping_filepath)
       dataset_df = scramble_ID(dataset_df, cipher=os.environ['STUDENT_SUCCESS_CIPHER'])
 
 3. **Check that column names were changed**:
