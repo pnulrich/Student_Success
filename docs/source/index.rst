@@ -10,6 +10,7 @@ Welcome to student_success's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   GettingStarted
    student_success
 
 Indices and tables
