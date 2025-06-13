@@ -1,4 +1,38 @@
-# student_success/utils/program_utils.py
+"""
+Centralized constant definitions for classification, labeling, and visualization in the student_success package.
+
+This module includes dictionaries and lists used across modules to:
+- Categorize and label majors and disciplines.
+- Map demographic flags to colors for plotting.
+- Provide lookup tables for major and pre-major codes.
+- Define retention outcome labels and codes.
+- Support visual grouping and color mapping for Sankey diagrams.
+
+Usage Notes for Institutional Customization
+-------------------------------------------
+Most values in this module can and should be customized to reflect your institution's specific academic codes
+and demographic categorizations. You may wish to:
+
+- Update `MAJORS_DISCIPLINES` to match your institution’s internal major abbreviations.
+- Edit `PREMAJOR_TO_MAJOR_DICT` and `MAJOR_ABBREV_TO_LABEL` if your institution uses different codes for pre-majors or official program names.
+- Adjust `PEER_DESCRIPTION_DICT`, `SEX_DICT`, and `DEMOGRAPHIC_COLOR_MAPS` to reflect how your student information system encodes race, gender, and first-gen status.
+- Modify `SANKEY_DISCIPLINE_GROUPS` and `SANKEY_DISCIPLINE_COLOR_MAP` to simplify and recolor degree pathways in visualizations.
+- Add or remove entries in `RETENTION_OUTCOME_*` variables if you use different terminology or need additional categories.
+
+To avoid breaking functions that rely on these constants, make edits carefully and test your visualizations or classification outputs after each change.
+
+Contents
+--------
+- PEER_ABBREVIATION_DICT, PEER_DESCRIPTION_DICT: Mappings for racial/ethnic group codes and classifications.
+- SEX_DICT: Mapping of gender identifiers to binary flags.
+- DEMOGRAPHIC_COLOR_MAPS: Color schemes for demographic group visualizations.
+- MAJORS_DISCIPLINES, STEM_CORE_MAJORS: Groupings of major codes by academic discipline.
+- MAJOR_TO_DISCIPLINE_DICT, DISCIPLINE_LABELS: Discipline-level lookups and labels.
+- PREMAJOR_TO_MAJOR_DICT, MAJOR_TO_PREMAJOR_DICT: Pre-major and major abbreviation crosswalks.
+- MAJOR_ABBREV_TO_LABEL: Readable labels for major abbreviations.
+- RETENTION_OUTCOME_LABELS, RETENTION_OUTCOME_CODE_DICT, RETENTION_OUTCOME_LABEL_DICT: Encodings and labels for retention and graduation status.
+- SANKEY_DISCIPLINE_GROUPS, SANKEY_DISCIPLINE_COLOR_MAP: Simplified groupings and colors for Sankey plot visualization.
+"""
 
 # Mapping for descriptions of race
 PEER_DESCRIPTION_DICT = {
