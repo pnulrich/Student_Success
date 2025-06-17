@@ -34,6 +34,40 @@ Contents
 - SANKEY_DISCIPLINE_GROUPS, SANKEY_DISCIPLINE_COLOR_MAP: Simplified groupings and colors for Sankey plot visualization.
 """
 
+GRADE_SIMPLIFICATION_MAP = {
+    "A+": "A", "A": "A", "A-": "A",
+    "B+": "B", "B": "B", "B-": "B",
+    "C+": "C", "C": "C",
+    "C-": "C",  # utils.grade_utils.letter_grade_simplify() will override to "D" during runtime if c_minus_flag=True
+    "D+": "D", "D": "D", "D-": "D",
+    "F": "F", "F": "F", "IF": "F", "UF": "F",
+    "W": "W", "-W": "W", "WM": "W", "PW": "W", "WF":"W"
+}
+
+
+LETTER_GRADE_GPA_MAP = {
+    "A+": 4.33, "A": 4, "A-": 3.67,
+    "B+": 3.33, "B": 3, "B-": 2.67,
+    "C+": 2.33, "C": 2, "C-": 1.67,
+    "D": 1,
+    "F": 0,
+    "PW": -1,  # withdrawal
+    "W": -1,  # withdrawal
+    "WF": -1,  # withdrawal with failure
+    "WM": -2,  # military withdrawal; treated as distinct from standard withdrawal
+    "IP": -2,  # in progress
+    "GP": -2,  # grade pending
+    "GH": -2,  # grade hold
+    "I": -2,  # incomplete
+    "V": -2,  # audit
+    "AU": -2,  # audit
+    "N": -2,  # continuing ed
+    "NR": -2,  # not reported (BS and associates level)
+    "S": -3,  # satifactory (pass / fail course)
+    "U": -3  # unsatisfactory (pass / fall course)
+}
+
+
 # Mapping for descriptions of race
 PEER_DESCRIPTION_DICT = {
     'American Indian or Alaska Native': 1, 'Asian': 0, 'Black or African American': 1,
