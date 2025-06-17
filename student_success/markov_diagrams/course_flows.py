@@ -133,8 +133,20 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
         color_map = DEMOGRAPHIC_COLOR_MAPS.get(demographics_flag_col)
         first_attempt_demographic_proportions = compute_proportions(df = course_df_first_attempts, col = demographics_flag_col,
                                                         mapping = color_map)
+        first_attempt_DFW_demographic_proportions = compute_proportions(
+            df=course_df_first_attempts[course_df_first_attempts['course_grade_letter_simp'].isin(['D', 'F', 'W'])],
+            col=demographics_flag_col,
+            mapping=color_map
+        )
+
         second_attempt_demographic_proportions = compute_proportions(df=second_attempt_df, col=demographics_flag_col,
                                                         mapping=color_map)
+        second_attempt_DFW_demographic_proportions = compute_proportions(
+            df=second_attempt_df[second_attempt_df['course_grade_letter_simp'].isin(['D', 'F', 'W'])],
+            col=demographics_flag_col,
+            mapping=color_map
+        )
+
         print(f"analyze_course() 1st attempt demographic proportions for {course_name}: {first_attempt_demographic_proportions}")
         print(f"analyze_course() 2nd attempt demographic proportions for {course_name}: {second_attempt_demographic_proportions}")
 
@@ -144,13 +156,15 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
         "first_pass_proportion": first_pass_proportion,
         "first_DFW_number": first_DFW_number,
         "first_DFW_proportion": first_DFW_proportion,
+        "first_DFW_demographic_proportions": first_attempt_DFW_demographic_proportions,
         "proportion_DFW_repeat": proportion_DFW_repeat,
         "second_attempt_demographic_proportions": second_attempt_demographic_proportions,
         "second_attempt_number": second_attempt_number,
         "second_pass_number": second_pass_number,
         "second_pass_proportion": second_pass_proportion,
         "second_DFW_number": second_DFW_number,
-        "second_DFW_proportion": second_DFW_proportion
+        "second_DFW_proportion": second_DFW_proportion,
+        "second_DFW_demographic_proportions": second_attempt_DFW_demographic_proportions
     }
 
     return descriptives
