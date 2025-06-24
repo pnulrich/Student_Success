@@ -1,12 +1,55 @@
 import pandas as pd
+import numpy as np
 from student_success.utils.validation import validate_columns
 
-#  CAUTION: BANNER may not reliably report 'matriculation_term' do to wide variations in timing and programs in an institution
-#  If you are using matriculation term values derived from BANNER, ensure that values match what you expect. Be diligent
-#  about clarifying if any matriculation terms or dates are associated with the program of interest. It may be best to
-#  create a new column in your dataset representing term_earliest (for a specific program). This can be done by using the
-#  earliest term a student took classes. The benefit of this is avoiding situations where a student matriculates in an earlier
-#  semester than they begin taking classes.
+"""
+matriculation_utils.py
+
+Utility functions related matriculation filtering, graduation date parsing, and academic standing checks.
+
+CAUTION: BANNER may not reliably report 'matriculation_term' do to wide variations in timing and programs in an institution
+If you are using matriculation term values derived from BANNER, ensure that values match what you expect. Be diligent
+about clarifying if any matriculation terms or dates are associated with the program of interest. It may be best to
+create a new column in your dataset representing term_earliest (for a specific program). This can be done by using the
+earliest term a student took classes. The benefit of this is avoiding situations where a student matriculates in an earlier
+semester than they begin taking classes.
+
+"""
+
+
+def extract_bachelors_graduation_date(df):
+    """
+    This function accepts a dataframe with at least 'graduation_level', 'graduation_date', and 'graduation_status' columns.
+    It returns the dataframe with a new column 'graduation_date_bachelors', which holds the earliest
+    bachelor's graduation date ('B') for students with a corresponding 'Awarded' status.
+    """
+
+    def get_earliest_bachelors_date(levels, dates, statuses):
+        # Ensure the tuples are iterable and contain non-null values
+        if isinstance(levels, tuple) and 'B' in levels:
+            try:
+                # Get all indices of bachelor's level ('B')
+                indices_of_b = [i for i, level in enumerate(levels) if level == 'B']
+                # Check if any of the corresponding statuses are 'Awarded'
+                awarded_indices = [i for i in indices_of_b if i < len(statuses) and statuses[i] == 'Awarded']
+
+                if awarded_indices:
+                    # Get the corresponding graduation dates for all 'Awarded' 'B' and return the earliest one
+                    corresponding_dates = [dates[i] for i in awarded_indices if i < len(dates)]
+                    # Convert dates to datetime to find the earliest one
+                    corresponding_dates = pd.to_datetime(corresponding_dates, errors='coerce')
+                    return corresponding_dates.min()  # Return the earliest date
+            except Exception:
+                return np.nan  # In case of any errors, return NaN
+        return np.nan  # No 'B' found or invalid tuple
+
+    # Apply the function to each row and create a new column 'graduation_date_bachelors'
+    df['graduation_date_bachelors'] = df.apply(
+        lambda row: get_earliest_bachelors_date(row['graduation_level'], row['graduation_date'],
+                                                row['graduation_status']),
+        axis=1
+    )
+    return df
 
 def filter_by_valid_matriculation_term(demographics_df, student_id_col='student_ID', term_col='matriculation_term',
                              demo_term_col='demographics_term'):
