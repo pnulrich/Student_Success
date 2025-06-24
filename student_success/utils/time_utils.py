@@ -362,45 +362,40 @@ def combine_spring_summer_terms(df, remove_original = False):
     """
     Combines spring (YYYY01) and summer (YYYY05) terms into a single term per year for each student,
     while retaining all original columns in the dataframe. New combined rows are created with
-    `demographics_term` set to a unique code (`YYYY04.xx`) and appended to the dataframe without
-    removing the original spring or summer rows.
+    `demographics_term` set to a unique code (`YYYY04.xx`) and appended to the dataframe unless
+    `remove_original=True`.
 
     Parameters
     ----------
     df : pandas.DataFrame
         A dataframe containing at least the following columns:
         - 'student_ID' : Identifier for each student.
-        - 'demographics_term' : Term codes in YYYYMM integer format (e.g., 202301 for spring 2023).
-        - Any additional columns representing demographic data that will be included in combined rows.
+        - 'demographics_term' : Term codes in YYYYMM integer format (e.g., 202301 for Spring 2023).
+        - Additional demographic columns to retain in the combined rows.
+
+    remove_original : bool, optional (default=False)
+        If True, removes the original spring (YYYY01) and summer (YYYY05) term rows after creating the combined rows.
 
     Returns
     -------
     pandas.DataFrame
         The original dataframe with additional rows for each combined spring-summer term.
-        Each new row will contain:
+        Each new combined row contains:
         - 'student_ID' : Same as in the original rows.
-        - 'demographics_term' : Set to a combined code based on available terms:
-            - YYYY04.11 if both spring and summer terms are present.
-            - YYYY04.10 if only the spring term is present.
-            - YYYY04.01 if only the summer term is present.
-            - The decimal format can be interpreted as binary indicators, where the first decimal
-              position represents the presence of the spring term and the second position indicates
-              the summer term.
-        - Other columns will contain values from either the spring or summer row based on precedence.
-
-    Precedence Rules
-    ----------------
-    - If both spring (YYYY01) and summer (YYYY05) terms exist for a `student_ID` in a given year,
-      the values for columns other than 'demographics_term' in the new combined row are copied from
-      the summer term row (i.e., summer takes precedence).
-    - If only the spring term exists, the new row's values are copied from the spring term row.
-    - If only the summer term exists, the new row's values are copied from the summer term row.
+        - 'demographics_term' : One of the following combined codes:
+            - YYYY04.11 → if both spring and summer terms are present
+            - YYYY04.10 → if only the spring term is present
+            - YYYY04.01 → if only the summer term is present
+          The decimal portion encodes term presence (1 = present, 0 = absent): `.10` = spring only, `.01` = summer only, `.11` = both.
+        - 'term_type' : A human-readable indicator of the term type:
+            - 'spring+summer', 'spring', or 'summer'
+        - All other columns are copied from the appropriate term row, with summer taking precedence when both are present.
 
     Notes
     -----
-    - This function assumes that `demographics_term` is in integer format.
-    - A temporary column 'year' is added and then dropped at the end to facilitate grouping by year.
-    - Original rows are not modified or removed, allowing flexible filtering of combined and original terms.
+    - This function assumes that `demographics_term` is stored as an integer.
+    - A temporary column 'year' is added to support grouping and removed before returning the result.
+    - Original spring and summer rows are retained by default to allow flexible filtering; set `remove_original=True` to exclude them.
 
     Example
     -------
@@ -416,14 +411,20 @@ def combine_spring_summer_terms(df, remove_original = False):
     df = df.copy()
     combined_rows = []
 
-    # Extract year and create spring and summer term masks
+    # Extract year and create term masks
     df['year'] = df['demographics_term'] // 100
-    spring_mask = df['demographics_term'] % 100 == 1
-    summer_mask = df['demographics_term'] % 100 == 5
+    df['term_code'] = df['demographics_term'] % 100
+
+    # Set 'fall' term_type directly for original fall rows
+    df.loc[df['term_code'] == 8, 'term_type'] = 'fall'
+
+    spring_mask = df['term_code'] == 1
+    summer_mask = df['term_code'] == 5
 
     # Group by student and year, then determine combined term row values
     for (student_id, year), group in df.groupby(['student_ID', 'year']):
         # Check for the existence of spring and summer terms
+
         has_spring = spring_mask[group.index].any()
         has_summer = summer_mask[group.index].any()
 
@@ -432,19 +433,23 @@ def combine_spring_summer_terms(df, remove_original = False):
             combined_code = year * 100 + 4.11
             combined_row = group[summer_mask[group.index]].iloc[0].copy()
             combined_row['demographics_term'] = combined_code
+            combined_row['term_type'] = 'spring+summer'  # for .11
             combined_rows.append(combined_row)
         elif has_spring:
             # Only spring term exists
             combined_code = year * 100 + 4.10
             combined_row = group[spring_mask[group.index]].iloc[0].copy()
             combined_row['demographics_term'] = combined_code
+            combined_row['term_type'] = 'spring'  # for .10
             combined_rows.append(combined_row)
         elif has_summer:
             # Only summer term exists
             combined_code = year * 100 + 4.01
             combined_row = group[summer_mask[group.index]].iloc[0].copy()
             combined_row['demographics_term'] = combined_code
+            combined_row['term_type'] = 'summer'  # for .01
             combined_rows.append(combined_row)
+
 
     # Concatenate the combined rows as a new DataFrame and append in bulk
     combined_df = pd.DataFrame(combined_rows)
@@ -453,12 +458,9 @@ def combine_spring_summer_terms(df, remove_original = False):
 
     # Optional removal of original spring/summer terms
     if remove_original:
-        result_df = result_df[~result_df['demographics_term'].isin(df[spring_mask | summer_mask]['demographics_term'])]
-
+        result_df = result_df[~(result_df['term_code'].isin([1, 5]))]
     result_df = result_df.sort_values(by=['student_ID', 'demographics_term']).reset_index(drop=True)
-
-    # Drop the temporary 'year' column for a clean return
-    result_df.drop(columns=['year'], inplace=True)
+    result_df.drop(columns=['year', 'term_code'], inplace=True)
 
     return result_df
 
