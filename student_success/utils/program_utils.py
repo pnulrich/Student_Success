@@ -22,7 +22,7 @@ def classify_discipline(major):
     return MAJOR_TO_DISCIPLINE_DICT.get(major, 'non_STEM')
 
 
-def lookup_major_name(major):
+def lookup_major_name(major, pre_major_conversion=False):
     """
     Returns the full name of a major given its abbreviation using a predefined mapping.
 
@@ -45,12 +45,17 @@ def lookup_major_name(major):
     --------
     Full names are determined by the `MAJOR_ABBREV_LABEL` dictionary.
     This dictionary can be modified to reflect your institution's specific majors.
-    Consider processing with replace_premajor_abbreviations beforehand!
+    Consider processing with replace_premajor_abbreviations beforehand or use
+    pre_major_conversion = True).
     """
 
     if pd.isna(major):
         return np.nan  # Return NaN for missing values
-    return MAJOR_ABBREV_TO_LABEL.get(major, 'Other')
+    elif pre_major_conversion==False:
+        return MAJOR_ABBREV_TO_LABEL.get(major, 'Other')
+    else:
+        raw_major = PREMAJOR_TO_MAJOR_DICT.get(major, major)
+        return MAJOR_ABBREV_TO_LABEL.get(raw_major, 'Other')
 
 
 def replace_premajor_abbreviations(major):
