@@ -122,12 +122,13 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
     end_status_colors = ["#332288", "#882255", "#CC6677"]
 
     unique_disciplines = data['discipline'].unique()
-    nodes = [f"Graduated {target_major}", "Graduated Other", "Left College"]
-    for sem in data['semester_number'].unique():
+    nodes = end_statuses.copy()
+    for sem in sorted(data['semester_number'].unique()):
         for disc in unique_disciplines:
             if disc not in nodes:
                 nodes.append(f"{disc} - Sem {sem}")
 
+    # Build flow links
     links = {'source': [], 'target': [], 'value': [], 'color': [], 'students': []}
     students_reaching_final_status = set()
 
@@ -177,8 +178,11 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
                 if target_discipline in end_statuses:
                     students_reaching_final_status.add(student)
 
+    # Aggregate link values
     links_df = pd.DataFrame(links)
     grouped_links = links_df.groupby(['source', 'target', 'color']).agg({'value': 'sum'}).reset_index()
+
+    # Node hover values
     node_value_map = data.groupby(['discipline', 'semester_number'])['student_ID'].nunique().to_dict()
     node_labels_with_values = [f"{node}: {node_value_map.get(node, '0')} students" for node in nodes]
     grouped_links['custom_source_label'] = [nodes[s] for s in grouped_links['source']]
@@ -216,14 +220,14 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
                                      name=SANKEY_DISCIPLINE_GROUPS.get(discipline, discipline)))
 
     fig.update_layout(
-        title = dict(
+        title=dict(
             text=wrap_plot_title(plot_title),
-            x = 0.45,
-            xanchor = 'center',
-            font = dict(size=20)
+            x=0.45,
+            xanchor='center',
+            font=dict(size=20)
         ),
         height=1000,
-        width =1200,
+        width=1200,
         showlegend=True,
         legend=dict(
             orientation="v",
@@ -234,9 +238,32 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
             font=dict(size=16)
         ),
         yaxis=dict(showticklabels=False),
-            xaxis=dict(showticklabels=False),
-            annotations=[]
+        xaxis=dict(showticklabels=False),
+        annotations=[]
     )
+
+
+    '''
+    # kaleido set up appears to hang the kernel in output, but retaining as a record    
+    if output_filename:
+        ext = os.path.splitext(output_filename)[1].lower()
+    
+        if ext == ".html":
+            fig.write_html(output_filename)
+        elif ext in [".png", ".jpg", ".jpeg", ".svg", ".pdf", ".eps", ".webp"]:
+            try:
+                import kaleido  # Ensure kaleido is available
+                fig.write_image(output_filename, engine = "kaleido")
+            except ImportError:
+                raise ImportError(
+                    f"Kaleido is required for exporting to {ext} format. Install it using:\n\n    pip install -U kaleido"
+                )
+        else:
+            raise ValueError(
+                f"Unsupported file format: {ext}. Supported formats are: .html, .png, .jpg, .jpeg, .svg, .pdf, .eps, .webp"
+            )
+  
+    '''
 
     fig.show()
     if output_filename:
@@ -265,7 +292,7 @@ def assign_sankey_end_status(df, target_major, max_term=None, inactivity_gap=4):
         - major_graduation
 
     target_major : str
-        The abbreviation of the target major (e.g., 'BIO').
+        Abbreviation or code of the target major (e.g., '7').
 
     max_term : int, optional
         The maximum term (YYYYMM format) used to evaluate inactivity. Defaults to max(df['demographics_term']).
@@ -299,18 +326,19 @@ def assign_sankey_end_status(df, target_major, max_term=None, inactivity_gap=4):
         )
 
     # Standardize terms
-    df['standard_term'] = df['demographics_term'].apply(standardize_to_term_code)
+    # df['standard_term'] = df['demographics_term'].apply(standardize_to_term_code)
 
     if max_term is None:
         max_term = df['demographics_term'].max()
-    max_term_standard = standardize_to_term_code(max_term)
+    # max_term_standard = standardize_to_term_code(max_term)
 
     # Graduation flags
     df['flag_graduation'] = classify_graduation_status(df)
     df['flag_graduation_in_major'] = classify_graduation_in_major(df, target_major=target_major)
 
     # Get last standardized term and discipline by student
-    last_term_by_student = df.groupby('student_ID')['standard_term'].max()
+    # last_term_by_student = df.groupby('student_ID')['standard_term'].max()
+    last_term_by_student = df.groupby('student_ID')['demographics_term'].max()
     discipline_by_student = df.sort_values('demographics_term').groupby('student_ID')['discipline'].last()
 
     def classify(row):
@@ -318,7 +346,8 @@ def assign_sankey_end_status(df, target_major, max_term=None, inactivity_gap=4):
         last_term = last_term_by_student[sid]
         discipline = discipline_by_student.get(sid, 'Unknown Discipline')
 
-        if row['standard_term'] != last_term:
+        # if row['standard_term'] != last_term:
+        if row['demographics_term'] != last_term:
             return None  # Only classify in last term
 
         if row['flag_graduation'] == 1:
@@ -329,7 +358,8 @@ def assign_sankey_end_status(df, target_major, max_term=None, inactivity_gap=4):
 
         elif calculate_semester_interval(
             semester_A=last_term,
-            semester_B=max_term_standard
+            # semester_B=max_term_standard
+            semester_B=max_term
         ) > inactivity_gap:
             return 'Left College'
 
