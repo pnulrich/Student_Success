@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import math
+from student_success.utils.constants import SEMESTER_NUMERIC_CODES
 
 def adjust_grad_term(date):
     """
@@ -309,6 +310,8 @@ def calculate_semester_interval(semester_A, semester_B):
 
 
     # Semester sequence within academic year: Fall (08), Spring (01), Summer (05)
+    #if combined:
+        semester_sequence = ['08', '01', '05']
     semester_sequence = ['08', '01', '05']
 
     current_year = int(str(semester_A)[:4])
@@ -357,112 +360,146 @@ def calculate_semester_interval(semester_A, semester_B):
     return semesters_between
 
 
-# Define function to combine spring/summer based on presence of both terms
-def combine_spring_summer_terms(df, remove_original = False):
+def combine_spring_summer_terms(df, remove_original=False):
     """
-    Combines spring (YYYY01) and summer (YYYY05) terms into a single term per year for each student,
-    while retaining all original columns in the dataframe. New combined rows are created with
-    `demographics_term` set to a unique code (`YYYY04.xx`) and appended to the dataframe unless
-    `remove_original=True`.
+    Combine spring and summer term rows into a single synthetic term for each student-year.
+
+    This function identifies students with both spring and summer records in the same year and merges them
+    into a single row representing a combined term (e.g., 'spring+summer'). New synthetic `demographics_term`
+    codes are created using predefined mappings from `SEMESTER_NUMERIC_CODES`. The function preserves original
+    term rows unless `remove_original=True`.
 
     Parameters
     ----------
-    df : pandas.DataFrame
-        A dataframe containing at least the following columns:
-        - 'student_ID' : Identifier for each student.
-        - 'demographics_term' : Term codes in YYYYMM integer format (e.g., 202301 for Spring 2023).
-        - Additional demographic columns to retain in the combined rows.
+    df : pd.DataFrame
+        Input dataframe with at least the following columns:
+        - 'student_ID': unique student identifier
+        - 'demographics_term': term code in YYYYTT format (e.g., 202301 for Spring 2023)
 
     remove_original : bool, optional (default=False)
-        If True, removes the original spring (YYYY01) and summer (YYYY05) term rows after creating the combined rows.
+        If True, drops the original spring and summer rows after combining them.
+        If False, retains original rows alongside the combined rows.
 
     Returns
     -------
-    pandas.DataFrame
-        The original dataframe with additional rows for each combined spring-summer term.
-        Each new combined row contains:
-        - 'student_ID' : Same as in the original rows.
-        - 'demographics_term' : One of the following combined codes:
-            - YYYY04.11 → if both spring and summer terms are present
-            - YYYY04.10 → if only the spring term is present
-            - YYYY04.01 → if only the summer term is present
-          The decimal portion encodes term presence (1 = present, 0 = absent): `.10` = spring only, `.01` = summer only, `.11` = both.
-        - 'term_type' : A human-readable indicator of the term type:
-            - 'spring+summer', 'spring', or 'summer'
-        - All other columns are copied from the appropriate term row, with summer taking precedence when both are present.
+    pd.DataFrame
+        DataFrame containing the original and/or combined rows. Additional columns added include:
+        - 'term_type': one of {'spring', 'summer', 'fall', 'spring_only', 'summer_only', 'spring+summer'}
+        - 'term_format': 'original' or 'combined'
+        - 'year': extracted year from `demographics_term`
+        - 'term_code': extracted or synthesized term code (e.g., 1 for spring, 4 for spring+summer)
 
     Notes
     -----
-    - This function assumes that `demographics_term` is stored as an integer.
-    - A temporary column 'year' is added to support grouping and removed before returning the result.
-    - Original spring and summer rows are retained by default to allow flexible filtering; set `remove_original=True` to exclude them.
-
-    Example
-    -------
-    >>> df = pd.DataFrame({
-    ...     'student_ID': ['AA', 'AA', 'BB', 'BB', 'BB', 'BB'],
-    ...     'demographics_term': [202301, 202305, 202308, 202401, 202405, 202408],
-    ...     'major_term': ['BIO', 'CHM', 'PDa', 'POT', 'FAR', 'BIO']
-    ... })
-    >>> df_combined = combine_spring_summer_terms(df)
-    >>> print(df_combined)
+    - Spring and summer rows are matched by `student_ID` and calendar year.
+    - Combined rows are preferred over duplicates by arbitrarily keeping spring as the base if both exist.
+    - If no valid `term_type` is found for a row during combination, it is skipped.
+    - The constants used for mapping term types and codes must be defined in SEMESTER_NUMERIC_CODES.
     """
 
     df = df.copy()
-    combined_rows = []
 
-    # Extract year and create term masks
-    df['year'] = df['demographics_term'] // 100
-    df['term_code'] = df['demographics_term'] % 100
+    # Precompute year and term_code for filtering
+    df['year'] = (df['demographics_term'] // 100).astype(int)
+    df['term_code'] = (df['demographics_term'] % 100).astype(int)
 
-    # Set 'fall' term_type directly for original fall rows
-    df.loc[df['term_code'] == 8, 'term_type'] = 'fall'
+    # Label term_type for original semesters
+    df['term_type'] = None
+    df.loc[df['term_code'] == SEMESTER_NUMERIC_CODES['spring'], 'term_type'] = 'spring'
+    df.loc[df['term_code'] == SEMESTER_NUMERIC_CODES['summer'], 'term_type'] = 'summer'
+    df.loc[df['term_code'] == SEMESTER_NUMERIC_CODES['fall'], 'term_type'] = 'fall'
+    df['term_format'] = 'original'
 
-    spring_mask = df['term_code'] == 1
-    summer_mask = df['term_code'] == 5
+    # Separate spring and summer into their own datraframes for combination
+    spring_df = df[df['term_code'] == 1].copy()
+    summer_df = df[df['term_code'] == 5].copy()
 
-    # Group by student and year, then determine combined term row values
-    for (student_id, year), group in df.groupby(['student_ID', 'year']):
-        # Check for the existence of spring and summer terms
+    # Retain all columns (except derived helper)
+    data_cols = [col for col in df.columns if col not in {'term_type'}]
 
-        has_spring = spring_mask[group.index].any()
-        has_summer = summer_mask[group.index].any()
+    spring_df = spring_df[data_cols].copy()
+    summer_df = summer_df[data_cols].copy()
 
-        if has_spring and has_summer:
-            # Combined term for both spring and summer; summer takes precedence for other values
-            combined_code = year * 100 + 4.11
-            combined_row = group[summer_mask[group.index]].iloc[0].copy()
-            combined_row['demographics_term'] = combined_code
-            combined_row['term_type'] = 'spring+summer'  # for .11
-            combined_rows.append(combined_row)
-        elif has_spring:
-            # Only spring term exists
-            combined_code = year * 100 + 4.10
-            combined_row = group[spring_mask[group.index]].iloc[0].copy()
-            combined_row['demographics_term'] = combined_code
-            combined_row['term_type'] = 'spring'  # for .10
-            combined_rows.append(combined_row)
-        elif has_summer:
-            # Only summer term exists
-            combined_code = year * 100 + 4.01
-            combined_row = group[summer_mask[group.index]].iloc[0].copy()
-            combined_row['demographics_term'] = combined_code
-            combined_row['term_type'] = 'summer'  # for .01
-            combined_rows.append(combined_row)
+    # Merge spring and summer rows
+    merged = pd.merge(
+        spring_df,
+        summer_df,
+        on=['student_ID', 'year'],
+        how='outer',
+        suffixes=('_spring', '_summer')
+    )
 
+    # Build new combined rows
+    def build_combined_row(row):
+        year = int(row['year'])
+        if pd.notna(row.get('demographics_term_spring')) and pd.notna(row.get('demographics_term_summer')):
+            suffix = '_spring'  # arbitrarily prefer spring as a temporary naming approach
+            term_type = 'spring+summer'
+            term_code = SEMESTER_NUMERIC_CODES.get(term_type)
+            if term_code is None:
+                raise ValueError(f"[combine_spring_summer_terms] Unknown term_type: {term_type}")
+        elif pd.notna(row.get('demographics_term_spring')):
+            suffix = '_spring'
+            term_type = 'spring_only'
+            term_code = SEMESTER_NUMERIC_CODES.get(term_type)
+            if term_code is None:
+                raise ValueError(f"[combine_spring_summer_terms] Unknown term_type: {term_type}")
+        elif pd.notna(row.get('demographics_term_summer')):
+            suffix = '_summer'
+            term_type = 'summer_only'
+            term_code = SEMESTER_NUMERIC_CODES.get(term_type)
+            if term_code is None:
+                raise ValueError(f"[combine_spring_summer_terms] Unknown term_type: {term_type}")
+        else:
+            return None
 
-    # Concatenate the combined rows as a new DataFrame and append in bulk
-    combined_df = pd.DataFrame(combined_rows)
+        base = {col.replace(suffix, ''): val for col, val in row.items() if col.endswith(suffix) or col in ['student_ID', 'year']}
+        row_out = pd.Series(base)
+        row_out['demographics_term'] = year * 100 + term_code
+        row_out['term_type'] = term_type
+        row_out['term_format'] = 'combined'
+
+        return row_out
+
+    combined_df = merged.apply(build_combined_row, axis=1)
+
+    # ensure that integer type is enforced if pandas auto-upcasted due to NaN or object values being present
+    combined_df['demographics_term'] = combined_df['demographics_term'].astype(int)
+    combined_df['year'] = (combined_df['demographics_term'] // 100).astype(int)
+    combined_df['term_code'] = combined_df['demographics_term'] % 100
+
+    # Add missing columns if needed
+    for col in ['term_type', 'term_format']:
+        if col not in combined_df.columns:
+            combined_df[col] = None
+
+    # Combine original + combined
     result_df = pd.concat([df, combined_df], ignore_index=True)
 
-
-    # Optional removal of original spring/summer terms
     if remove_original:
-        result_df = result_df[~(result_df['term_code'].isin([1, 5]))]
+        result_df = result_df[~(
+            (result_df['term_type'].isin(['spring', 'summer'])) &
+            (result_df['term_format'] == 'original')
+        )]
+
     result_df = result_df.sort_values(by=['student_ID', 'demographics_term']).reset_index(drop=True)
-    result_df.drop(columns=['year', 'term_code'], inplace=True)
+
+    # enforce integer types for specific columns if no NaNs present
+    int_columns = [
+        'demographics_term',
+        'academic_year',
+        'associates_coursework_first',
+        'associates_degree_first',
+        'flag_transfer',
+        'term_earliest'
+    ]
+
+    for col in int_columns:
+        if col in result_df.columns and not result_df[col].isna().any():
+            result_df[col] = result_df[col].astype('int32')
 
     return result_df
+
 
 def standardize_to_term_code(term):
     """
