@@ -6,7 +6,8 @@ and visualization modules.
 """
 
 import pandas as pd
-from student_success.utils.constants import STEM_CORE_MAJORS
+import numpy as np
+from student_success.utils.constants import STEM_CORE_MAJORS, PREMAJOR_TO_MAJOR_DICT
 from student_success.utils.validation import safe_parse_tuple
 
 def assign_retention_outcomes(df, major_col='major_term', reference_col='major_term_earliest',
@@ -171,10 +172,138 @@ def classify_graduation_status(df, grad_col='graduation_status', level_col='grad
 
     return df.apply(interpret_and_check, axis=1).astype(int)
 
+def _date_to_term_code(dt: pd.Timestamp, january_counts_as_fall: bool = True) -> int:
+    """
+    Convert a calendar date to an institutional term code (YYYYTT).
 
+    Parameters
+    ----------
+    dt : pandas.Timestamp
+        Graduation/conferral date.
+    january_counts_as_fall : bool, optional
+        When True, January conferrals are assigned to the prior Fall (TT=08).
+        When False, January is treated as Spring (TT=01).
+
+    Returns
+    -------
+    int
+        The term code in YYYYTT format.
+
+    Notes
+    -----
+    Adjust the month→term mapping if your institution differs:
+    - Spring: months 1–5  → TT=01
+    - Summer: months 6–7  → TT=05
+    - Fall:   months 8–12 → TT=08
+    """
+    if pd.isna(dt):
+        return np.nan
+    y = dt.year
+    m = dt.month
+    if january_counts_as_fall and m == 1:
+        return int(f"{y-1}08")
+    if 1 <= m <= 5:
+        tt = "01"
+    elif 6 <= m <= 7:
+        tt = "05"
+    else:
+        tt = "08"
+    return int(f"{y}{tt}")
+
+
+def assign_flag_graduation_term_from_date(
+    df: pd.DataFrame,
+    student_col: str = "student_ID",
+    term_col: str = "demographics_term",
+    grad_date_col: str = "graduation_date_bachelors",
+    level_col: str = "graduation_level",
+    status_col: str = "graduation_status",
+    target_level: str = "B",
+    january_counts_as_fall: bool = True,
+    out_col: str = "flag_graduation_term_bachelors",
+) -> pd.DataFrame:
+    """
+    Flag exactly one row per graduating student that corresponds to the correct graduation term. This is a date-driven
+    approach rather than max_course_term-driven approach.
+
+    The function maps each student's awarded graduation date at the target level to a term
+    code (YYYYTT), then for that student marks the row whose ``demographics_term`` is the
+    largest term **≤** the mapped graduation term. This avoids mislabeling cases where the
+    student enrolls in terms after conferral.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        One row per student per term. Must contain student, term, and graduation fields.
+    student_col : str, default "student_ID"
+        Unique student identifier column.
+    term_col : str, default "demographics_term"
+        Academic term in YYYYTT integer format.
+    grad_date_col : str, default "graduation_date_bachelors"
+        Column with a single graduation date or a tuple/stringified tuple of dates.
+    level_col : str, default "graduation_level"
+        Tuple/stringified tuple of awarded degree levels (e.g., 'B', 'M', 'P').
+    status_col : str, default "graduation_status"
+        Tuple/stringified tuple of statuses (e.g., 'Awarded').
+    target_level : str, default "B"
+        Degree level to evaluate.
+    january_counts_as_fall : bool, default True
+        Map January conferrals to prior Fall (set False to map January to Spring).
+    out_col : str, default "flag_graduation_term_bachelors"
+        Name of the output 0/1 flag column.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Copy of ``df`` with ``out_col`` added/overwritten.
+
+    Notes
+    -----
+    - Supports tuple or stringified-tuple graduation fields via ``safe_parse_tuple``.
+    - If multiple awards exist, the first matching (level==target & status=='Awarded') is used.
+    - If a student has an award date but **no** term ≤ mapped graduation term, the earliest term is flagged.
+    """
+    out = df.copy()
+
+    # Normalize potential tuple fields and pick the first Awarded date at target level
+    def _pick_target_award_date(row):
+        levels = safe_parse_tuple(row[level_col])
+        statuses = safe_parse_tuple(row[status_col])
+        dates = safe_parse_tuple(row[grad_date_col])
+
+        for i, lvl in enumerate(levels):
+            if lvl == target_level and i < len(statuses) and statuses[i] == "Awarded":
+                # protect against short tuples
+                if i < len(dates):
+                    return pd.to_datetime(dates[i], errors="coerce")
+        # Fallback if grad_date_col is a single scalar
+        return pd.to_datetime(row.get(grad_date_col, pd.NaT), errors="coerce")
+
+    out["_target_award_dt"] = out.apply(_pick_target_award_date, axis=1)
+    out["_target_grad_term"] = out["_target_award_dt"].apply(
+        lambda d: _date_to_term_code(d, january_counts_as_fall) if pd.notna(d) else np.nan
+    )
+
+    out[out_col] = 0
+
+    # Operate only on students with a target award somewhere
+    grads = out[out["_target_grad_term"].notna()][[student_col]].drop_duplicates()
+
+    for sid in grads[student_col]:
+        g = out[out[student_col] == sid].sort_values(term_col)
+        target = int(g["_target_grad_term"].dropna().iloc[0])
+
+        # Choose the latest term <= target; fallback to earliest term if none
+        le = g[g[term_col] <= target]
+        idx_to_flag = le[term_col].idxmax() if not le.empty else g[term_col].idxmin()
+        out.loc[idx_to_flag, out_col] = 1
+
+    # cleanup
+    out = out.drop(columns=["_target_award_dt", "_target_grad_term"])
+    return out
 def classify_graduation_term(df, grad_date_col='graduation_date', level_col='graduation_level',
                              status_col='graduation_status', term_col='demographics_term', target_level='B',
-                             use_max_term_logic=True):
+                             use_max_term_logic=True, january_counts_as_fall = False):
     """
     Determines if a student graduated at the target level in the current term.
 
@@ -191,40 +320,46 @@ def classify_graduation_term(df, grad_date_col='graduation_date', level_col='gra
         pd.Series: Binary flag (1 = student graduated at target level in this term, 0 = otherwise).
 
     Notes:
-        - If `use_max_term_logic` is True:
-            - Assumes a 'max_course_term' column exists.
-            - A graduation is flagged if any awarded date for the target level is ≥ that max term.
-        - If False:
-            - Compares parsed graduation dates directly to the term's datetime.
-        - Designed to handle malformed tuples and string representations robustly.
+        - If use_max_term_logic is True:
+            Uses 'max_course_term'. (Legacy, reliable.)
+        - If False and january_counts_as_fall is True:
+            Uses experimental date→term conversion. WARNING: not robust with combined codes.
+        - If False and january_counts_as_fall is False:
+            Legacy behavior: compares exact datetime to term code.
     """
-    def interpret_and_check(row):
 
+    def interpret_and_check(row):
         try:
             levels = safe_parse_tuple(row[level_col])
             dates = safe_parse_tuple(row[grad_date_col])
             statuses = safe_parse_tuple(row[status_col])
 
+            # filter to awarded degrees at target level
             awarded_indices = [i for i, lvl in enumerate(levels)
                                if lvl == target_level and i < len(statuses) and statuses[i] == 'Awarded']
-
             if not awarded_indices:
                 return 0
 
             matching_dates = [dates[i] for i in awarded_indices if i < len(dates)]
             parsed_dates = pd.to_datetime(matching_dates, errors='coerce')
 
-            if use_max_term_logic:
+            if use_max_term_logic and january_counts_as_fall == False:
                 if 'max_course_term' not in row or pd.isna(row['max_course_term']):
                     return 0
                 max_term = int(row['max_course_term'])
                 term_date = pd.to_datetime(str(max_term), format='%Y%m', errors='coerce')
-
                 return int(row[term_col] == max_term and any(pd.notna(d) and d >= term_date for d in parsed_dates))
+
+            ## WARNING: THIS ELIF IS NOT YET ROBUST AND WILL YIELD UNEXPECTED RESULTS WITH COMBINED SEMESTER CODES
+            elif january_counts_as_fall:
+                grad_terms = [_date_to_term_code(d, january_counts_as_fall=True) for d in parsed_dates if pd.notna(d)]
+                return int(int(row[term_col]) in grad_terms)
+
+            # legacy behavior should be fine
             else:
                 term_date = pd.to_datetime(str(row[term_col]), format='%Y%m', errors='coerce')
-
                 return int(any(pd.notna(d) and d == term_date for d in parsed_dates))
+
 
         except Exception as e:
             print(f"[DEBUG] Exception for {row['student_ID']}: {e}")
@@ -252,7 +387,8 @@ def classify_graduation_in_major(df, major_col='major_graduation', target_major=
 
     return df.apply(flag_graduated_in_target, axis=1).astype(int)
 
-def classify_graduation_in_first_major(df, major_col='major_graduation', reference_col='major_term_earliest'):
+def classify_graduation_in_first_major(df, major_col='major_graduation', reference_col='major_term_earliest_bachelors',
+                                       pre_major_conversion = False):
     """
     Flags students whose graduation includes their originally declared major.
 
@@ -265,11 +401,18 @@ def classify_graduation_in_first_major(df, major_col='major_graduation', referen
         pd.Series: Binary flag (1 = graduated in first major, 0 = otherwise)
     """
     def flag_graduated_in_first_major(row):
-        graduation_majors = safe_parse_tuple(row[major_col])
-        return int(row[reference_col] in graduation_majors)
+        if pre_major_conversion:
+            graduation_majors = safe_parse_tuple(row[major_col])
+            converted_first_major = PREMAJOR_TO_MAJOR_DICT.get(row[reference_col], row[reference_col])
+            #print(row)
+            # print('First major:', row[reference_col])
+            # print(graduation_majors, converted_first_major, int(converted_first_major in graduation_majors))
+            return int(converted_first_major in graduation_majors)
+        else:
+            graduation_majors = safe_parse_tuple(row[major_col])
+            return int(row[reference_col] in graduation_majors)
 
     return df.apply(flag_graduated_in_first_major, axis=1).astype(int)
-
 
 def classify_graduation_in_STEM(df, major_col='major_graduation'):
     """
