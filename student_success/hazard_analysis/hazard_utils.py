@@ -196,69 +196,49 @@ def assign_outcome_indicators(student_df, max_demographics_term):
         return []
 
     required_cols = [
-        'major_term_earliest', 'term_earliest', 'semester_number',
-        'major_term', 'demographics_term', 'flag_graduation_term'
+        'major_term_earliest',
+        'term_earliest',
+        'semester_number',
+        'major_term',
+        'demographics_term',
+        'flag_graduation_term'
     ]
     validate_columns(student_df.columns, required_cols)
+
 
     # Add 'flag_graduated_in_first_major' if not already present
     if 'flag_graduated_in_first_major' not in student_df.columns:
         student_df['flag_graduated_in_first_major'] = classify_graduation_in_first_major(student_df)
 
-    # Basic student metadata
-    term_earliest = student_df['term_earliest'].min()  # earliest semester code
-    last_semester_number = student_df['semester_number'].max()  # Last semester number
-
-    # max_demographics_term = student_df['demographics_term'].max()
-    # print("Max demographics term = ", max_demographics_term)
+    # Sort by semester_number just in case
+    student_df = student_df.sort_values("semester_number").reset_index(drop=True)
     indicators = []
-    major_prev_term = None  # Track the previous semester's major
+    num_rows = len(student_df)
+    major_change_already_occurred = False
 
-    # Iterate over semesters
-    for _, row in student_df.iterrows():
-        is_last_semester = row['semester_number'] == last_semester_number
-        current_term = row['demographics_term']
-        major = row['major_term']
+    for i, row in student_df.iterrows():
+        current_sem = row['semester_number']
+        current_major = row['major_term']
         graduated = row['flag_graduation_term'] == 1
         graduated_in_first_major = row['flag_graduated_in_first_major'] == 1
+        is_last = i == num_rows - 1
 
-
-        # Check: final record in student history
-        if is_last_semester:
+        if is_last:
             if graduated:
-                # Graduated in original major or another major
                 indicators.append(2 if graduated_in_first_major else 3)
-            elif calculate_semester_interval(current_term, max_demographics_term) >= 2:
-                # not graduated and a long enrollment gap --> left university/dropout
+            elif calculate_semester_interval(row['demographics_term'], max_demographics_term) >= 2:
                 indicators.append(1)
             else:
-                # still active
                 indicators.append(-1)
-            major_prev_term = major
-            continue
-
-        # For the earliest term of student records, set value to -1 as a baseline
-        if current_term == term_earliest:
-            indicators.append(-1)
-            major_prev_term = major
-            continue
-
-        if major != major_prev_term:
-            # active but major changed from major in the previous term
-            indicators.append(4)
-            major_prev_term = major
-            continue
-
         else:
-            # no change
-            indicators.append(-1)
-            major_prev_term = major
-
-
+            next_major = student_df.loc[i + 1, 'major_term']
+            if current_major != next_major and not major_change_already_occurred:
+                indicators.append(4)  # Forward-looking major change
+                major_change_already_occurred = True
+            else:
+                indicators.append(-1)
 
     return indicators
-
-
 def prepare_and_process_data(student_major_data_df,
                              coursework_df,
                              target_major,
@@ -486,79 +466,125 @@ def calculate_probabilities(input_df):
     Calculate proportions, cumulative probabilities, and active student counts by semester.
 
     This function computes:
-    1. Proportions of students by `outcome_indicator` for each semester.
-    2. Cumulative probabilities of various outcomes, adjusted for the active population.
+    1. Proportions of students by `outcome_indicator` for each semester using a hazard-based method.
+       - Outcome 4 (Changed Major) is modeled as a forward-looking risk:
+         students are flagged if they change majors in the *next* semester,
+         and the probability is normalized to the number of students *active in the current semester*.
+       - Outcomes 1, 2, 3, and -1 are normalized to the active student population in the *current* semester.
+    2. Cumulative probabilities for each outcome, assuming students begin fully active (100%).
     3. Total active student counts per semester.
-    4. A filtered DataFrame (`masked_df`) filtered version of 'input_df' with rows only where outcome != -1. Use this to focus on transition or terminal events.
+    4. A filtered DataFrame excluding rows with `outcome_indicator == -1` to focus on terminal or transition outcomes.
 
     Parameters
     ----------
     input_df : pandas.DataFrame
-        A DataFrame containing student data with the following required columns:
-        - 'semester_number': Identifier for the semester.
-        - 'outcome_indicator': Outcome indicator for each student.
-        - 'student_ID': Unique identifier for students.
+        DataFrame containing student-level outcome data. Required columns:
+        - 'semester_number': Integer identifier for the term of enrollment.
+        - 'outcome_indicator': Coded outcome for the semester. Expected values:
+            - -1 = Active (no terminal or transition outcome yet)
+            -  1 = Left College
+            -  2 = Graduated in Target Major
+            -  3 = Graduated in Other Major
+            -  4 = Changed Major
+        - 'student_ID': Unique student identifier.
 
     Returns
     -------
     dict
-        A dictionary containing:
+        Dictionary containing:
         - "proportions_df": pandas.DataFrame
-            Proportions of each outcome (`outcome_indicator`) by semester.
+            Proportion of students with each outcome per semester.
         - "cumulative_df": pandas.DataFrame
-            Cumulative probabilities for each outcome by semester.
+            Cumulative probabilities of each outcome assuming 100% start active.
         - "active_student_counts": pandas.Series
-            Total number of active students per semester.
+            Number of active students per semester (based on input data).
         - "masked_df": pandas.DataFrame
-            Filtered DataFrame excluding rows with `outcome_indicator == -1`.
+            Subset of input_df where `outcome_indicator != -1`.
 
     Notes
     -----
-    - The function assumes that outcomes are represented by specific values of `outcome_indicator`.
-    - Cumulative probabilities are calculated for each outcome in the following order:
-      1 (Left College), 4 (Changed Major), 2 (Graduated in Target Major), 3 (Graduated Other).
-    - Active student counts are used to normalize proportions.
-    - Active population is modeled as those with outcome -1 (continued) or 4 (changed major).
-    - The proportions and cumulative probabilities are calculated relative to this active base.
-
+    - This function reflects a hazard framework: students at risk of each outcome are only those still active.
+    - The probability of changing majors is derived based on changes observed in the *next* semester.
+    - Graduation and leaving college are treated as terminal events within the semester and normalized to the current active base.
+    - The cumulative probability table is useful for generating survival-style plots across semesters.
 
     Examples
     --------
     >>> result = calculate_probabilities(student_df)
-    >>> print(result["proportions_df"].head())
-    >>> print(result["cumulative_df"].head())
-    >>> print(result["active_student_counts"])
-    >>> print(result["masked_df"].head())
+    >>> result["proportions_df"].head()
+    >>> result["cumulative_df"].head()
+    >>> result["active_student_counts"]
+    >>> result["masked_df"].head()
     """
 
     required_input_cols = ['semester_number', 'outcome_indicator', 'student_ID']
     validate_columns(input_df.columns, required_input_cols)
 
-    # Calculate the proportions of active students by semester and status
-    proportions_df = (
-        input_df.groupby("semester_number")["outcome_indicator"]
-        .value_counts(normalize=True)
-        .unstack(fill_value=0)
-        .reset_index()
-    )
+    # Sort and prepare
+    input_df = input_df.sort_values(['student_ID', 'semester_number'])
 
-    # Calculate cumulative probabilities
+    # Get active counts per semester
+    active_student_counts = input_df.groupby("semester_number")["student_ID"].nunique()
+
+    # Initialize output DataFrame
+    semesters = sorted(input_df["semester_number"].unique())
+    proportions_records = []
+
+    for idx, sem in enumerate(semesters):
+        df_curr = input_df[input_df["semester_number"] == sem]
+        total_curr = len(df_curr)
+
+        # For current semester, compute:
+        # - graduates in-major (2), graduates other (3), left college (1)
+        grad_in_major = (df_curr["outcome_indicator"] == 2).sum()
+        grad_other = (df_curr["outcome_indicator"] == 3).sum()
+        left_college = (df_curr["outcome_indicator"] == 1).sum()
+
+        if sem < max(semesters):
+           next_sem = sem + 1
+           # Students who changed major in next semester
+           next_changers = input_df[
+                (input_df["semester_number"] == next_sem) &
+                (input_df["outcome_indicator"] == 4)
+           ]["student_ID"].unique()
+
+           # Students active in current semester
+           active_now = set(input_df[
+               (input_df["semester_number"] == sem) &
+               (input_df["outcome_indicator"] == -1)
+           ]["student_ID"].unique())
+
+           changed_major = len(set(next_changers).intersection(active_now))
+           curr_active_count = len(active_now)
+        else:
+            changed_major = 0
+            curr_active_count = 1  # avoid divide-by-zero
+
+
+        proportions_records.append({
+            "semester_number": sem,
+            1: left_college / total_curr if total_curr else 0,
+            2: grad_in_major / total_curr if total_curr else 0,
+            3: grad_other / total_curr if total_curr else 0,
+            4: changed_major / curr_active_count if curr_active_count else 0,
+            -1: (df_curr["outcome_indicator"] == -1).sum() / total_curr if total_curr else 0
+        })
+
+    proportions_df = pd.DataFrame(proportions_records)
+
+    # Cumulative calculations
     cumulative_df = proportions_df[["semester_number"]].copy()
     active_population = 1.0  # Start with 100% of the population active
     cumulative_outcomes = {1: [], 2: [], 3: [], 4: []}
 
-    for idx, row in proportions_df.iterrows():
-        # Update cumulative probabilities based on remaining active population
+    for _, row in proportions_df.iterrows():
         for col in [1, 4, 2, 3]:
             current_prob = row.get(col, 0) * active_population
-            if idx == 0:
+            if not cumulative_outcomes[col]:
                 cumulative_outcomes[col].append(current_prob)
             else:
-                cumulative_outcomes[col].append(
-                    cumulative_outcomes[col][-1] + current_prob
-                )
-        # Update active population based on -1 (active) + 4 (changed major)
-        active_population *= (row.get(-1, 0) + row.get(4, 0))  # avoids errors that occur when no one is in category -1 or 4
+                cumulative_outcomes[col].append(cumulative_outcomes[col][-1] + current_prob)
+        active_population *= (row.get(-1, 0) + row.get(4, 0))
 
     # Calculate -1 as the remaining active population
     cumulative_outcomes[-1] = [
@@ -569,13 +595,16 @@ def calculate_probabilities(input_df):
     for col in cumulative_outcomes:
         cumulative_df[col] = cumulative_outcomes[col]
 
-    active_student_counts = input_df.groupby(['semester_number'])['student_ID'].count()
+    masked_df = input_df[input_df["outcome_indicator"] != -1].copy()
 
     return {
         "proportions_df": proportions_df,
         "cumulative_df": cumulative_df,
-        "active_student_counts": active_student_counts
-}
+        "active_student_counts": active_student_counts,
+        "masked_df": masked_df
+    }
+
+
 
 
 def extract_logistic_features(outcome_indicator, semester_numbers, cumulative_probabilities):
