@@ -185,7 +185,8 @@ MAJOR_ABBREV_TO_LABEL = {
     'GEOP': 'Geology',
     'CSC': 'Computer Science',
     'CSCI': 'Computer Science',
-    'PSY': 'Psychology'
+    'PSY': 'Psychology',
+    'NUR': 'Nursing'
 }
 
 # -------------------------------------------------------------------
@@ -235,3 +236,11 @@ SANKEY_DISCIPLINE_COLOR_MAP = {
     'Unknown': "#999999"
 }
 
+SEMESTER_NUMERIC_CODES = {
+    'spring': 1,
+    'summer': 5,
+    'fall': 8,
+    'spring_only': 2,
+    'summer_only': 3,
+    'spring+summer': 4,
+}
