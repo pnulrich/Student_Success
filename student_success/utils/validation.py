@@ -1,5 +1,64 @@
+"""
+validation.py
+=============
+
+Utility functions for validating DataFrame structure and safely parsing
+tuple-like values in the student success framework.
+
+This module centralizes lightweight validation and parsing helpers that
+support consistent data handling across the package. Core functions include:
+
+- ``validate_columns``: Ensures that a DataFrame contains all required columns,
+  raising a clear error if any are missing.
+- ``safe_parse_tuple``: Robustly parses tuple- or list-like data from strings,
+  lists, or tuples while removing or normalizing invalid entries (e.g., NaN,
+  None, empty strings).
+
+Notes
+-----
+- ``validate_columns`` is useful in preprocessing pipelines to guarantee that
+  downstream analysis functions have the columns they expect.
+- ``safe_parse_tuple`` is designed to handle mixed or messy inputs (e.g., CSV
+  exports where tuple-like values are stored as strings). It preserves list
+  structure and replaces invalid entries with ``None`` for positional
+  consistency.
+- These utilities are general-purpose and not tied to institution-specific
+  mappings.
+
+Examples
+--------
+>>> import pandas as pd
+>>> from student_success.utils import validation
+
+# Validate required columns
+>>> df = pd.DataFrame({"student_ID": [1, 2], "major": ["BIO", "CSC"]})
+>>> validation.validate_columns(df.columns, ["student_ID", "major"])
+# No error raised
+
+>>> validation.validate_columns(df.columns, ["student_ID", "missing_col"])
+Traceback (most recent call last):
+    ...
+ValueError: The following required columns are missing from your dataframe: missing_col
+
+# Parse tuple-like strings
+>>> validation.safe_parse_tuple("(BIO, CSC, PSY)")
+['BIO', 'CSC', 'PSY']
+
+>>> validation.safe_parse_tuple([1, None, 'nan', 'A'])
+[1, None, None, 'A']
+
+TODO
+----
+- Expand ``safe_parse_tuple`` with optional type enforcement
+  (e.g., force integer parsing).
+- Consider extending ``validate_columns`` with warnings for unexpected extras.
+"""
+
+
 import ast
 import pandas as pd
+
+
 def validate_columns(df_columns, required_columns):
     """
     Validates that all required columns are present in a DataFrame.
@@ -24,55 +83,7 @@ def validate_columns(df_columns, required_columns):
     if len(missing_columns) > 0:
         raise ValueError(f"The following required columns are missing from your dataframe: {', '.join(missing_columns)}")
 
-# def safe_parse_tuple(val):
-#     """
-#     Robustly parses list/tuple-like values from strings or native sequences,
-#     removing blank, null, and 'nan' values regardless of type.
-#     """
-#     if isinstance(val, (list, tuple)):
-#         return [
-#             str(x).strip() for x in val
-#             if (not isinstance(x, float) or pd.notna(x)) and
-#                str(x).strip().lower() not in {'', 'nan', 'none'}
-#         ]
-#
-#     if isinstance(val, str):
-#         try:
-#             return list(ast.literal_eval(val))
-#         except (ValueError, SyntaxError):
-#             items = val.strip("() ").split(",")
-#             return [
-#                 x.strip().strip("'\"") for x in items
-#                 if x.strip().lower() not in {'', 'nan', 'none'}
-#             ]
-#
-#     return []
 
-# def safe_parse_tuple(val):
-#     """
-#     Robustly parses list/tuple-like values from strings or native sequences,
-#     removing blank, null, and 'nan' values regardless of type.
-#
-#     Always returns a clean list of strings.
-#     """
-#     # Normalize all inputs to a list of strings
-#     if pd.isna(val) or val in ['', 'nan', 'None']:
-#         return []
-#
-#     # Step 1: Convert to a string representation, remove parentheses
-#     val_str = str(val).strip("() ")
-#     items = val_str.split(",")
-#
-#     # Step 2: Clean and filter
-#     clean_parts = []
-#     for item in items:
-#         s = str(item).strip().strip("'\"").lower()
-#         if s not in {'', 'nan', 'none'}:
-#             clean_parts.append(item.strip().strip("'\""))
-#
-#     return clean_parts
-
-# Redefine the updated safe_parse_tuple function
 def safe_parse_tuple(val):
     """
     Robustly parses list/tuple-like values from strings or native sequences,

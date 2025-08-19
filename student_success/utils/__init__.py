@@ -1,18 +1,48 @@
 """
-Utility functions for data wrangling and processing in student_success.
+utils
+=====
 
-Included components:
---------------------
-- io_utils :
-    - Tools for file I/O, including column renaming from codebooks.
-- scrambler :
-    - Functions for anonymizing and restoring student IDs.
-- program_utils :
-    - Functions for metadata assignment, labeling, and lookup of information associated with majors and programs
-- grade_utils :
-     - functions for manipulation and cleaning of grade columns
-- grades, time_utils, matriculation, etc. :
-     - Additional support modules
+General-purpose utility functions and constants for data wrangling, cleaning,
+and processing in the ``student_success`` package. The subpackage consolidates
+common tools used across analysis modules, ensuring consistency in
+preprocessing and interpretation of student success data.
+
+Included components
+-------------------
+- io_utils
+    File I/O helpers, including functions for bulk CSV concatenation,
+    column renaming via codebooks, and flattening of column mapping structures.
+- scrambler
+    ID anonymization and de-anonymization utilities using a cipher.
+- program_utils
+    Functions for classifying and labeling majors and programs,
+    including discipline groupings and premajor-to-major mappings.
+- grade_utils
+    Functions for cleaning, normalizing, and simplifying letter and
+    numeric grades, plus filters for valid grade subsets.
+- demographics_utils
+    Utilities for setting demographic flags and identifying first-semester
+    enrollment based on demographic records.
+- matriculation_utils
+    Functions for cleaning and validating matriculation terms and
+    adjusting institutional entry records.
+- time_utils
+    Tools for working with academic term codes and semester intervals,
+    including calendar standardization, sequence generation, and
+    combined spring/summer terms.
+- validation
+    Lightweight utilities for validating DataFrame schema and safely parsing
+    tuple-like values from messy inputs.
+- constants
+    Shared dictionaries and lookup tables for majors, disciplines, retention
+    outcomes, Sankey visualizations, demographic colors, GPA mappings,
+    and semester code definitions.
+
+Notes
+-----
+These modules are designed to be general-purpose within the package and
+serve as foundational building blocks for higher-level analysis in metrics,
+hazard analysis, and visualization subpackages.
 """
 
 from .validation import (

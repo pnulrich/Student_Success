@@ -1,3 +1,49 @@
+"""
+program_utils.py
+================
+
+Utility functions for handling major abbreviations, full names, and discipline
+classifications within the student success framework.
+
+This module centralizes common operations for translating and standardizing
+academic program codes. Functions include:
+
+- Mapping major abbreviations to broader discipline groups for analysis
+  (e.g., Biology → bio_sci, CSC → eng_CS).
+- Converting major abbreviations to full descriptive names using
+  institution-specific mappings.
+- Normalizing premajor abbreviations (e.g., PNUR → NUR) so that premajors
+  and their mature equivalents are treated consistently.
+
+The mappings used here are defined in ``student_success.utils.constants``:
+- ``MAJOR_ABBREV_TO_LABEL`` provides human-readable names for major abbreviations.
+- ``MAJOR_TO_DISCIPLINE_DICT`` maps abbreviations to discipline categories.
+- ``PREMAJOR_TO_MAJOR_DICT`` defines how premajors are converted to their
+  mature major equivalents.
+
+Notes
+-----
+- These utilities assume input values are either major abbreviations (strings)
+  or missing values (NaN).
+- If an abbreviation is not found in the mapping dictionaries, default
+  categories (e.g., "Other" or "non_STEM") are returned.
+- For end users: ensure abbreviations and premajors are standardized using
+  ``replace_premajor_abbreviations`` or by enabling the
+  ``pre_major_conversion`` flag in ``lookup_major_name``.
+
+Examples
+--------
+>>> classify_discipline('BIO')
+'bio_sci'
+
+>>> lookup_major_name('CSC')
+'Computer Science'
+
+>>> replace_premajor_abbreviations('PNUR')
+'NUR'
+"""
+
+
 import pandas as pd
 import numpy as np
 from student_success.utils.constants import MAJOR_ABBREV_TO_LABEL, MAJOR_TO_DISCIPLINE_DICT, PREMAJOR_TO_MAJOR_DICT
@@ -46,12 +92,12 @@ def lookup_major_name(major, pre_major_conversion=False):
     Full names are determined by the `MAJOR_ABBREV_LABEL` dictionary.
     This dictionary can be modified to reflect your institution's specific majors.
     Consider processing with replace_premajor_abbreviations beforehand or use
-    pre_major_conversion = True).
+    pre_major_conversion = True.
     """
 
     if pd.isna(major):
         return np.nan  # Return NaN for missing values
-    elif pre_major_conversion==False:
+    elif pre_major_conversion == False:
         return MAJOR_ABBREV_TO_LABEL.get(major, 'Other')
     else:
         raw_major = PREMAJOR_TO_MAJOR_DICT.get(major, major)

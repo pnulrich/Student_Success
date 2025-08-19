@@ -1,4 +1,50 @@
+"""
+scrambler.py
+============
+
+Utility functions for scrambling and unscrambling student IDs using a
+digit-to-character cipher.
+
+This module provides functions to anonymize student identifiers for
+research and reporting by replacing numeric digits (0–9) with characters
+from a user-defined cipher. IDs can be scrambled or unscrambled either
+individually (as strings) or in bulk (for pandas DataFrames with a
+`student_ID` column).
+
+Functions
+---------
+- scramble_ID : Scramble student IDs using a 10-character cipher.
+- unscramble_ID : Unscramble student IDs back to their original digits
+  using the same cipher.
+
+Notes
+-----
+- The cipher must be a string of exactly 10 characters, mapping each digit
+  (0–9) to a substitute character.
+- Scrambling removes leading zeros from IDs before applying the cipher.
+- Never share or publish your cipher string; treat it as confidential data.
+- The scrambled IDs are deterministic: the same input and cipher will always
+  produce the same output.
+- If `input_data` is a DataFrame, the column `student_ID` must be present.
+
+Examples
+--------
+Scramble a single ID:
+>>> scramble_ID("012345", "abcdefghij")
+'abcdefgh'
+
+Scramble a DataFrame:
+>>> scramble_ID(df, "abcdefghij")
+DataFrame with scrambled student_ID column
+
+Unscramble back:
+>>> unscramble_ID("abcdefgh", "abcdefghij")
+'012345'
+"""
+
+
 import pandas as pd
+
 
 def scramble_ID(input_data, cipher):
     """
@@ -38,7 +84,7 @@ def scramble_ID(input_data, cipher):
     DataFrame with scrambled student_ID column
     """
 
-    if len(cipher) != 10: #if student IDs at your institution have different # of unique characters, then adjust accordingly
+    if len(cipher) != 10:  # if student IDs at your institution have different # of unique characters, then adjust accordingly
         print("The cipher must have 10 characters!")
         return None
     else:

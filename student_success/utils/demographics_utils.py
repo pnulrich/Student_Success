@@ -1,5 +1,64 @@
+"""
+demographics_utils.py
+
+Utilities for creating standardized demographic flags and extracting
+first-term demographic records in the student_success package.
+
+This module provides functions that:
+- Add binary demographic flags (PEER, Hispanic, Pell, first-generation, sex).
+- Extract each student’s first-term demographic record, with optional filtering
+  by transfer status.
+
+Institutional Customization
+---------------------------
+Demographic encodings vary across institutions. Before use, confirm that your
+local codes align with the dictionaries in `constants.py`.
+
+- Race/Ethnicity:
+  The PEER flag relies on `PEER_ABBREVIATION_DICT` and `PEER_DESCRIPTION_DICT`.
+  Update those constants to reflect your institution’s race/ethnicity coding.
+- Sex/Gender:
+  `SEX_DICT` maps identifiers to a binary flag (1 = Female, 0 = Male).
+  Modify if your SIS includes additional categories beyond M/F.
+- Pell / First-Generation:
+  Ensure that Pell eligibility and first-generation status are coded as
+  expected (typically 'Y'/'N' or numeric flags).
+- Hispanic:
+  This module accepts either `demographics_hispanic` or
+  `demographics_ethnicity` columns. Update mappings in the function if your
+  encodings differ.
+
+Pitfalls
+--------
+- Missing columns will raise validation errors. Always check your input
+  DataFrame against expected fields before calling these functions.
+- Ambiguous or unreported demographic values default to 0 or -1, which may
+  affect subgroup counts in analyses.
+- The PEER flag may behave differently if students are coded with both
+  Hispanic and race values; test outputs on your data before applying broadly.
+- Transfer credit detection in `demographics_first_semester` assumes the
+  column `transfer_hours_term` is present and numeric.
+
+Contents
+--------
+- set_up_demographic_flags(df, peer=True, hispanic=True, pell=True,
+  first_generation=True, sex=True) :
+  Adds demographic flag columns (`flag_PEER`, `flag_hispanic`, `flag_PELL`,
+  `flag_first_generation`, `flag_sex`) to a DataFrame.
+- demographics_first_semester(df, transfer_status="any", return_dataframe=1) :
+  Returns each student’s first-term demographic record, optionally filtered
+  by transfer credit status.
+
+Notes
+-----
+- These utilities are designed for preprocessing and should be applied
+  early in your workflow so flags are available for hazard, Sankey, and
+  Markov analyses.
+- Relies on constants defined in `student_success.utils.constants` for
+  demographic mappings.
+"""
+
 import numpy as np
-import pandas as pd
 from student_success.utils.constants import PEER_ABBREVIATION_DICT, PEER_DESCRIPTION_DICT, SEX_DICT
 from student_success.utils.validation import validate_columns
 
@@ -76,7 +135,7 @@ def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_gene
 
         elif 'demographics_ethnicity' in df.columns:
             df['flag_hispanic'] = 0
-            df['flag_hispanic'] = df['demographics_ethnicity'].map({1:0, 2:1}).fillna(0).astype("int8")
+            df['flag_hispanic'] = df['demographics_ethnicity'].map({1: 0, 2: 1}).fillna(0).astype("int8")
 
     # Convert abbreviations to full text using mapping
     if peer:
@@ -121,7 +180,7 @@ def set_up_demographic_flags(df, peer=True, hispanic=True, pell=True, first_gene
     return df
 
 
-def demographics_first_semester(df, transfer_status="any", return_dataframe = 1):
+def demographics_first_semester(df, transfer_status="any", return_dataframe=1):
     """
     Returns the first-term demographics record for each student, optionally filtered by transfer status.
 
@@ -157,7 +216,7 @@ def demographics_first_semester(df, transfer_status="any", return_dataframe = 1)
 
     df = df.copy()
 
-    if transfer_status not in {'any', 'with', 'without'} :
+    if transfer_status not in {'any', 'with', 'without'}:
         raise ValueError("transfer_status must be one of the following: 'any', 'with', or 'without")
 
     required_columns = ['student_ID', 'demographics_term', 'transfer_hours_term']
@@ -168,14 +227,14 @@ def demographics_first_semester(df, transfer_status="any", return_dataframe = 1)
     earliest_df = df.loc[mask]
 
     # return dataframe containing first semester demographics for ALL students
-    if (transfer_status == 'any'):
+    if transfer_status == 'any':
         if return_dataframe == 1:
             return earliest_df
         elif return_dataframe == 0:
             return list(earliest_df['student_ID'])
 
     # return dataframe containing first semester demographics for students who WITH transfer credit
-    elif (transfer_status == 'with'):
+    elif transfer_status == 'with':
         initial_demographics_transfer_df = earliest_df[
             (earliest_df['transfer_hours_term'] > 0) & (~earliest_df['transfer_hours_term'].isna())]
         if return_dataframe == 1:
@@ -184,7 +243,7 @@ def demographics_first_semester(df, transfer_status="any", return_dataframe = 1)
             return list(initial_demographics_transfer_df['student_ID'])
 
     # return dataframe containing first semester demographics for students WITHOUT transfer credit
-    elif (transfer_status == 'without'):
+    elif transfer_status == 'without':
         initial_demographics_transfer_df = earliest_df[
             (earliest_df['transfer_hours_term'].isna()) | (earliest_df['transfer_hours_term'] == 0)]
 

@@ -1,6 +1,82 @@
+"""
+grade_utils.py
+
+Utilities for cleaning, simplifying, converting, and filtering course grades
+in the student_success package.
+
+This module provides functions that:
+- Clean raw letter grades by removing institutional suffixes (repeat, renewal, etc.).
+- Simplify detailed letter grades into A/B/C/D/F/W categories.
+- Convert letter/symbolic grades to numeric GPA values using institutional rules.
+- Normalize numeric grades to a 4.00 scale for cross‑institution comparisons.
+- Filter DataFrames to include only valid grade categories.
+
+Institutional Customization
+---------------------------
+Local grading conventions vary. Before use, confirm that your mappings in
+`constants.py` reflect institutional policy.
+
+- Letter→GPA mapping:
+  `LETTER_GRADE_GPA_MAP` drives `num_grade_institutional()`. Update it if your
+  institution uses different GPA points (e.g., no 4.33 for A+).
+- Simplification rules:
+  `GRADE_SIMPLIFICATION_MAP` is the baseline for `letter_grade_simplify()`.
+  The `c_minus_flag` parameter controls whether "C-" counts as passing ("C")
+  or non‑passing ("D").
+- Special symbols:
+  Expand `LETTER_GRADE_GPA_MAP` if you have additional codes (e.g., local
+  withdrawal variants, audit types, in‑progress indicators).
+
+Pitfalls
+--------
+- Suffixes and prefixes:
+  Grades may include flags or leading dashes (e.g., "-W", "B^R", "C*", "A%").
+  Use `strip_grade_suffixes()` (called internally where needed) before analysis.
+- Category semantics:
+  `num_grade_institutional()` returns:
+    - GPA values for standard letters (e.g., 4.33 for A+, 2.00 for C),
+    - `-1` for withdrawals (W, WF, PW),
+    - `-2` for non‑graded/administrative statuses (e.g., WM, IP, I, AU),
+    - `-3` for pass/fail categories (S/U).
+  Downstream code should treat these negatives as flags, not numeric grades.
+- Ordering:
+  If you need both simplified letters and numeric conversions, run
+  `letter_grade_simplify()` first, then apply filtering (`filter_valid_letter_grades()`),
+  and only then convert to numeric/normalized values as needed.
+
+Contents
+--------
+- strip_grade_suffixes(grade)
+  Remove institutional suffixes/prefixes from a single grade string
+  (e.g., "^R", "%", "@", "#", "*", leading "-").
+- num_grade_institutional(grade)
+  Convert a letter/symbolic grade to a numeric value using
+  `LETTER_GRADE_GPA_MAP` (returns GPA or negative flags as noted above).
+- num_grade_normalized(num_grade, institutional_max)
+  Normalize a numeric grade to a 4.00 scale; returns -1 for invalid inputs.
+- letter_grade_simplify(dataframe, c_minus_flag=True)
+  Create `course_grade_letter_simp` from `course_grade_letter` by mapping to
+  A/B/C/D/F/W (optionally treat "C-" as "D" when `c_minus_flag=True`).
+- letter_grade_clean(dataframe)
+  Clean `course_grade_letter` in a DataFrame by removing suffixes/prefixes; returns a copy.
+- filter_valid_letter_grades(df, grade_col='course_grade_letter_simp',
+  valid_grades=['A','B','C','D','F','W'])
+  Return a filtered copy of `df` keeping only rows where `grade_col` is in `valid_grades`.
+
+Notes
+-----
+- Depends on `LETTER_GRADE_GPA_MAP` and `GRADE_SIMPLIFICATION_MAP` from
+  `student_success.utils.constants`.
+- `letter_grade_simplify()` internally calls `strip_grade_suffixes()`; you don’t
+  need to call `letter_grade_clean()` beforehand unless you want the cleaned
+  values persisted to `course_grade_letter`.
+"""
+
+
 import pandas as pd
 import re
 from student_success.utils.constants import LETTER_GRADE_GPA_MAP, GRADE_SIMPLIFICATION_MAP
+
 
 def strip_grade_suffixes(grade):
     """
@@ -30,6 +106,7 @@ def strip_grade_suffixes(grade):
 
     # Strip suffix characters and substrings: %, @, *, ^R, #, etc.
     return re.sub(r'\^R|[%#@*~]', '', grade_str)
+
 
 def num_grade_institutional(grade):
     """
@@ -127,6 +204,7 @@ def num_grade_normalized(num_grade, institutional_max):
     grade_normalized = 4 * num_grade / institutional_max  # This normalizes to a 4.00
     return grade_normalized
 
+
 def letter_grade_simplify(dataframe, c_minus_flag=True):
     """
     Simplify detailed letter grades into broader categories: A, B, C, D, F, or W.
@@ -169,7 +247,6 @@ def letter_grade_simplify(dataframe, c_minus_flag=True):
     return df_copy
 
 
-
 def letter_grade_clean(dataframe):
     """
     Clean raw letter grades by removing suffixes and leading dashes while preserving original grade distinctions.
@@ -205,7 +282,7 @@ def letter_grade_clean(dataframe):
     return df_copy
 
 
-def filter_valid_letter_grades(df: pd.DataFrame, grade_col: str = 'course_grade_letter_simp', valid_grades: list = ['A', 'B', 'C', 'D', 'F', 'W'] ) -> pd.DataFrame:
+def filter_valid_letter_grades(df: pd.DataFrame, grade_col: str = 'course_grade_letter_simp', valid_grades: tuple = ('A', 'B', 'C', 'D', 'F', 'W')) -> pd.DataFrame:
     """
     Filter rows to only include valid course grades.
 
@@ -215,6 +292,7 @@ def filter_valid_letter_grades(df: pd.DataFrame, grade_col: str = 'course_grade_
         Input DataFrame containing course attempts.
     grade_col : str, optional
         Name of the column with letter grades. Default is 'course_grade_letter_simp'.
+    valid_grades : list of acceptable letter grade values
 
     Returns
     -------

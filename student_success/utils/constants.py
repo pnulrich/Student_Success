@@ -1,37 +1,60 @@
 """
-Centralized constant definitions for classification, labeling, and visualization in the student_success package.
+constants.py
 
-This module includes dictionaries and lists used across modules to:
-- Categorize and label majors and disciplines.
-- Map demographic flags to colors for plotting.
-- Provide lookup tables for major and pre-major codes.
-- Define retention outcome labels and codes.
-- Support visual grouping and color mapping for Sankey diagrams.
+Centralized definitions for classification, labeling, and visualization
+in the student_success package.
 
-Usage Notes for Institutional Customization
--------------------------------------------
-Most values in this module can and should be customized to reflect your institution's specific academic codes
-and demographic categorizations. You may wish to:
+This module provides dictionaries and lookup tables that standardize:
+- Grade conversions and GPA mappings.
+- Demographic group encodings and visualization colors.
+- Major and discipline categorizations.
+- Pre-major and major crosswalks.
+- Retention outcome codes and labels.
+- Simplified discipline groupings and color schemes for Sankey diagrams.
 
-- Update `MAJORS_DISCIPLINES` to match your institution’s internal major abbreviations.
-- Edit `PREMAJOR_TO_MAJOR_DICT` and `MAJOR_ABBREV_TO_LABEL` if your institution uses different codes for pre-majors or official program names.
-- Adjust `PEER_DESCRIPTION_DICT`, `SEX_DICT`, and `DEMOGRAPHIC_COLOR_MAPS` to reflect how your student information system encodes race, gender, and first-gen status.
-- Modify `SANKEY_DISCIPLINE_GROUPS` and `SANKEY_DISCIPLINE_COLOR_MAP` to simplify and recolor degree pathways in visualizations.
-- Add or remove entries in `RETENTION_OUTCOME_*` variables if you use different terminology or need additional categories.
+Institutional Customization
+---------------------------
+Most constants should be customized to reflect your institution’s codes
+and conventions. Common areas for modification include:
 
-To avoid breaking functions that rely on these constants, make edits carefully and test your visualizations or classification outputs after each change.
+- Majors and Disciplines:
+  Update `MAJORS_DISCIPLINES`, `PREMAJOR_TO_MAJOR_DICT`, and
+  `MAJOR_ABBREV_TO_LABEL` to match local major codes and program names.
+- Demographics:
+  Edit `PEER_DESCRIPTION_DICT`, `SEX_DICT`, and `DEMOGRAPHIC_COLOR_MAPS`
+  if your student information system uses different encodings.
+- Visualization:
+  Adjust `SANKEY_DISCIPLINE_GROUPS` and `SANKEY_DISCIPLINE_COLOR_MAP`
+  to simplify degree pathways or recolor categories in figures.
+- Retention Outcomes:
+  Add or modify `RETENTION_OUTCOME_*` values to match your terminology.
+- STEM Core Categories:
+  Modify `STEM_CORE_DISCIPLINE_CATEGORIES` if your institution defines
+  STEM core disciplines differently.
+  (Note: `ALL_DISCIPLINE_CATEGORIES` is an internal helper and should
+  not be edited.)
+
+Pitfalls
+--------
+- Constants are imported throughout the package. Breaking a mapping here
+  (e.g., removing a key still referenced by another function) will cause
+  errors downstream.
+- Test analyses or plots after making changes to confirm that labels and
+  groupings render as expected.
 
 Contents
 --------
-- PEER_ABBREVIATION_DICT, PEER_DESCRIPTION_DICT: Mappings for racial/ethnic group codes and classifications.
-- SEX_DICT: Mapping of gender identifiers to binary flags.
-- DEMOGRAPHIC_COLOR_MAPS: Color schemes for demographic group visualizations.
-- MAJORS_DISCIPLINES, STEM_CORE_MAJORS: Groupings of major codes by academic discipline.
-- MAJOR_TO_DISCIPLINE_DICT, DISCIPLINE_LABELS: Discipline-level lookups and labels.
-- PREMAJOR_TO_MAJOR_DICT, MAJOR_TO_PREMAJOR_DICT: Pre-major and major abbreviation crosswalks.
-- MAJOR_ABBREV_TO_LABEL: Readable labels for major abbreviations.
-- RETENTION_OUTCOME_LABELS, RETENTION_OUTCOME_CODE_DICT, RETENTION_OUTCOME_LABEL_DICT: Encodings and labels for retention and graduation status.
-- SANKEY_DISCIPLINE_GROUPS, SANKEY_DISCIPLINE_COLOR_MAP: Simplified groupings and colors for Sankey plot visualization.
+- GRADE_SIMPLIFICATION_MAP, LETTER_GRADE_GPA_MAP : Grade conversion and GPA lookup.
+- PEER_ABBREVIATION_DICT, PEER_DESCRIPTION_DICT : Race/ethnicity codes and descriptions.
+- SEX_DICT, DEMOGRAPHIC_COLOR_MAPS : Gender and demographic encodings with color maps.
+- MAJORS_DISCIPLINES, STEM_CORE_MAJORS : Groupings of majors into discipline categories.
+- STEM_CORE_DISCIPLINE_CATEGORIES : Editable list of discipline categories designated as STEM core.
+- MAJOR_TO_DISCIPLINE_DICT, DISCIPLINE_LABELS : Discipline lookup tables.
+- PREMAJOR_TO_MAJOR_DICT, MAJOR_TO_PREMAJOR_DICT : Pre-major ↔ major crosswalks.
+- MAJOR_ABBREV_TO_LABEL : Readable program labels.
+- RETENTION_OUTCOME_LABELS, RETENTION_OUTCOME_CODE_DICT, RETENTION_OUTCOME_LABEL_DICT : Retention/graduation codes.
+- SANKEY_DISCIPLINE_GROUPS, SANKEY_DISCIPLINE_COLOR_MAP : Simplified groupings and color assignments for Sankey plots.
+- SEMESTER_NUMERIC_CODES : Standardized numeric codes for academic terms.
 """
 
 GRADE_SIMPLIFICATION_MAP = {
@@ -40,8 +63,8 @@ GRADE_SIMPLIFICATION_MAP = {
     "C+": "C", "C": "C",
     "C-": "C",  # utils.grade_utils.letter_grade_simplify() will override to "D" during runtime if c_minus_flag=True
     "D+": "D", "D": "D", "D-": "D",
-    "F": "F", "F": "F", "IF": "F", "UF": "F",
-    "W": "W", "-W": "W", "WM": "W", "PW": "W", "WF":"W"
+    "F": "F", "IF": "F", "UF": "F",
+    "W": "W", "-W": "W", "WM": "W", "PW": "W", "WF": "W"
 }
 
 
@@ -96,17 +119,17 @@ DEMOGRAPHIC_COLOR_MAPS = {
 
 # major codes grouped by discipline
 MAJORS_DISCIPLINES = {
-    'bio_sci' : ['BIO', 'NEUR'],
-    'phy_sci' : ['CHM', 'PHY', 'GEOS', 'MTH', 'GLY', 'GEO', 'GEOL'],
-    'eng_CS' : ['CSC', 'PCSC', 'MCE', 'CSCI'],
-    'other_STEM' : [
+    'bio_sci': ['BIO', 'NEUR'],
+    'phy_sci': ['CHM', 'PHY', 'GEOS', 'MTH', 'GLY', 'GEO', 'GEOL'],
+    'eng_CS': ['CSC', 'PCSC', 'MCE', 'CSCI'],
+    'other_STEM': [
         'PSY', 'PCIS', 'CIS', 'PH', 'EDUC', 'ECON', 'AN', 'NTR', 'NTRS', 'PTH', 'AC', 'EXS', 'ECE', 'FI', 'DSC', 'DSCI', 'PDSC',
         'BUE', 'HPE', 'MGRS', 'NUTR', 'BNUR', 'PNUR', 'GPY', 'BUAN', 'NUR', 'NURN', 'NURL', 'CBE', 'IEML', 'SEE', 'SOC', 'WGSS',
         'SPE', 'GDS', 'AED', 'ALG', 'AS', 'AVI', 'BRF', 'CJ', 'DHYG', 'ELE', 'ENI', 'FMV', 'GDV', 'GER', 'IS', 'MLE', 'MGT',
         'MID', 'MK', 'MHA', 'MT', 'ML', 'PAC', 'PAS', 'PBUE', 'PBRF', 'PECE', 'PENI', 'PFMN', 'PFMV', 'PFI', 'PGDV', 'PHPE', 'PML',
         'PMGT', 'PNTR', 'PMK', 'PPSY', 'PPH', 'PRMI', 'PREA', 'PSPE', 'PSW', 'PUP', 'RE', 'RMI', 'RTP', 'SS', 'SW', 'UPS', 'UST', 'WST',
         'HOS', 'HUR', 'POL', 'RT'],
-    'undeclared' : ['0000', '0001', '000P', '00GP', 'Undeclared', 'Exploratory']
+    'undeclared': ['0000', '0001', '000P', '00GP', 'Undeclared', 'Exploratory']
 }
 
 STEM_CORE_DISCIPLINE_CATEGORIES = ['bio_sci', 'phy_sci', 'eng_CS']

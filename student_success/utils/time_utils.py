@@ -1,3 +1,35 @@
+"""
+time_utils.py
+=============
+
+Utility functions for handling academic term codes, semester intervals, and
+chronological ordering of student records.
+
+This module provides core time-handling logic used across the student success
+framework, including:
+
+- Standardizing institutional term codes to a consistent format.
+- Calculating semester intervals for retention, hazard, and survival analyses.
+- Deriving fall term codes for a given academic year or offset.
+- Supporting conversion and normalization of term values to ensure consistent
+  downstream analysis.
+
+Notes
+-----
+- Academic terms are generally stored as six-digit integers (YYYYTT),
+  where TT represents the term code (e.g., 01 = Spring, 05 = Summer, 08 = Fall).
+- Many functions assume integer term codes rather than string-based formats.
+- This module currently does **not** provide a canonical ``set_term_earliest()``
+  implementation. Variations of this logic exist in other modules (e.g.,
+  ``flagging.py``).
+
+TODO
+----
+- Consolidate all logic for setting ``term_earliest`` into a single utility
+  function (e.g., ``set_term_earliest()``) here in ``time_utils.py``.
+  This will reduce duplication and ensure consistent handling across the package.
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import datetime

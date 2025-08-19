@@ -5,15 +5,60 @@ from student_success.utils.validation import validate_columns
 """
 matriculation_utils.py
 
-Utility functions related matriculation filtering, graduation date parsing, and academic standing checks.
+(DEPRECATED) Utilities for handling matriculation term fields in Banner
+or similar student information systems.
 
-CAUTION: BANNER may not reliably report 'matriculation_term' do to wide variations in timing and programs in an institution
-If you are using matriculation term values derived from BANNER, ensure that values match what you expect. Be diligent
-about clarifying if any matriculation terms or dates are associated with the program of interest. It may be best to
-create a new column in your dataset representing term_earliest (for a specific program). This can be done by using the
-earliest term a student took classes. The benefit of this is avoiding situations where a student matriculates in an earlier
-semester than they begin taking classes.
+These functions attempt to clean, adjust, and validate matriculation
+term values, but institutional data often makes them unreliable.  
+In particular, Banner may not report `matriculation_term` consistently
+due to program-level timing differences, back-dated entries, or
+misalignment with the first actual course term.  
 
+**Recommendation:**  
+Instead of relying on Banner’s `matriculation_term`, create a program-
+specific `term_earliest` column using the earliest term a student
+actually enrolled in courses. This avoids the pitfalls that motivated
+these utilities to be retired.
+
+Institutional Customization
+---------------------------
+If you do use these functions:
+- Confirm that your SIS codes `matriculation_term` consistently with
+  the program of interest.
+- Use `demographics_term` or other enrollment-based fields as a
+  fallback when no matching demographics exist for a student’s
+  official matriculation term.
+
+Pitfalls
+--------
+- Students may have multiple distinct `matriculation_term` values.
+  Filtering logic must decide whether to exclude or include them.
+- Demographic datasets covering a limited range may miss records for
+  the true matriculation term, causing misalignment.
+- Graduation-level parsing assumes consistent use of codes
+  (e.g., `'B'` for bachelor’s).
+
+Contents
+--------
+- extract_bachelors_graduation_date(df) :
+  Add `graduation_date_bachelors` column, containing the earliest
+  awarded bachelor’s graduation date per student.
+- filter_by_valid_matriculation_term(df, student_id_col='student_ID',
+  term_col='matriculation_term', demo_term_col='demographics_term') :
+  Retain only students where `demographics_term` matches their minimum
+  matriculation term.
+- clean_and_adjust_matriculation(df, ..., include_multiple_matriculations=0,
+  demographics_range_min=None) :
+  Compute adjusted matriculation term (`matriculation_term_adjusted`) by
+  aligning Banner values with the earliest available demographics term,
+  optionally excluding students with multiple matriculation terms.
+
+Notes
+-----
+- These functions are retained for legacy compatibility but are not
+  recommended for new analyses.
+- Prefer constructing a robust `term_earliest` column based on actual
+  enrollment activity.
 """
 
 
@@ -51,8 +96,9 @@ def extract_bachelors_graduation_date(df):
     )
     return df
 
+
 def filter_by_valid_matriculation_term(demographics_df, student_id_col='student_ID', term_col='matriculation_term',
-                             demo_term_col='demographics_term'):
+                                       demo_term_col='demographics_term'):
     """
     Cleans the DataFrame by identifying and keeping only rows for student_ID's that have a
     demographics term associated with the minimum matriculation term. This avoids issues
@@ -89,6 +135,7 @@ def filter_by_valid_matriculation_term(demographics_df, student_id_col='student_
     cleaned_df = merged_df[merged_df[student_id_col].isin(valid_student_ids)]
 
     return cleaned_df
+
 
 def clean_and_adjust_matriculation(demographics_df, student_id_col='student_ID', matriculation_term_col='matriculation_term',
                                    demo_term_col='demographics_term', include_multiple_matriculations=0,
