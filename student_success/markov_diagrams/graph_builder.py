@@ -1,60 +1,53 @@
+"""
+graph_builder.py
+================
+
+Graph construction utilities for visualizing course sequences and student outcomes.
+
+This module provides helper functions to generate flow diagrams of course progression
+using ``pydot`` and ``matplotlib``. Nodes represent courses and outcomes (Pass, DFW, Retake, etc.),
+and edges are labeled with performance statistics. Optional demographic pie charts can be
+embedded within nodes to show subgroup composition.
+
+Functions include:
+------------------
+- ``create_course_nodes`` :
+    Build course and outcome nodes, optionally embedding demographic pie charts.
+- ``add_course_edges`` :
+    Connect course nodes with edges labeled by pass/DFW/repeat proportions.
+- ``add_alternate_entry`` :
+    Add a node/edge representing students who entered a course without the expected prerequisite.
+- ``get_combined_course_df`` :
+    Merge data for students progressing via prerequisite and alternate entry pathways.
+- ``get_earliest_major`` :
+    Merge earliest observed major into the dataset (helper; may be moved to utils).
+- ``course_sequence_analysis`` :
+    High-level function to generate and render a full course sequence diagram,
+    optionally with demographic breakdowns.
+- ``save_pie_chart`` :
+    Create a PNG pie chart for embedding in graph nodes.
+- ``create_node_with_image`` :
+    Build a node embedding an image (e.g., pie chart) with label.
+
+Notes
+-----
+- Requires ``pydot`` and Graphviz for graph rendering, and ``matplotlib`` for pie charts.
+- All functions assume a long-format course attempt DataFrame with columns:
+  ``student_ID``, ``course_title``, ``course_term``, ``course_grade_letter_simp``.
+- Demographic pie chart embedding requires a valid proportions dictionary (colors → proportions).
+- Generated diagrams are written as PNG and displayed with ``matplotlib``.
+
+TODO
+----
+- Generalize pie chart embedding to support multiple demographic overlays.
+- Refactor ``get_earliest_major`` into ``utils`` for broader reuse.
+- Extend edge labeling to include counts of alternate entries and progression timing.
+"""
+
+
 import pydot
 import matplotlib.pyplot as plt
-### helper functions
-# def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=False, pie_data=None, graph=None):
-#     """
-#     Creates labeled nodes for a course and its outcomes in a pydot graph.
-#
-#     Depending on the parameters, this function adds a main course node (optionally with a demographic pie chart image),
-#     as well as nodes for "Pass", "DFW", "Retake", and optionally "Did Not Take Next".
-#
-#     Parameters
-#     ----------
-#     course_name : str
-#         Name of the course to use in node labels.
-#     include_did_not_take_next : bool, optional
-#         Whether to include a "Did Not Take Next" outcome node (default is False).
-#     node_pie : bool, optional
-#         Whether to include a pie chart image inside the course node (default is False).
-#     pie_data : dict, optional
-#         Dictionary mapping color names to proportions, used to create pie chart (only if node_pie is True).
-#     graph : pydot.Dot, optional
-#         The graph to which nodes should be added.
-#
-#     Returns
-#     -------
-#     dict
-#         Dictionary of pydot.Node objects keyed by role ('course', 'pass', 'dfw', 'retake', 'did_not_take_next').
-#     """
-#
-#     import os
-#
-#     nodes = {}
-#     course_node = pydot.Node(course_name, shape="box", label=course_name)
-#     nodes["course"] = course_node
-#
-#     # Create the main course node (always a box)
-#     if graph and not node_pie:
-#         graph.add_node(course_node)
-#
-#     # Optional pie chart node
-#     if node_pie and pie_data and graph:
-#         temp_dir = os.getcwd() + '\\temp\\'
-#         image_path = f"{temp_dir}/{course_name.replace(' ', '_')}.png"
-#         save_pie_chart(pie_data, image_path)
-#
-#         course_node = create_course_node_with_image(course_name, image_path)
-#         graph.add_node(course_node)
-#
-#     # Add outcome nodes
-#     nodes["pass"] = pydot.Node(f"Pass {course_name}", label="Pass")
-#     nodes["dfw"] = pydot.Node(f"DFW {course_name}", label="DFW")
-#     nodes["retake"] = pydot.Node(f"Retake {course_name}", label="Retake")
-#
-#     if include_did_not_take_next:
-#         nodes["did_not_take_next"] = pydot.Node(f"Did Not Take Next {course_name}", label="Did Not Take Next")
-#
-#     return nodes
+
 
 def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=False, pie_data=None, graph=None):
     """
@@ -104,7 +97,7 @@ def create_course_nodes(course_name, include_did_not_take_next=False, node_pie=F
             save_pie_chart(pie_data[role], image_path)
             node = create_node_with_image(node_name=node_name, label=label, image_path=image_path)
         else:
-            node = pydot.Node(name = node_name, label=label)
+            node = pydot.Node(name=node_name, label=label)
 
         nodes[role] = node
         if graph:
@@ -148,6 +141,7 @@ def add_course_edges(graph, nodes, stats, include_did_not_take_next=False):
         graph.add_edge(pydot.Edge(nodes['retake'], nodes['did_not_take_next'],
                                   label=f"{stats['second_DFW_proportion']:.3f} ({stats['second_DFW_number']})"))
 
+
 def add_alternate_entry(graph, course_name, alt_entry_count):
     """
     Adds a node and edge to represent students entering a course without taking the prior prerequisite.
@@ -162,9 +156,10 @@ def add_alternate_entry(graph, course_name, alt_entry_count):
         Number of students entering without prior course completion.
     """
 
-    node = pydot.Node(name = f"Alternate Entry to {course_name}", label="Alternate Entry")
+    node = pydot.Node(name=f"Alternate Entry to {course_name}", label="Alternate Entry")
     graph.add_node(node)
     graph.add_edge(pydot.Edge(node, pydot.Node(course_name), label=f"{alt_entry_count}"))
+
 
 def get_combined_course_df(df, ids_1, ids_2):
     """
@@ -213,185 +208,8 @@ def get_earliest_major(df):
     return df_merged.drop(columns=['major_matriculation_Earliest'])
 
 
-
-
-# def course_sequence_analysis(course_sequence, df, major_matriculation_column = 'major_term_earliest',
-#                              target_major_code = None, node_pie=False, demographics_flag_col = None):
-#     """
-#     Generates a flow diagram showing student progression through a sequence of courses.
-#
-#     The diagram includes labeled nodes and edges representing outcomes and transitions,
-#     with optional pie chart embeddings to visualize demographic breakdowns.
-#
-#     Parameters
-#     ----------
-#     course_sequence : list of str
-#         Ordered list of course titles to include in the sequence.
-#     df : pandas.DataFrame
-#         Dataset containing course attempts, grades, and demographics.
-#     major_matriculation_column : str, optional
-#         Column name indicating students' earliest major (default 'major_term_earliest').
-#     target_major_code : str, optional
-#         If provided, limits analysis to students with this major.
-#     node_pie : bool, optional
-#         Whether to embed demographic pie charts in course nodes (default False).
-#     demographics_flag_col : str, optional
-#         Column name for a binary or categorical demographic used in pie charts (required if node_pie is True).
-#
-#     Returns
-#     -------
-#     None
-#         Writes a PNG file of the course sequence diagram and displays it with matplotlib.
-#     """
-#
-#     import pydot
-#
-#     from student_success.markov_diagrams.course_flows import (
-#         analyze_course, calculate_alternate_entry, calculate_progression_to_next_course
-#     )
-#
-#     def filter_kwargs(include_node_pie=False):
-#         kwargs = {
-#             'major_matriculation_column': major_matriculation_column
-#         }
-#         if target_major_code is not None:
-#             kwargs['target_major_code'] = target_major_code
-#         if include_node_pie:
-#             kwargs['node_pie'] = node_pie
-#         if node_pie:
-#             kwargs['demographics_flag_col'] = demographics_flag_col
-#         return kwargs
-#
-#     if not node_pie and demographics_flag_col is not None:
-#         raise ValueError("You specified a demographics_flag_col, but node_pie=False. "
-#                          "Either enable pie charts or remove the demographics_col.")
-#     if node_pie and demographics_flag_col is None:
-#         raise ValueError("You specified node_pie = True but did not provide a demographics_flag_col. "
-#                          "Either disable pie charts or specify demographics_flag_col.")
-#
-#
-#
-#     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
-#     previous_pass_node = None
-#
-#     for index, course_name in enumerate(course_sequence):
-#         is_last = index == len(course_sequence) - 1
-#         is_first = index == 0
-#         include_did_not_take = index < len(course_sequence) - 1
-#
-#         print(f"Index: {index}, is_last: {is_last}, is_first: {is_first}")
-#
-#         if is_first and not is_last:
-#             if node_pie:
-#                 descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=True))
-#                 pie_data = descriptives.get("first_attempt_demographic_proportions")
-#             else:
-#                 descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=False))
-#                 pie_data = None
-#
-#             nodes = create_course_nodes(
-#                 course_name,
-#                 include_did_not_take_next=include_did_not_take,
-#                 node_pie=node_pie,
-#                 pie_data=pie_data,
-#                 graph = graph)
-#
-#             for node in nodes.values():
-#                 graph.add_node(node)
-#
-#             progression = calculate_progression_to_next_course(
-#                 course_name,
-#                 course_sequence[index + 1],
-#                 df,
-#                 major_matriculation_column=major_matriculation_column,
-#                 target_major_code=target_major_code if target_major_code else None
-#             )
-#
-#             print("Next course name : ", course_sequence[index + 1])
-#             print("Number taking next : ", progression['number_taking_next'])
-#             graph.add_edge(pydot.Edge(nodes['pass'], nodes['did_not_take_next'],
-#                                       label=f"{progression['proportion_not_taking_next']:.3f} ({progression['number_not_taking_next']})"))
-#
-#         else:
-#             prerequisite = course_sequence[index - 1]
-#             print("The prerequisite course name is", prerequisite, "and current course is", course_name)
-#
-#             alt_entry = calculate_alternate_entry(
-#                 current_course = course_name, prior_course = prerequisite, df = df,
-#                 target_major_code = target_major_code, major_matriculation_column = major_matriculation_column)
-#             add_alternate_entry(graph, course_name, alt_entry['n_without_prior_pass'])
-#             students_in_alternate_entry = alt_entry['alt_entry_ids']
-#
-#             prereq_result = calculate_progression_to_next_course(
-#                 prerequisite,
-#                 course_name,
-#                 df,
-#                 major_matriculation_column=major_matriculation_column,
-#                 target_major_code=target_major_code if target_major_code else None
-#             )
-#
-#             graph.add_edge(pydot.Edge(previous_pass_node.get_name(), course_name,
-#                                       label=f"{prereq_result['proportion_taking_next']:.3f} ({prereq_result['number_taking_next']})"))
-#
-#             students_who_did_take_next = prereq_result['students_who_did_take_next']
-#             combined_df = get_combined_course_df(df, students_who_did_take_next, students_in_alternate_entry)
-#             descriptives = analyze_course(course_name, combined_df, **filter_kwargs(include_node_pie=True))
-#
-#             # Get the proportions for course demographics if node_pie == True
-#             if node_pie and descriptives:
-#                 pie_data = descriptives.get("first_attempt_demographic_proportions")
-#                 print(pie_data)
-#             else:
-#                 pie_data = None
-#
-#             nodes = create_course_nodes(
-#                 course_name,
-#                 include_did_not_take_next=include_did_not_take,
-#                 node_pie=node_pie,
-#                 pie_data=pie_data,
-#                 graph=graph)
-#
-#             for node in nodes.values():
-#                  graph.add_node(node)
-#
-#             # move to next course
-#             if not is_last:
-#                 next_course = course_sequence[index + 1]
-#                 print("Course name : ", course_name)
-#                 print("Next course name : ", next_course)
-#
-#                 progression = calculate_progression_to_next_course(course_name, next_course, df, **filter_kwargs())
-#
-#                 print("Number not taking next : ", progression['number_not_taking_next'])
-#                 graph.add_edge(pydot.Edge(nodes['pass'], nodes['did_not_take_next'],
-#                                           label=f"{progression['proportion_not_taking_next']:.3f} ({progression['number_not_taking_next']})"))
-#
-#         print(descriptives)
-#
-#         add_course_edges(graph, nodes, descriptives, include_did_not_take_next=include_did_not_take)
-#         previous_pass_node = nodes['pass']
-#
-#     graph.set("nodesep", "1.0")
-#     image_filename = "course_sequence_attempts_graph.png"
-#     graph.write(image_filename, format ="png", prog="dot", encoding = "utf-8")
-#     graph.set_graph_defaults(dpi = "300")
-#     # graph.write_raw("debug_graph.dot")
-#
-#     fig = plt.figure(figsize=(6, 6), dpi = 300)
-#
-#     if target_major_code:
-#         fig.suptitle(f"Course Sequence Analysis for {target_major_code} Majors", fontsize=12)
-#     else:
-#         fig.suptitle(f"Course Sequence Analysis (no major filter applied)", fontsize=12)
-#     ax = fig.add_subplot(111)
-#     ax.axis('off')
-#     img = plt.imread(image_filename)
-#     ax.imshow(img)
-#     plt.show()
-
-
-def course_sequence_analysis(course_sequence, df, major_matriculation_column = 'major_term_earliest',
-                             target_major_code = None, node_pie=False, demographics_flag_col = None):
+def course_sequence_analysis(course_sequence, df, major_matriculation_column='major_term_earliest',
+                             target_major_code=None, node_pie=False, demographics_flag_col=None):
     """
     Generates a flow diagram showing student progression through a sequence of courses.
 
@@ -443,8 +261,6 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
     if node_pie and demographics_flag_col is None:
         raise ValueError("You specified node_pie = True but did not provide a demographics_flag_col. "
                          "Either disable pie charts or specify demographics_flag_col.")
-
-
 
     graph = pydot.Dot(graph_type="digraph", strict=False, rankdir="TB")
     previous_pass_node = None
@@ -537,7 +353,7 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
                 graph=graph)
 
             for node in nodes.values():
-                 graph.add_node(node)
+                graph.add_node(node)
 
             # move to next course
             if not is_last:
@@ -562,7 +378,7 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
     graph.set_graph_defaults(dpi = "300")
     # graph.write_raw("debug_graph.dot")
 
-    fig = plt.figure(figsize=(6, 6), dpi = 300)
+    fig = plt.figure(figsize=(6, 6), dpi=300)
 
     if target_major_code:
         fig.suptitle(f"Course Sequence Analysis for {target_major_code} Majors", fontsize=12)
@@ -573,6 +389,7 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column = '
     img = plt.imread(image_filename)
     ax.imshow(img)
     plt.show()
+
 
 def save_pie_chart(pie_data, filepath):
     """
@@ -600,6 +417,7 @@ def save_pie_chart(pie_data, filepath):
 
     plt.savefig(filepath, transparent=True, bbox_inches='tight', pad_inches=0.15)
     plt.close()
+
 
 def create_node_with_image(node_name, image_path, label = None):
     """

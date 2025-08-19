@@ -1,36 +1,43 @@
 """
-Hazard analysis tools for modeling student progression, attrition, and major-specific outcomes.
+Hazard analysis tools for modeling student persistence, graduation, and attrition.
 
-The `hazard_analysis` subpackage provides a framework for analyzing academic persistence using hazard-based methods.
-It includes tools for calculating cumulative probabilities, estimating logistic survival parameters (K, r, t1/2),
-and visualizing dropout, graduation, and course progression dynamics.
+The `hazard_analysis` subpackage provides methods for studying academic progression
+using hazard-based approaches. It supports filtering and preparing student data,
+calculating cumulative probabilities of events (graduation, dropout, major change),
+fitting logistic survival curves, and visualizing outcomes.
 
 Included components:
 --------------------
 - `hazard_utils`:
-    - Filters and prepares data for analysis
-    - Assigns outcome indicators (e.g., graduation, major switching, dropout)
-    - Calculates cumulative probabilities and fits logistic curves
+    - Prepare and filter student datasets
+    - Assign outcome indicators (graduation, dropout, major switching)
+    - Compute cumulative probabilities and fit logistic curves
 
 - `hazard_plots`:
-    - Visualizes hazard ratios and cumulative probabilities across terms
-    - Generates heatmaps of course enrollment patterns among active students
+    - Plot hazard ratios and cumulative probabilities by semester
+    - Generate heatmaps of course enrollment among active students
 
 - `sankey`:
-    - Constructs Sankey diagrams illustrating student pathways from matriculation through completion or departure
+    - Build Sankey diagrams to visualize flows from matriculation
+      through graduation, switching majors, or leaving college
 
 Utility integrations:
 ---------------------
-- Functions from `student_success.metrics.flagging` support classification of graduation and dropout behavior
-- Validation and time utilities ensure proper formatting, column validation, and semester alignment
+- Relies on `student_success.metrics.flagging` for classifying outcomes
+- Uses validation and time utilities for column checks and semester alignment
 
 Example Use:
 ------------
-This module supports full hazard pipelines such as:
+A typical hazard pipeline involves:
+1. Preparing and processing a student-major dataset (e.g., for "BIO")
+2. Calculating probabilities of persistence, graduation, or attrition across terms
+3. Visualizing results with hazard plots, heatmaps, or Sankey diagrams
 
-- Preparing and processing a student-major dataset for a given target major (e.g., "BIO")
-- Computing progression metrics across semesters
-- Visualizing patterns of course enrollment or attrition using heatmaps and Sankey plots
+See Also:
+---------
+- `student_success.markov_diagrams` :
+    Tools for modeling course progression and student flows
+    using Markov chain–based methods.
 """
 
 

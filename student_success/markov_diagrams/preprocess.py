@@ -1,3 +1,36 @@
+"""
+preprocess
+==========
+
+The ``preprocess`` module provides standardized cleaning utilities for
+course attempt data used in Markov diagram analysis. These functions
+prepare student-level course sequences by constraining attempts and
+removing redundant data, ensuring that downstream visualizations
+reflect meaningful academic pathways.
+
+Core functionality
+------------------
+- limit_attempts :
+    Restricts the number of course attempts per student to a specified
+    maximum (default: two attempts).
+- exclude_unnecessary_subsequent_attempts :
+    Removes later attempts if a student successfully passed on the
+    first attempt, preventing artificial inflation of repeat patterns.
+- prepare_course_attempts :
+    Applies the standard cleaning pipeline (limit attempts + drop
+    unnecessary repeats) to produce a streamlined dataset ready for
+    Markov diagram construction.
+
+Notes
+-----
+- These preprocessing functions should be applied after filtering to
+  valid letter grades via
+  ``utils.grade_utils.filter_valid_letter_grades()``.
+- Output is designed to integrate directly with the graph construction
+  utilities in ``markov_diagrams.graph_builder``.
+"""
+
+
 def limit_attempts(df, max_attempts=2):
     """
     Limit each student's data to at most `max_attempts` rows.
@@ -19,7 +52,7 @@ def limit_attempts(df, max_attempts=2):
     return df.groupby('student_ID').head(max_attempts).reset_index(drop=True)
 
 
-def exclude_unnecessary_subsequent_attempts(df, grade_col='course_grade_letter_simp', passing_grades=['A', 'B', 'C']):
+def exclude_unnecessary_subsequent_attempts(df, grade_col='course_grade_letter_simp', passing_grades=('A', 'B', 'C')):
     """
     Drop all subsequent attempts for students who passed the course on their first attempt.
 
@@ -29,8 +62,8 @@ def exclude_unnecessary_subsequent_attempts(df, grade_col='course_grade_letter_s
         DataFrame of course attempts, sorted by 'student_ID' and 'course_term'.
     grade_col : str, optional
         Column name containing the simplified letter grades. Default is 'course_grade_letter_simp'.
-    passing_grades : list, optional
-        List of grades considered passing. Default is ['A', 'B', 'C'].
+    passing_grades : tuple, optional
+        tuple of grades considered passing. Default is ['A', 'B', 'C'].
 
     Returns
     -------
@@ -47,6 +80,7 @@ def exclude_unnecessary_subsequent_attempts(df, grade_col='course_grade_letter_s
                 to_drop.extend(group.index[1:])  # drop all attempts after first
 
     return df.drop(index=to_drop)
+
 
 def prepare_course_attempts(df):
     """

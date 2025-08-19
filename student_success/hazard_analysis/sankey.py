@@ -1,3 +1,57 @@
+"""
+Sankey diagram utilities for visualizing student progression across majors and outcomes.
+
+This module supports generating longitudinal flow diagrams that show how students
+in a target major persist, switch disciplines, graduate, or leave the university.
+Flows are aggregated at the discipline level and rendered using Plotly’s Sankey plots.
+
+Main Features
+-------------
+- **Color Handling**:
+  - `hex_to_rgba`: Convert hex colors to RGBA strings with alpha transparency.
+- **Plot Formatting**:
+  - `wrap_plot_title`: Insert line breaks into long plot titles for readability.
+- **Flow Classification**:
+  - `classify_sankey_discipline`: Map a major abbreviation into Sankey discipline groups,
+    highlighting the target major.
+  - `assign_sankey_end_status`: Determine each student’s final outcome (graduated in major,
+    graduated other, left college, or still active).
+  - `extract_node_label`: Parse clean labels from Sankey node strings.
+- **Visualization**:
+  - `create_sankey_plot`: Build a Sankey diagram showing how students flow across disciplines
+    and into terminal outcomes.
+
+Color and Grouping
+------------------
+- Disciplines are grouped using `SANKEY_DISCIPLINE_GROUPS` from `utils.constants`.
+- Nodes and flows are colored using `SANKEY_DISCIPLINE_COLOR_MAP`, with overrides for
+  terminal statuses such as "Graduated Target Major", "Graduated Other", and "Left College".
+
+Notes
+-----
+- Input data should be term-level student records with required fields such as
+  `student_ID`, `demographics_term`, `major_term`, `semester_number`,
+  `major_graduation`, and `graduation_status`.
+- The module assumes term codes are in `YYYYMM` format or standardized using
+  `time_utils.standardize_to_term_code`.
+
+Quick Example
+-------------
+>>> from student_success.hazard_analysis import sankey
+>>> # Assume `df` is a student-term DataFrame with majors and outcomes
+>>> df['discipline'] = df['major_term'].apply(
+...     lambda m: sankey.classify_sankey_discipline(m, target_major="BIO")
+... )
+>>> df = sankey.assign_sankey_end_status(df, target_major="BIO")
+>>> sankey.create_sankey_plot(
+...     data=df,
+...     target_major="BIO",
+...     plot_title="Student Flows for Biology Majors",
+...     output_filename="bio_sankey.html"
+... )
+"""
+
+
 import pandas as pd
 import warnings
 import plotly.graph_objects as go
@@ -241,7 +295,6 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
         xaxis=dict(showticklabels=False),
         annotations=[]
     )
-
 
     '''
     # kaleido set up appears to hang the kernel in output, but retaining as a record    

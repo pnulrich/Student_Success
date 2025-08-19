@@ -1,3 +1,52 @@
+"""
+Visualization utilities for hazard analysis of student progression.
+
+This module provides functions to create plots and heatmaps that complement
+the hazard modeling pipeline. Plots show hazard ratios, cumulative probabilities,
+and course-taking patterns over time, using both matplotlib and Bokeh.
+
+Functions
+---------
+- plot_hazard_ratio :
+    Plot hazard ratios for student outcomes across semesters, with active
+    student counts as background bars.
+- prepare_course_heatmap_data :
+    Transform filtered student-course data into frequency and proportion
+    tables for heatmap visualization.
+- plot_course_heatmap :
+    Generate an interactive Bokeh heatmap of top courses taken per semester
+    by active students in a target major.
+- plot_cumulative_probability :
+    Plot cumulative probabilities of outcomes across semesters, overlaid
+    with bar charts of average course load or credit hours.
+
+Notes
+-----
+- Outcome indicators (1–4) are expected from hazard_utils calculations:
+    - 1 : Left institution
+    - 2 : Graduated in target major
+    - 3 : Graduated in other major
+    - 4 : Changed major
+- Course heatmaps rely on `course_list` data prepared via
+  `hazard_utils.prepare_and_process_data()`.
+- Plots are designed for exploratory analysis and presentation of hazard
+  modeling results, not for raw statistical inference.
+
+Quick Example
+-------------
+>>> from student_success.hazard_analysis import hazard_utils, hazard_plots
+>>> # Prepare data for a target major (e.g., Biology)
+>>> processed_df, course_list = hazard_utils.prepare_and_process_data(df, target_major="BIO")
+>>> probs = hazard_utils.calculate_probabilities(processed_df)
+>>>
+>>> # Plot hazard ratios across semesters
+>>> hazard_plots.plot_hazard_ratio(probs, title="Hazard Ratios for BIO Majors")
+>>>
+>>> # Plot cumulative probabilities of outcomes
+>>> hazard_plots.plot_cumulative_probability(probs, title="Cumulative Outcomes")
+"""
+
+
 import matplotlib.pyplot as plt
 from bokeh.plotting import figure, show
 from bokeh.models import ColumnDataSource, ColorBar

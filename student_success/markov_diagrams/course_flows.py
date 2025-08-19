@@ -1,7 +1,51 @@
+"""
+course_flows.py
+===============
+
+Analysis utilities for course progression, repeat patterns, and prerequisite pathways.
+
+This module provides functions to quantify how students flow through key gateway courses,
+including repeat attempts, success/failure rates, progression to sequenced courses, and
+alternate entry points. Designed for use in building course-flow visualizations and
+informing curriculum analysis.
+
+Functions include:
+------------------
+- ``analyze_course`` :
+    Summarize first/second attempt outcomes, repeat rates, and (optionally) demographic
+    breakdowns for a single course.
+- ``calculate_progression_to_next_course`` :
+    Evaluate how many students who passed a given course progressed into the next
+    course in a sequence.
+- ``calculate_alternate_entry`` :
+    Identify students entering a downstream course without having passed the expected
+    prerequisite.
+
+Notes
+-----
+- All functions expect a long-format DataFrame with at least:
+  ``student_ID``, ``course_title``, ``course_term``, and ``course_grade_letter_simp``.
+- Demographic breakdowns in ``analyze_course`` require a valid flag column and are mapped
+  using ``DEMOGRAPHIC_COLOR_MAPS`` from ``student_success.utils.constants``.
+- Grades are assumed to be simplified into {A, B, C, D, F, W} before analysis. Use
+  ``utils.grade_utils.filter_valid_letter_grades()`` as a preprocessing step.
+- Outputs are returned as dictionaries with counts, proportions, and ID lists to support
+  both descriptive reporting and visualization layers.
+
+TODO
+----
+- Externalize demographic proportion logic into ``utils.demographics_utils`` to avoid
+  duplication.
+- Expand progression logic to account for time-to-next-course (not just ever/never).
+"""
+
+
+
 import pandas as pd
 from student_success.utils.constants import DEMOGRAPHIC_COLOR_MAPS
 
-def analyze_course(course_name, df, major_matriculation_column = 'major_term_earliest', target_major_code = None, prerequisite_course=False, node_pie=False, demographics_flag_col = None):
+
+def analyze_course(course_name, df, major_matriculation_column='major_term_earliest', target_major_code=None, prerequisite_course=False, node_pie=False, demographics_flag_col=None):
     """
     Analyze student performance, repeat rates, and (optionally) demographic composition for a specific course.
 
@@ -69,8 +113,6 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
         course_df_first_attempts = course_df.drop_duplicates(subset=['student_ID'], keep='first')
         print(f"Number of unique students (no major filtering)  : {len(course_df_first_attempts_all['student_ID'].unique())}")
 
-
-
     print(course_df_first_attempts['course_grade_letter_simp'].unique())
     first_pass_number = len(course_df_first_attempts[course_df_first_attempts['course_grade_letter_simp'].isin(['A', 'B', 'C'])])
     print(f"First pass number : {first_pass_number}")
@@ -132,7 +174,7 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
 
         color_map = DEMOGRAPHIC_COLOR_MAPS.get(demographics_flag_col)
         first_attempt_demographic_proportions = compute_proportions(df = course_df_first_attempts, col = demographics_flag_col,
-                                                        mapping = color_map)
+                                                        mapping=color_map)
         first_attempt_DFW_demographic_proportions = compute_proportions(
             df=course_df_first_attempts[course_df_first_attempts['course_grade_letter_simp'].isin(['D', 'F', 'W'])],
             col=demographics_flag_col,
@@ -140,7 +182,7 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
         )
 
         second_attempt_demographic_proportions = compute_proportions(df=second_attempt_df, col=demographics_flag_col,
-                                                        mapping=color_map)
+                                                                     mapping=color_map)
         second_attempt_DFW_demographic_proportions = compute_proportions(
             df=second_attempt_df[second_attempt_df['course_grade_letter_simp'].isin(['D', 'F', 'W'])],
             col=demographics_flag_col,
@@ -170,7 +212,7 @@ def analyze_course(course_name, df, major_matriculation_column = 'major_term_ear
     return descriptives
 
 
-def calculate_progression_to_next_course(current_course, next_course, df, target_major_code = None, major_matriculation_column = 'major_term_earliest'):
+def calculate_progression_to_next_course(current_course, next_course, df, target_major_code=None, major_matriculation_column='major_term_earliest'):
     """
     Calculate how many students progressed from one course to the next after passing.
 
@@ -247,7 +289,7 @@ def calculate_progression_to_next_course(current_course, next_course, df, target
     }
 
 
-def calculate_alternate_entry(current_course, prior_course, df, target_major_code = None, major_matriculation_column = 'major_term_earliest'):
+def calculate_alternate_entry(current_course, prior_course, df, target_major_code=None, major_matriculation_column='major_term_earliest'):
     """
     Identify students who enrolled in a course without passing the expected prerequisite.
 

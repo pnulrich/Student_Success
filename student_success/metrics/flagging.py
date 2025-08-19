@@ -1,14 +1,44 @@
-# flagging.py
 """
-Functions to assign categorical flags for student retention, inactivity, and graduation status.
-These are low-level utilities designed for reuse across retention summaries, hazard modeling,
-and visualization modules.
-"""
+flagging.py
+===========
 
+Functions to assign categorical flags for student retention, dropout, and
+graduation status. These utilities provide a consistent framework for
+deriving binary and categorical indicators that support longitudinal
+tracking, hazard modeling, and summary visualizations.
+
+This module consolidates logic for:
+- Retention outcomes, including major-specific and STEM field persistence.
+- Dropout identification based on enrollment gaps, program level changes,
+  or lack of subsequent enrollment.
+- Graduation status, term, and major-specific graduation flags, including
+  first-major and STEM graduation checks.
+- Mapping graduation dates to academic term codes to ensure alignment
+  between institutional records and analytical cohorts.
+
+Notes
+-----
+- Many functions assume standardized academic term codes (YYYYTT) and
+  normalized tuple-like data for majors and graduation fields. Use
+  ``safe_parse_tuple`` (from ``utils.validation``) to prepare messy inputs.
+- STEM classification is based on the ``STEM_CORE_MAJORS`` constant.
+- Premajors may optionally be mapped to their mature equivalents via
+  ``PREMAJOR_TO_MAJOR_DICT``.
+- Date-to-term mappings assume January conferrals belong to the prior
+  Fall term by default; adjust via function parameters as needed.
+
+TODO
+----
+- Expand dropout classification utilities to align with hazard modeling
+  requirements (currently partially duplicated in ``hazard_utils``).
+- Consolidate logic for earliest-term handling (``term_earliest``) once
+  standardized in ``time_utils``.
+"""
 import pandas as pd
 import numpy as np
 from student_success.utils.constants import STEM_CORE_MAJORS, PREMAJOR_TO_MAJOR_DICT
 from student_success.utils.validation import safe_parse_tuple
+
 
 def assign_retention_outcomes(df, major_col='major_term', reference_col='major_term_earliest',
                               stem_majors=STEM_CORE_MAJORS, flag_stem=True):
@@ -43,15 +73,16 @@ def assign_retention_outcomes(df, major_col='major_term', reference_col='major_t
 
         # for students who started in a core STEM major during their first term, set retention flag
         mask = df[reference_col].isin(stem_majors)
-        df.loc[mask, 'flag_retention_STEM'] =(
-            df.loc[mask,major_col].isin(stem_majors)
+        df.loc[mask, 'flag_retention_STEM'] = (
+            df.loc[mask, major_col].isin(stem_majors)
         ).astype(int)
     return df
 
+
 def classify_dropout_term(df, term_col='demographics_term', student_col='student_ID', student_level_col='student_level',
-                             graduation_flag_col='flag_graduation', threshold=3,
-                             program_target_level='US', graduation_target_level='B',
-                             graduation_level_col='graduation_level', graduation_status_col='graduation_status'):
+                          graduation_flag_col='flag_graduation', threshold=3,
+                          program_target_level='US', graduation_target_level='B',
+                          graduation_level_col='graduation_level', graduation_status_col='graduation_status'):
     """
     Flags the final term of a student's enrollment as a dropout point under the following conditions:
     - The student has not graduated at the specified level, AND
@@ -132,7 +163,6 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
     return df['flag_dropout_term'].astype(int)
 
 
-
 def classify_graduation_status(df, grad_col='graduation_status', level_col='graduation_level', target_level='B'):
     """
     Determines whether a student graduated at the target degree level based on award status and level.
@@ -171,6 +201,7 @@ def classify_graduation_status(df, grad_col='graduation_status', level_col='grad
             return 0
 
     return df.apply(interpret_and_check, axis=1).astype(int)
+
 
 def _date_to_term_code(dt: pd.Timestamp, january_counts_as_fall: bool = True) -> int:
     """
@@ -301,6 +332,8 @@ def assign_flag_graduation_term_from_date(
     # cleanup
     out = out.drop(columns=["_target_award_dt", "_target_grad_term"])
     return out
+
+
 def classify_graduation_term(df, grad_date_col='graduation_date', level_col='graduation_level',
                              status_col='graduation_status', term_col='demographics_term', target_level='B',
                              use_max_term_logic=True, january_counts_as_fall = False):
@@ -350,7 +383,7 @@ def classify_graduation_term(df, grad_date_col='graduation_date', level_col='gra
                 term_date = pd.to_datetime(str(max_term), format='%Y%m', errors='coerce')
                 return int(row[term_col] == max_term and any(pd.notna(d) and d >= term_date for d in parsed_dates))
 
-            ## WARNING: THIS ELIF IS NOT YET ROBUST AND WILL YIELD UNEXPECTED RESULTS WITH COMBINED SEMESTER CODES
+            # WARNING: THIS ELIF IS NOT YET ROBUST AND WILL YIELD UNEXPECTED RESULTS WITH COMBINED SEMESTER CODES
             elif january_counts_as_fall:
                 grad_terms = [_date_to_term_code(d, january_counts_as_fall=True) for d in parsed_dates if pd.notna(d)]
                 return int(int(row[term_col]) in grad_terms)
@@ -359,7 +392,6 @@ def classify_graduation_term(df, grad_date_col='graduation_date', level_col='gra
             else:
                 term_date = pd.to_datetime(str(row[term_col]), format='%Y%m', errors='coerce')
                 return int(any(pd.notna(d) and d == term_date for d in parsed_dates))
-
 
         except Exception as e:
             print(f"[DEBUG] Exception for {row['student_ID']}: {e}")
@@ -387,6 +419,7 @@ def classify_graduation_in_major(df, major_col='major_graduation', target_major=
 
     return df.apply(flag_graduated_in_target, axis=1).astype(int)
 
+
 def classify_graduation_in_first_major(df, major_col='major_graduation', reference_col='major_term_earliest_bachelors',
                                        pre_major_conversion = False):
     """
@@ -404,7 +437,7 @@ def classify_graduation_in_first_major(df, major_col='major_graduation', referen
         if pre_major_conversion:
             graduation_majors = safe_parse_tuple(row[major_col])
             converted_first_major = PREMAJOR_TO_MAJOR_DICT.get(row[reference_col], row[reference_col])
-            #print(row)
+            # print(row)
             # print('First major:', row[reference_col])
             # print(graduation_majors, converted_first_major, int(converted_first_major in graduation_majors))
             return int(converted_first_major in graduation_majors)
@@ -413,6 +446,7 @@ def classify_graduation_in_first_major(df, major_col='major_graduation', referen
             return int(row[reference_col] in graduation_majors)
 
     return df.apply(flag_graduated_in_first_major, axis=1).astype(int)
+
 
 def classify_graduation_in_STEM(df, major_col='major_graduation'):
     """

@@ -1,12 +1,43 @@
 """
-Hazard analysis utilities for modeling student progression.
+Hazard analysis utilities for modeling student progression and retention.
 
-Includes:
-- Filtering and preprocessing data for hazard modeling (`prepare_hazard_data`)
-- Outcome indicator assignment based on term-by-term academic history (`assign_outcome_indicators`)
-- Aggregation of course loads and outcome distributions (`prepare_and_process_data`)
-- Cumulative probability calculation (`calculate_probabilities`)
-- Logistic feature extraction for fitted curves (`extract_logistic_features`)
+This module provides functions to filter and preprocess student records,
+assign outcome indicators, aggregate course load statistics, and compute
+hazard-style probabilities of leaving, graduating, or changing majors.
+It also includes methods to fit logistic models to cumulative outcome
+probabilities for survival-style analysis.
+
+Functions
+---------
+- prepare_hazard_data :
+    Filter and prepare student-level records for hazard analysis based on
+    major, transfer credits, start term, and academic year range.
+- assign_outcome_indicators :
+    Assign coded indicators (-1, 1–4) per term to represent continuation,
+    leaving, graduation, or major change.
+- prepare_and_process_data :
+    Combine student and coursework data, assign outcome indicators, and
+    compute course load metrics and summary statistics for the target major.
+- calculate_probabilities :
+    Derive per-semester proportions, cumulative probabilities, and active
+    student counts under a hazard modeling framework.
+- extract_logistic_features :
+    Fit logistic curves to cumulative outcome probabilities and extract
+    interpretable growth parameters (K, r, t_half).
+
+Notes
+-----
+- Outcome indicator coding:
+    - -1 : Continued in same major (active).
+    -  1 : Left institution (inactivity ≥2 terms, no graduation).
+    -  2 : Graduated in first major.
+    -  3 : Graduated in different major.
+    -  4 : Changed major (first occurrence flagged).
+- Requires term-normalized data with consistent fields:
+  ``student_ID``, ``semester_number``, ``term_earliest``, ``major_term``,
+  ``major_term_earliest``, and graduation/transfer flags.
+- Functions integrate with validation helpers from `utils.validation`
+  and classification logic from `metrics.flagging`.
 """
 
 import pandas as pd
@@ -25,8 +56,8 @@ def prepare_hazard_data(df,
                         transfer_credit_max=30,
                         transfer_credit_min=0,
                         fall_start=1,
-                        academic_year_min = None,
-                        academic_year_max = None):
+                        academic_year_min=None,
+                        academic_year_max=None):
     """
     Prepares and filters student data for hazard analysis.
 
@@ -98,19 +129,17 @@ def prepare_hazard_data(df,
 
     # Confirm that essential fields are present in the input dataframe
     required_cols = ['major_term_earliest', 'transfer_hours_term', 'demographics_term', 'term_earliest',
-                         'academic_year', 'student_ID']
+                     'academic_year', 'student_ID']
     validate_columns(df.columns, required_cols)
-
 
     # Filter students based on criteria
     student_list = df[
-        (df['major_term_earliest'] == target_major) & # this only looks at those students starting as target_major
+        (df['major_term_earliest'] == target_major) &  # this only looks at those students starting as target_major
         (df['transfer_hours_term'].between(transfer_credit_min, transfer_credit_max, inclusive='both')) &
         (df['demographics_term'] == df['term_earliest']) &
         ((academic_year_min is None) | (df['academic_year'] >= academic_year_min)) &
         ((academic_year_max is None) | (df['academic_year'] <= academic_year_max))
         ]['student_ID'].unique()
-
 
     # Filter the main DataFrame
     filtered_df = df[df['student_ID'].isin(student_list)].copy()
@@ -205,7 +234,6 @@ def assign_outcome_indicators(student_df, max_demographics_term):
     ]
     validate_columns(student_df.columns, required_cols)
 
-
     # Add 'flag_graduated_in_first_major' if not already present
     if 'flag_graduated_in_first_major' not in student_df.columns:
         student_df['flag_graduated_in_first_major'] = classify_graduation_in_first_major(student_df)
@@ -239,6 +267,8 @@ def assign_outcome_indicators(student_df, max_demographics_term):
                 indicators.append(-1)
 
     return indicators
+
+
 def prepare_and_process_data(student_major_data_df,
                              coursework_df,
                              target_major,
@@ -276,6 +306,10 @@ def prepare_and_process_data(student_major_data_df,
 
     target_major : str
         The target major to filter and analyze (e.g., 'BIO').
+
+    transfer_credit_min : int
+        Minimum number of transfer credit hours allowed for students
+        to be included in the analysis.
 
     transfer_credit_max : int
         Maximum number of transfer credit hours allowed for students
@@ -379,8 +413,6 @@ def prepare_and_process_data(student_major_data_df,
         ))
     )
 
-
-
     # Ensure only the first major change is flagged as 4
     # Identify the earliest major change for each student and set all subsequent major changes to -1
     filtered_df['earliest_major_change'] = (
@@ -392,7 +424,8 @@ def prepare_and_process_data(student_major_data_df,
     filtered_df['outcome_indicator_original'] = filtered_df['outcome_indicator']
 
     filtered_df['outcome_indicator'] = filtered_df.apply(
-        lambda current_row: -1 if current_row['outcome_indicator'] == 4 and current_row['semester_number'] != current_row['earliest_major_change']
+        lambda current_row: -1 if current_row['outcome_indicator'] == 4 and current_row['semester_number'] !=
+                                  current_row['earliest_major_change']
         else current_row['outcome_indicator'],
         axis=1
     )
@@ -403,13 +436,13 @@ def prepare_and_process_data(student_major_data_df,
     filtered_coursework_df = coursework_df.copy()
     filtered_coursework_df = filtered_coursework_df[
         filtered_coursework_df['course_prefix'] == target_major_course_prefix
-    ].copy()
+        ].copy()
 
     # Create full course number codes (e.g., BIOL1104K)
     filtered_coursework_df['course_fullcode'] = (
-        filtered_coursework_df['course_prefix'] +
-        filtered_coursework_df['course_number'].astype(str) +
-        filtered_coursework_df['course_suffix'].fillna('')
+            filtered_coursework_df['course_prefix'] +
+            filtered_coursework_df['course_number'].astype(str) +
+            filtered_coursework_df['course_suffix'].fillna('')
     )
 
     # Aggregate course load metrics (number of courses, total credits, course list) by semester
@@ -430,7 +463,7 @@ def prepare_and_process_data(student_major_data_df,
         filtered_df[
             (filtered_df['outcome_indicator'] == -1) &
             (filtered_df['major_term'] == target_major)
-        ]
+            ]
         .groupby('semester_number')
         .agg(
             avg_semester_credits_target_major=('semester_credits_target_major', 'mean'),
@@ -444,7 +477,7 @@ def prepare_and_process_data(student_major_data_df,
         filtered_df[
             (filtered_df['outcome_indicator'] == -1) &
             (filtered_df['major_term'] == target_major)
-        ]
+            ]
         .groupby('semester_number')
         .agg(
             avg_semester_courses_target_major=('semester_courses_target_major', 'mean'),
@@ -541,25 +574,24 @@ def calculate_probabilities(input_df):
         left_college = (df_curr["outcome_indicator"] == 1).sum()
 
         if sem < max(semesters):
-           next_sem = sem + 1
-           # Students who changed major in next semester
-           next_changers = input_df[
+            next_sem = sem + 1
+            # Students who changed major in next semester
+            next_changers = input_df[
                 (input_df["semester_number"] == next_sem) &
                 (input_df["outcome_indicator"] == 4)
-           ]["student_ID"].unique()
+                ]["student_ID"].unique()
 
-           # Students active in current semester
-           active_now = set(input_df[
-               (input_df["semester_number"] == sem) &
-               (input_df["outcome_indicator"] == -1)
-           ]["student_ID"].unique())
+            # Students active in current semester
+            active_now = set(input_df[
+                                 (input_df["semester_number"] == sem) &
+                                 (input_df["outcome_indicator"] == -1)
+                                 ]["student_ID"].unique())
 
-           changed_major = len(set(next_changers).intersection(active_now))
-           curr_active_count = len(active_now)
+            changed_major = len(set(next_changers).intersection(active_now))
+            curr_active_count = len(active_now)
         else:
             changed_major = 0
             curr_active_count = 1  # avoid divide-by-zero
-
 
         proportions_records.append({
             "semester_number": sem,
@@ -605,8 +637,6 @@ def calculate_probabilities(input_df):
     }
 
 
-
-
 def extract_logistic_features(outcome_indicator, semester_numbers, cumulative_probabilities):
     """
     Fit a logistic model and extract features.
@@ -633,6 +663,7 @@ def extract_logistic_features(outcome_indicator, semester_numbers, cumulative_pr
         - "r": Growth rate
         - "t_half": Half-max semester number
     """
+
     def logistic_function(t, K, r, t_half):
         return K / (1 + np.exp(-r * (t - t_half)))
 
