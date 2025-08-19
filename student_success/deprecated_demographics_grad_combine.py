@@ -1,3 +1,39 @@
+"""
+Deprecated module for combining demographics and graduation records.
+
+This script was originally designed to de-identify and collate student data by:
+- Scrambling student IDs using a cipher
+- Dropping unnecessary columns
+- Combining demographics reports with graduation records
+- Exporting the result as a CSV for analysis
+
+It uses `tkinter` dialogs to allow manual file selection and pandas for data
+manipulation. Compared to equivalent R scripts, this approach was significantly
+faster (up to ~100x) for scrambling IDs and merging records.
+
+Functions
+---------
+- collate_math_grades(course_number_mapping=False) :
+    Reads and concatenates multiple CSVs of math course grades, optionally mapping
+    course titles to course numbers.
+- demographics_grad_combine(cipher=None) :
+    Prompts the user to select demographics and graduation CSVs, scrambles student IDs,
+    merges the datasets, and exports a combined CSV with a timestamped filename.
+
+Notes
+-----
+- This module is **deprecated** and retained for archival purposes only.
+- Core functionality has been migrated to the refactored `student_success` package.
+- Interactive file selection (via `tkinter`) and direct file export make it unsuitable
+  for automated pipelines.
+
+See Also
+--------
+student_success.utils.io_utils : Updated utilities for file handling
+student_success.metrics.flagging : Standardized classification tools
+"""
+
+
 # Python script to de-identify data sets by scrambling ID's and droppping unnceccesary columns. Generates a CSV for analysis.
 # Python pandas is much more efficient than R and accomplishes scrambling ID's perhaps 100X faster.
 import tkinter.filedialog
