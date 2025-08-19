@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,12 +78,56 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.markov_diagrams.course_flows</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">course_flows.py</span>
+<span class="sd">===============</span>
+
+<span class="sd">Analysis utilities for course progression, repeat patterns, and prerequisite pathways.</span>
+
+<span class="sd">This module provides functions to quantify how students flow through key gateway courses,</span>
+<span class="sd">including repeat attempts, success/failure rates, progression to sequenced courses, and</span>
+<span class="sd">alternate entry points. Designed for use in building course-flow visualizations and</span>
+<span class="sd">informing curriculum analysis.</span>
+
+<span class="sd">Functions include:</span>
+<span class="sd">------------------</span>
+<span class="sd">- ``analyze_course`` :</span>
+<span class="sd">    Summarize first/second attempt outcomes, repeat rates, and (optionally) demographic</span>
+<span class="sd">    breakdowns for a single course.</span>
+<span class="sd">- ``calculate_progression_to_next_course`` :</span>
+<span class="sd">    Evaluate how many students who passed a given course progressed into the next</span>
+<span class="sd">    course in a sequence.</span>
+<span class="sd">- ``calculate_alternate_entry`` :</span>
+<span class="sd">    Identify students entering a downstream course without having passed the expected</span>
+<span class="sd">    prerequisite.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- All functions expect a long-format DataFrame with at least:</span>
+<span class="sd">  ``student_ID``, ``course_title``, ``course_term``, and ``course_grade_letter_simp``.</span>
+<span class="sd">- Demographic breakdowns in ``analyze_course`` require a valid flag column and are mapped</span>
+<span class="sd">  using ``DEMOGRAPHIC_COLOR_MAPS`` from ``student_success.utils.constants``.</span>
+<span class="sd">- Grades are assumed to be simplified into {A, B, C, D, F, W} before analysis. Use</span>
+<span class="sd">  ``utils.grade_utils.filter_valid_letter_grades()`` as a preprocessing step.</span>
+<span class="sd">- Outputs are returned as dictionaries with counts, proportions, and ID lists to support</span>
+<span class="sd">  both descriptive reporting and visualization layers.</span>
+
+<span class="sd">TODO</span>
+<span class="sd">----</span>
+<span class="sd">- Externalize demographic proportion logic into ``utils.demographics_utils`` to avoid</span>
+<span class="sd">  duplication.</span>
+<span class="sd">- Expand progression logic to account for time-to-next-course (not just ever/never).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">student_success.utils.constants</span> <span class="kn">import</span> <span class="n">DEMOGRAPHIC_COLOR_MAPS</span>
 
+
 <div class="viewcode-block" id="analyze_course">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.course_flows.html#student_success.markov_diagrams.course_flows.analyze_course">[docs]</a>
-<span class="k">def</span> <span class="nf">analyze_course</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">major_matriculation_column</span> <span class="o">=</span> <span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span> <span class="n">target_major_code</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">prerequisite_course</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_pie</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">demographics_flag_col</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/course_flows.html#student_success.markov_diagrams.course_flows.analyze_course">[docs]</a>
+<span class="k">def</span> <span class="nf">analyze_course</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">major_matriculation_column</span><span class="o">=</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span> <span class="n">target_major_code</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prerequisite_course</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_pie</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">demographics_flag_col</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Analyze student performance, repeat rates, and (optionally) demographic composition for a specific course.</span>
 
@@ -145,8 +195,6 @@
         <span class="n">course_df_first_attempts</span> <span class="o">=</span> <span class="n">course_df</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">],</span> <span class="n">keep</span><span class="o">=</span><span class="s1">&#39;first&#39;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of unique students (no major filtering)  : </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">course_df_first_attempts_all</span><span class="p">[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-
-
     <span class="nb">print</span><span class="p">(</span><span class="n">course_df_first_attempts</span><span class="p">[</span><span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">())</span>
     <span class="n">first_pass_number</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">course_df_first_attempts</span><span class="p">[</span><span class="n">course_df_first_attempts</span><span class="p">[</span><span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">])])</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;First pass number : </span><span class="si">{</span><span class="n">first_pass_number</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -208,9 +256,21 @@
 
         <span class="n">color_map</span> <span class="o">=</span> <span class="n">DEMOGRAPHIC_COLOR_MAPS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">demographics_flag_col</span><span class="p">)</span>
         <span class="n">first_attempt_demographic_proportions</span> <span class="o">=</span> <span class="n">compute_proportions</span><span class="p">(</span><span class="n">df</span> <span class="o">=</span> <span class="n">course_df_first_attempts</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span> <span class="n">demographics_flag_col</span><span class="p">,</span>
-                                                        <span class="n">mapping</span> <span class="o">=</span> <span class="n">color_map</span><span class="p">)</span>
-        <span class="n">second_attempt_demographic_proportions</span> <span class="o">=</span> <span class="n">compute_proportions</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">second_attempt_df</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">demographics_flag_col</span><span class="p">,</span>
                                                         <span class="n">mapping</span><span class="o">=</span><span class="n">color_map</span><span class="p">)</span>
+        <span class="n">first_attempt_DFW_demographic_proportions</span> <span class="o">=</span> <span class="n">compute_proportions</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">=</span><span class="n">course_df_first_attempts</span><span class="p">[</span><span class="n">course_df_first_attempts</span><span class="p">[</span><span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s1">&#39;D&#39;</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">])],</span>
+            <span class="n">col</span><span class="o">=</span><span class="n">demographics_flag_col</span><span class="p">,</span>
+            <span class="n">mapping</span><span class="o">=</span><span class="n">color_map</span>
+        <span class="p">)</span>
+
+        <span class="n">second_attempt_demographic_proportions</span> <span class="o">=</span> <span class="n">compute_proportions</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">second_attempt_df</span><span class="p">,</span> <span class="n">col</span><span class="o">=</span><span class="n">demographics_flag_col</span><span class="p">,</span>
+                                                                     <span class="n">mapping</span><span class="o">=</span><span class="n">color_map</span><span class="p">)</span>
+        <span class="n">second_attempt_DFW_demographic_proportions</span> <span class="o">=</span> <span class="n">compute_proportions</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">=</span><span class="n">second_attempt_df</span><span class="p">[</span><span class="n">second_attempt_df</span><span class="p">[</span><span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s1">&#39;D&#39;</span><span class="p">,</span> <span class="s1">&#39;F&#39;</span><span class="p">,</span> <span class="s1">&#39;W&#39;</span><span class="p">])],</span>
+            <span class="n">col</span><span class="o">=</span><span class="n">demographics_flag_col</span><span class="p">,</span>
+            <span class="n">mapping</span><span class="o">=</span><span class="n">color_map</span>
+        <span class="p">)</span>
+
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;analyze_course() 1st attempt demographic proportions for </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">first_attempt_demographic_proportions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;analyze_course() 2nd attempt demographic proportions for </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">second_attempt_demographic_proportions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
@@ -220,13 +280,15 @@
         <span class="s2">&quot;first_pass_proportion&quot;</span><span class="p">:</span> <span class="n">first_pass_proportion</span><span class="p">,</span>
         <span class="s2">&quot;first_DFW_number&quot;</span><span class="p">:</span> <span class="n">first_DFW_number</span><span class="p">,</span>
         <span class="s2">&quot;first_DFW_proportion&quot;</span><span class="p">:</span> <span class="n">first_DFW_proportion</span><span class="p">,</span>
+        <span class="s2">&quot;first_DFW_demographic_proportions&quot;</span><span class="p">:</span> <span class="n">first_attempt_DFW_demographic_proportions</span><span class="p">,</span>
         <span class="s2">&quot;proportion_DFW_repeat&quot;</span><span class="p">:</span> <span class="n">proportion_DFW_repeat</span><span class="p">,</span>
         <span class="s2">&quot;second_attempt_demographic_proportions&quot;</span><span class="p">:</span> <span class="n">second_attempt_demographic_proportions</span><span class="p">,</span>
         <span class="s2">&quot;second_attempt_number&quot;</span><span class="p">:</span> <span class="n">second_attempt_number</span><span class="p">,</span>
         <span class="s2">&quot;second_pass_number&quot;</span><span class="p">:</span> <span class="n">second_pass_number</span><span class="p">,</span>
         <span class="s2">&quot;second_pass_proportion&quot;</span><span class="p">:</span> <span class="n">second_pass_proportion</span><span class="p">,</span>
         <span class="s2">&quot;second_DFW_number&quot;</span><span class="p">:</span> <span class="n">second_DFW_number</span><span class="p">,</span>
-        <span class="s2">&quot;second_DFW_proportion&quot;</span><span class="p">:</span> <span class="n">second_DFW_proportion</span>
+        <span class="s2">&quot;second_DFW_proportion&quot;</span><span class="p">:</span> <span class="n">second_DFW_proportion</span><span class="p">,</span>
+        <span class="s2">&quot;second_DFW_demographic_proportions&quot;</span><span class="p">:</span> <span class="n">second_attempt_DFW_demographic_proportions</span>
     <span class="p">}</span>
 
     <span class="k">return</span> <span class="n">descriptives</span></div>
@@ -234,8 +296,8 @@
 
 
 <div class="viewcode-block" id="calculate_progression_to_next_course">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.course_flows.html#student_success.markov_diagrams.course_flows.calculate_progression_to_next_course">[docs]</a>
-<span class="k">def</span> <span class="nf">calculate_progression_to_next_course</span><span class="p">(</span><span class="n">current_course</span><span class="p">,</span> <span class="n">next_course</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">target_major_code</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">major_matriculation_column</span> <span class="o">=</span> <span class="s1">&#39;major_term_earliest&#39;</span><span class="p">):</span>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/course_flows.html#student_success.markov_diagrams.course_flows.calculate_progression_to_next_course">[docs]</a>
+<span class="k">def</span> <span class="nf">calculate_progression_to_next_course</span><span class="p">(</span><span class="n">current_course</span><span class="p">,</span> <span class="n">next_course</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">target_major_code</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">major_matriculation_column</span><span class="o">=</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Calculate how many students progressed from one course to the next after passing.</span>
 
@@ -314,8 +376,8 @@
 
 
 <div class="viewcode-block" id="calculate_alternate_entry">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.course_flows.html#student_success.markov_diagrams.course_flows.calculate_alternate_entry">[docs]</a>
-<span class="k">def</span> <span class="nf">calculate_alternate_entry</span><span class="p">(</span><span class="n">current_course</span><span class="p">,</span> <span class="n">prior_course</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">target_major_code</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">major_matriculation_column</span> <span class="o">=</span> <span class="s1">&#39;major_term_earliest&#39;</span><span class="p">):</span>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/course_flows.html#student_success.markov_diagrams.course_flows.calculate_alternate_entry">[docs]</a>
+<span class="k">def</span> <span class="nf">calculate_alternate_entry</span><span class="p">(</span><span class="n">current_course</span><span class="p">,</span> <span class="n">prior_course</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">target_major_code</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">major_matriculation_column</span><span class="o">=</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Identify students who enrolled in a course without passing the expected prerequisite.</span>
 

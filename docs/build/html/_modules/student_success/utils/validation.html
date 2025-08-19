@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,10 +78,69 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.utils.validation</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">ast</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">validation.py</span>
+<span class="sd">=============</span>
+
+<span class="sd">Utility functions for validating DataFrame structure and safely parsing</span>
+<span class="sd">tuple-like values in the student success framework.</span>
+
+<span class="sd">This module centralizes lightweight validation and parsing helpers that</span>
+<span class="sd">support consistent data handling across the package. Core functions include:</span>
+
+<span class="sd">- ``validate_columns``: Ensures that a DataFrame contains all required columns,</span>
+<span class="sd">  raising a clear error if any are missing.</span>
+<span class="sd">- ``safe_parse_tuple``: Robustly parses tuple- or list-like data from strings,</span>
+<span class="sd">  lists, or tuples while removing or normalizing invalid entries (e.g., NaN,</span>
+<span class="sd">  None, empty strings).</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- ``validate_columns`` is useful in preprocessing pipelines to guarantee that</span>
+<span class="sd">  downstream analysis functions have the columns they expect.</span>
+<span class="sd">- ``safe_parse_tuple`` is designed to handle mixed or messy inputs (e.g., CSV</span>
+<span class="sd">  exports where tuple-like values are stored as strings). It preserves list</span>
+<span class="sd">  structure and replaces invalid entries with ``None`` for positional</span>
+<span class="sd">  consistency.</span>
+<span class="sd">- These utilities are general-purpose and not tied to institution-specific</span>
+<span class="sd">  mappings.</span>
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+<span class="sd">&gt;&gt;&gt; import pandas as pd</span>
+<span class="sd">&gt;&gt;&gt; from student_success.utils import validation</span>
+
+<span class="sd"># Validate required columns</span>
+<span class="sd">&gt;&gt;&gt; df = pd.DataFrame({&quot;student_ID&quot;: [1, 2], &quot;major&quot;: [&quot;BIO&quot;, &quot;CSC&quot;]})</span>
+<span class="sd">&gt;&gt;&gt; validation.validate_columns(df.columns, [&quot;student_ID&quot;, &quot;major&quot;])</span>
+<span class="sd"># No error raised</span>
+
+<span class="sd">&gt;&gt;&gt; validation.validate_columns(df.columns, [&quot;student_ID&quot;, &quot;missing_col&quot;])</span>
+<span class="sd">Traceback (most recent call last):</span>
+<span class="sd">    ...</span>
+<span class="sd">ValueError: The following required columns are missing from your dataframe: missing_col</span>
+
+<span class="sd"># Parse tuple-like strings</span>
+<span class="sd">&gt;&gt;&gt; validation.safe_parse_tuple(&quot;(BIO, CSC, PSY)&quot;)</span>
+<span class="sd">[&#39;BIO&#39;, &#39;CSC&#39;, &#39;PSY&#39;]</span>
+
+<span class="sd">&gt;&gt;&gt; validation.safe_parse_tuple([1, None, &#39;nan&#39;, &#39;A&#39;])</span>
+<span class="sd">[1, None, None, &#39;A&#39;]</span>
+
+<span class="sd">TODO</span>
+<span class="sd">----</span>
+<span class="sd">- Expand ``safe_parse_tuple`` with optional type enforcement</span>
+<span class="sd">  (e.g., force integer parsing).</span>
+<span class="sd">- Consider extending ``validate_columns`` with warnings for unexpected extras.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">ast</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+
 <div class="viewcode-block" id="validate_columns">
-<a class="viewcode-back" href="../../../student_success.utils.validation.html#student_success.utils.validation.validate_columns">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/validation.html#student_success.utils.validation.validate_columns">[docs]</a>
 <span class="k">def</span> <span class="nf">validate_columns</span><span class="p">(</span><span class="n">df_columns</span><span class="p">,</span> <span class="n">required_columns</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Validates that all required columns are present in a DataFrame.</span>
@@ -101,57 +166,9 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The following required columns are missing from your dataframe: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
-<span class="c1"># def safe_parse_tuple(val):</span>
-<span class="c1">#     &quot;&quot;&quot;</span>
-<span class="c1">#     Robustly parses list/tuple-like values from strings or native sequences,</span>
-<span class="c1">#     removing blank, null, and &#39;nan&#39; values regardless of type.</span>
-<span class="c1">#     &quot;&quot;&quot;</span>
-<span class="c1">#     if isinstance(val, (list, tuple)):</span>
-<span class="c1">#         return [</span>
-<span class="c1">#             str(x).strip() for x in val</span>
-<span class="c1">#             if (not isinstance(x, float) or pd.notna(x)) and</span>
-<span class="c1">#                str(x).strip().lower() not in {&#39;&#39;, &#39;nan&#39;, &#39;none&#39;}</span>
-<span class="c1">#         ]</span>
-<span class="c1">#</span>
-<span class="c1">#     if isinstance(val, str):</span>
-<span class="c1">#         try:</span>
-<span class="c1">#             return list(ast.literal_eval(val))</span>
-<span class="c1">#         except (ValueError, SyntaxError):</span>
-<span class="c1">#             items = val.strip(&quot;() &quot;).split(&quot;,&quot;)</span>
-<span class="c1">#             return [</span>
-<span class="c1">#                 x.strip().strip(&quot;&#39;\&quot;&quot;) for x in items</span>
-<span class="c1">#                 if x.strip().lower() not in {&#39;&#39;, &#39;nan&#39;, &#39;none&#39;}</span>
-<span class="c1">#             ]</span>
-<span class="c1">#</span>
-<span class="c1">#     return []</span>
 
-<span class="c1"># def safe_parse_tuple(val):</span>
-<span class="c1">#     &quot;&quot;&quot;</span>
-<span class="c1">#     Robustly parses list/tuple-like values from strings or native sequences,</span>
-<span class="c1">#     removing blank, null, and &#39;nan&#39; values regardless of type.</span>
-<span class="c1">#</span>
-<span class="c1">#     Always returns a clean list of strings.</span>
-<span class="c1">#     &quot;&quot;&quot;</span>
-<span class="c1">#     # Normalize all inputs to a list of strings</span>
-<span class="c1">#     if pd.isna(val) or val in [&#39;&#39;, &#39;nan&#39;, &#39;None&#39;]:</span>
-<span class="c1">#         return []</span>
-<span class="c1">#</span>
-<span class="c1">#     # Step 1: Convert to a string representation, remove parentheses</span>
-<span class="c1">#     val_str = str(val).strip(&quot;() &quot;)</span>
-<span class="c1">#     items = val_str.split(&quot;,&quot;)</span>
-<span class="c1">#</span>
-<span class="c1">#     # Step 2: Clean and filter</span>
-<span class="c1">#     clean_parts = []</span>
-<span class="c1">#     for item in items:</span>
-<span class="c1">#         s = str(item).strip().strip(&quot;&#39;\&quot;&quot;).lower()</span>
-<span class="c1">#         if s not in {&#39;&#39;, &#39;nan&#39;, &#39;none&#39;}:</span>
-<span class="c1">#             clean_parts.append(item.strip().strip(&quot;&#39;\&quot;&quot;))</span>
-<span class="c1">#</span>
-<span class="c1">#     return clean_parts</span>
-
-<span class="c1"># Redefine the updated safe_parse_tuple function</span>
 <div class="viewcode-block" id="safe_parse_tuple">
-<a class="viewcode-back" href="../../../student_success.utils.validation.html#student_success.utils.validation.safe_parse_tuple">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/validation.html#student_success.utils.validation.safe_parse_tuple">[docs]</a>
 <span class="k">def</span> <span class="nf">safe_parse_tuple</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Robustly parses list/tuple-like values from strings or native sequences,</span>

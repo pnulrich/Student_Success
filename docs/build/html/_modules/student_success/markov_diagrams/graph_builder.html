@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,71 +78,119 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.markov_diagrams.graph_builder</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pydot</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">graph_builder.py</span>
+<span class="sd">================</span>
+
+<span class="sd">Graph construction utilities for visualizing course sequences and student outcomes.</span>
+
+<span class="sd">This module provides helper functions to generate flow diagrams of course progression</span>
+<span class="sd">using ``pydot`` and ``matplotlib``. Nodes represent courses and outcomes (Pass, DFW, Retake, etc.),</span>
+<span class="sd">and edges are labeled with performance statistics. Optional demographic pie charts can be</span>
+<span class="sd">embedded within nodes to show subgroup composition.</span>
+
+<span class="sd">Functions include:</span>
+<span class="sd">------------------</span>
+<span class="sd">- ``create_course_nodes`` :</span>
+<span class="sd">    Build course and outcome nodes, optionally embedding demographic pie charts.</span>
+<span class="sd">- ``add_course_edges`` :</span>
+<span class="sd">    Connect course nodes with edges labeled by pass/DFW/repeat proportions.</span>
+<span class="sd">- ``add_alternate_entry`` :</span>
+<span class="sd">    Add a node/edge representing students who entered a course without the expected prerequisite.</span>
+<span class="sd">- ``get_combined_course_df`` :</span>
+<span class="sd">    Merge data for students progressing via prerequisite and alternate entry pathways.</span>
+<span class="sd">- ``get_earliest_major`` :</span>
+<span class="sd">    Merge earliest observed major into the dataset (helper; may be moved to utils).</span>
+<span class="sd">- ``course_sequence_analysis`` :</span>
+<span class="sd">    High-level function to generate and render a full course sequence diagram,</span>
+<span class="sd">    optionally with demographic breakdowns.</span>
+<span class="sd">- ``save_pie_chart`` :</span>
+<span class="sd">    Create a PNG pie chart for embedding in graph nodes.</span>
+<span class="sd">- ``create_node_with_image`` :</span>
+<span class="sd">    Build a node embedding an image (e.g., pie chart) with label.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- Requires ``pydot`` and Graphviz for graph rendering, and ``matplotlib`` for pie charts.</span>
+<span class="sd">- All functions assume a long-format course attempt DataFrame with columns:</span>
+<span class="sd">  ``student_ID``, ``course_title``, ``course_term``, ``course_grade_letter_simp``.</span>
+<span class="sd">- Demographic pie chart embedding requires a valid proportions dictionary (colors → proportions).</span>
+<span class="sd">- Generated diagrams are written as PNG and displayed with ``matplotlib``.</span>
+
+<span class="sd">TODO</span>
+<span class="sd">----</span>
+<span class="sd">- Generalize pie chart embedding to support multiple demographic overlays.</span>
+<span class="sd">- Refactor ``get_earliest_major`` into ``utils`` for broader reuse.</span>
+<span class="sd">- Extend edge labeling to include counts of alternate entries and progression timing.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">pydot</span>
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-<span class="c1">### helper functions</span>
+
+
 <div class="viewcode-block" id="create_course_nodes">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.create_course_nodes">[docs]</a>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.create_course_nodes">[docs]</a>
 <span class="k">def</span> <span class="nf">create_course_nodes</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">include_did_not_take_next</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">node_pie</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">pie_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">graph</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates labeled nodes for a course and its outcomes in a pydot graph.</span>
 
-<span class="sd">    Depending on the parameters, this function adds a main course node (optionally with a demographic pie chart image),</span>
-<span class="sd">    as well as nodes for &quot;Pass&quot;, &quot;DFW&quot;, &quot;Retake&quot;, and optionally &quot;Did Not Take Next&quot;.</span>
+<span class="sd">    Optionally adds demographic pie charts to multiple nodes (course, pass, DFW, retake).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    course_name : str</span>
 <span class="sd">        Name of the course to use in node labels.</span>
 <span class="sd">    include_did_not_take_next : bool, optional</span>
-<span class="sd">        Whether to include a &quot;Did Not Take Next&quot; outcome node (default is False).</span>
+<span class="sd">        Whether to include a &quot;Did Not Take Next&quot; outcome node.</span>
 <span class="sd">    node_pie : bool, optional</span>
-<span class="sd">        Whether to include a pie chart image inside the course node (default is False).</span>
+<span class="sd">        If True, allows pie charts to be used.</span>
 <span class="sd">    pie_data : dict, optional</span>
-<span class="sd">        Dictionary mapping color names to proportions, used to create pie chart (only if node_pie is True).</span>
+<span class="sd">        Dictionary mapping node roles (&#39;course&#39;, &#39;DFW&#39;, etc.) to pie chart color proportions.</span>
 <span class="sd">    graph : pydot.Dot, optional</span>
-<span class="sd">        The graph to which nodes should be added.</span>
+<span class="sd">        The graph to which nodes will be added.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    dict</span>
-<span class="sd">        Dictionary of pydot.Node objects keyed by role (&#39;course&#39;, &#39;pass&#39;, &#39;dfw&#39;, &#39;retake&#39;, &#39;did_not_take_next&#39;).</span>
+<span class="sd">        Dictionary of pydot.Node objects keyed by role.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
     <span class="kn">import</span> <span class="nn">os</span>
 
-    <span class="n">nodes</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">course_node</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;box&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">course_name</span><span class="p">)</span>
-    <span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;course&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">course_node</span>
+    <span class="n">temp_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;temp&#39;</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="c1"># Create the main course node (always a box)</span>
-    <span class="k">if</span> <span class="n">graph</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">node_pie</span><span class="p">:</span>
-        <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">course_node</span><span class="p">)</span>
-
-    <span class="c1"># Optional pie chart node</span>
-    <span class="k">if</span> <span class="n">node_pie</span> <span class="ow">and</span> <span class="n">pie_data</span> <span class="ow">and</span> <span class="n">graph</span><span class="p">:</span>
-        <span class="n">temp_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\\</span><span class="s1">temp</span><span class="se">\\</span><span class="s1">&#39;</span>
-        <span class="n">image_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">temp_dir</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">course_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.png&quot;</span>
-        <span class="n">save_pie_chart</span><span class="p">(</span><span class="n">pie_data</span><span class="p">,</span> <span class="n">image_path</span><span class="p">)</span>
-
-        <span class="n">course_node</span> <span class="o">=</span> <span class="n">create_course_node_with_image</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">image_path</span><span class="p">)</span>
-        <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">course_node</span><span class="p">)</span>
-
-    <span class="c1"># Add outcome nodes</span>
-    <span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;pass&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pass </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Pass&quot;</span><span class="p">)</span>
-    <span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;dfw&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DFW </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;DFW&quot;</span><span class="p">)</span>
-    <span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;retake&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Retake </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Retake&quot;</span><span class="p">)</span>
-
+    <span class="n">roles</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;course&quot;</span><span class="p">,</span> <span class="s2">&quot;pass&quot;</span><span class="p">,</span> <span class="s2">&quot;DFW&quot;</span><span class="p">,</span> <span class="s2">&quot;retake&quot;</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">include_did_not_take_next</span><span class="p">:</span>
-        <span class="n">nodes</span><span class="p">[</span><span class="s2">&quot;did_not_take_next&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Did Not Take Next </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Did Not Take Next&quot;</span><span class="p">)</span>
+        <span class="n">roles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;did_not_take_next&quot;</span><span class="p">)</span>
+
+    <span class="n">nodes</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">roles</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">role</span> <span class="o">==</span> <span class="s2">&quot;course&quot;</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">course_name</span>
+            <span class="n">node_name</span> <span class="o">=</span> <span class="n">course_name</span>  <span class="c1"># don&#39;t repeat it</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">role</span>
+            <span class="n">node_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">if</span> <span class="n">node_pie</span> <span class="ow">and</span> <span class="n">pie_data</span> <span class="ow">and</span> <span class="n">role</span> <span class="ow">in</span> <span class="n">pie_data</span><span class="p">:</span>
+            <span class="n">image_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node_name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;_&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.png&quot;</span><span class="p">)</span>
+            <span class="n">save_pie_chart</span><span class="p">(</span><span class="n">pie_data</span><span class="p">[</span><span class="n">role</span><span class="p">],</span> <span class="n">image_path</span><span class="p">)</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">create_node_with_image</span><span class="p">(</span><span class="n">node_name</span><span class="o">=</span><span class="n">node_name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="n">image_path</span><span class="o">=</span><span class="n">image_path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">node</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">node_name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
+
+        <span class="n">nodes</span><span class="p">[</span><span class="n">role</span><span class="p">]</span> <span class="o">=</span> <span class="n">node</span>
+        <span class="k">if</span> <span class="n">graph</span><span class="p">:</span>
+            <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">nodes</span></div>
 
 
 
-
 <div class="viewcode-block" id="add_course_edges">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.add_course_edges">[docs]</a>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.add_course_edges">[docs]</a>
 <span class="k">def</span> <span class="nf">add_course_edges</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">stats</span><span class="p">,</span> <span class="n">include_did_not_take_next</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Adds outcome edges to a course graph, labeled with performance statistics.</span>
@@ -159,22 +213,23 @@
 
     <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;course&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;pass&#39;</span><span class="p">],</span>
                               <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;first_pass_proportion&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;first_pass_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">))</span>
-    <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;course&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;dfw&#39;</span><span class="p">],</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;course&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;DFW&#39;</span><span class="p">],</span>
                               <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;first_DFW_proportion&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;first_DFW_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">))</span>
-    <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;dfw&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;retake&#39;</span><span class="p">],</span>
+    <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;DFW&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;retake&#39;</span><span class="p">],</span>
                               <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;proportion_DFW_repeat&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;second_attempt_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">))</span>
     <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;retake&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;pass&#39;</span><span class="p">],</span>
                               <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;second_pass_proportion&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;second_pass_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="n">include_did_not_take_next</span><span class="p">:</span>
-        <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;dfw&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;did_not_take_next&#39;</span><span class="p">],</span>
+        <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;DFW&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;did_not_take_next&#39;</span><span class="p">],</span>
                                   <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;proportion_DFW_repeat&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;first_DFW_number&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;second_attempt_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">))</span>
         <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;retake&#39;</span><span class="p">],</span> <span class="n">nodes</span><span class="p">[</span><span class="s1">&#39;did_not_take_next&#39;</span><span class="p">],</span>
                                   <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;second_DFW_proportion&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;second_DFW_number&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">))</span></div>
 
 
+
 <div class="viewcode-block" id="add_alternate_entry">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.add_alternate_entry">[docs]</a>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.add_alternate_entry">[docs]</a>
 <span class="k">def</span> <span class="nf">add_alternate_entry</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">course_name</span><span class="p">,</span> <span class="n">alt_entry_count</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Adds a node and edge to represent students entering a course without taking the prior prerequisite.</span>
@@ -189,13 +244,14 @@
 <span class="sd">        Number of students entering without prior course completion.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">node</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Alternate Entry to </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Alternate Entry&quot;</span><span class="p">)</span>
+    <span class="n">node</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Alternate Entry to </span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Alternate Entry&quot;</span><span class="p">)</span>
     <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
     <span class="n">graph</span><span class="o">.</span><span class="n">add_edge</span><span class="p">(</span><span class="n">pydot</span><span class="o">.</span><span class="n">Edge</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span><span class="n">course_name</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">alt_entry_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">))</span></div>
 
 
+
 <div class="viewcode-block" id="get_combined_course_df">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.get_combined_course_df">[docs]</a>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.get_combined_course_df">[docs]</a>
 <span class="k">def</span> <span class="nf">get_combined_course_df</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">ids_1</span><span class="p">,</span> <span class="n">ids_2</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Returns a filtered DataFrame including only students present in at least one of two ID sets.</span>
@@ -222,7 +278,7 @@
 
 
 <div class="viewcode-block" id="get_earliest_major">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.get_earliest_major">[docs]</a>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.get_earliest_major">[docs]</a>
 <span class="k">def</span> <span class="nf">get_earliest_major</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Determines each student&#39;s earliest major and merges it into the dataframe.</span>
@@ -247,12 +303,10 @@
 
 
 
-
-
 <div class="viewcode-block" id="course_sequence_analysis">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.course_sequence_analysis">[docs]</a>
-<span class="k">def</span> <span class="nf">course_sequence_analysis</span><span class="p">(</span><span class="n">course_sequence</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">major_matriculation_column</span> <span class="o">=</span> <span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span>
-                             <span class="n">target_major_code</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">node_pie</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">demographics_flag_col</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.course_sequence_analysis">[docs]</a>
+<span class="k">def</span> <span class="nf">course_sequence_analysis</span><span class="p">(</span><span class="n">course_sequence</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">major_matriculation_column</span><span class="o">=</span><span class="s1">&#39;major_term_earliest&#39;</span><span class="p">,</span>
+                             <span class="n">target_major_code</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">node_pie</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">demographics_flag_col</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generates a flow diagram showing student progression through a sequence of courses.</span>
 
@@ -305,8 +359,6 @@
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;You specified node_pie = True but did not provide a demographics_flag_col. &quot;</span>
                          <span class="s2">&quot;Either disable pie charts or specify demographics_flag_col.&quot;</span><span class="p">)</span>
 
-
-
     <span class="n">graph</span> <span class="o">=</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Dot</span><span class="p">(</span><span class="n">graph_type</span><span class="o">=</span><span class="s2">&quot;digraph&quot;</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">rankdir</span><span class="o">=</span><span class="s2">&quot;TB&quot;</span><span class="p">)</span>
     <span class="n">previous_pass_node</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -320,7 +372,12 @@
         <span class="k">if</span> <span class="n">is_first</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_last</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">node_pie</span><span class="p">:</span>
                 <span class="n">descriptives</span> <span class="o">=</span> <span class="n">analyze_course</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="o">**</span><span class="n">filter_kwargs</span><span class="p">(</span><span class="n">include_node_pie</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
-                <span class="n">pie_data</span> <span class="o">=</span> <span class="n">descriptives</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_attempt_demographic_proportions&quot;</span><span class="p">)</span>
+                <span class="n">pie_data</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;course&quot;</span><span class="p">:</span> <span class="n">descriptives</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_attempt_demographic_proportions&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;DFW&quot;</span><span class="p">:</span> <span class="n">descriptives</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_DFW_demographic_proportions&quot;</span><span class="p">)</span>
+                    <span class="c1"># optionally add &quot;pass&quot;, &quot;retake&quot;, etc.</span>
+                <span class="p">}</span>
+
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">descriptives</span> <span class="o">=</span> <span class="n">analyze_course</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="o">**</span><span class="n">filter_kwargs</span><span class="p">(</span><span class="n">include_node_pie</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
                 <span class="n">pie_data</span> <span class="o">=</span> <span class="kc">None</span>
@@ -375,9 +432,14 @@
 
             <span class="c1"># Get the proportions for course demographics if node_pie == True</span>
             <span class="k">if</span> <span class="n">node_pie</span> <span class="ow">and</span> <span class="n">descriptives</span><span class="p">:</span>
-                <span class="n">pie_data</span> <span class="o">=</span> <span class="n">descriptives</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_attempt_demographic_proportions&quot;</span><span class="p">)</span>
+                <span class="n">pie_data</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;course&quot;</span><span class="p">:</span> <span class="n">descriptives</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_attempt_demographic_proportions&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;DFW&quot;</span><span class="p">:</span> <span class="n">descriptives</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;first_DFW_demographic_proportions&quot;</span><span class="p">)</span>
+                    <span class="c1"># optionally add &quot;pass&quot;, &quot;retake&quot;, etc.</span>
+                <span class="p">}</span>
                 <span class="nb">print</span><span class="p">(</span><span class="n">pie_data</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
+                <span class="n">descriptives</span> <span class="o">=</span> <span class="n">analyze_course</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="o">**</span><span class="n">filter_kwargs</span><span class="p">(</span><span class="n">include_node_pie</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
                 <span class="n">pie_data</span> <span class="o">=</span> <span class="kc">None</span>
 
             <span class="n">nodes</span> <span class="o">=</span> <span class="n">create_course_nodes</span><span class="p">(</span>
@@ -388,7 +450,7 @@
                 <span class="n">graph</span><span class="o">=</span><span class="n">graph</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                 <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+                <span class="n">graph</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
 
             <span class="c1"># move to next course</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">is_last</span><span class="p">:</span>
@@ -413,7 +475,7 @@
     <span class="n">graph</span><span class="o">.</span><span class="n">set_graph_defaults</span><span class="p">(</span><span class="n">dpi</span> <span class="o">=</span> <span class="s2">&quot;300&quot;</span><span class="p">)</span>
     <span class="c1"># graph.write_raw(&quot;debug_graph.dot&quot;)</span>
 
-    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dpi</span> <span class="o">=</span> <span class="mi">300</span><span class="p">)</span>
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">target_major_code</span><span class="p">:</span>
         <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Course Sequence Analysis for </span><span class="si">{</span><span class="n">target_major_code</span><span class="si">}</span><span class="s2"> Majors&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
@@ -428,7 +490,7 @@
 
 
 <div class="viewcode-block" id="save_pie_chart">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.save_pie_chart">[docs]</a>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.save_pie_chart">[docs]</a>
 <span class="k">def</span> <span class="nf">save_pie_chart</span><span class="p">(</span><span class="n">pie_data</span><span class="p">,</span> <span class="n">filepath</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generates and saves a pie chart image from demographic proportions.</span>
@@ -457,18 +519,21 @@
     <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
 
 
-<div class="viewcode-block" id="create_course_node_with_image">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.graph_builder.html#student_success.markov_diagrams.graph_builder.create_course_node_with_image">[docs]</a>
-<span class="k">def</span> <span class="nf">create_course_node_with_image</span><span class="p">(</span><span class="n">course_name</span><span class="p">,</span> <span class="n">image_path</span><span class="p">):</span>
+
+<div class="viewcode-block" id="create_node_with_image">
+<a class="viewcode-back" href="../../../modules/markov_diagrams/graph_builder.html#student_success.markov_diagrams.graph_builder.create_node_with_image">[docs]</a>
+<span class="k">def</span> <span class="nf">create_node_with_image</span><span class="p">(</span><span class="n">node_name</span><span class="p">,</span> <span class="n">image_path</span><span class="p">,</span> <span class="n">label</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates a box-shaped pydot node with an embedded pie chart image and a label.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    course_name : str</span>
-<span class="sd">        Label to display below the pie chart image.</span>
+<span class="sd">    node_name : str</span>
+<span class="sd">        Identifier for the node</span>
 <span class="sd">    image_path : str</span>
 <span class="sd">        Path to the PNG image to embed within the node.</span>
+<span class="sd">    label : str (optional)</span>
+<span class="sd">        Label to display below the pie chart image.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -477,8 +542,8 @@
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">return</span> <span class="n">pydot</span><span class="o">.</span><span class="n">Node</span><span class="p">(</span>
-        <span class="n">name</span><span class="o">=</span><span class="n">course_name</span><span class="p">,</span>
-        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="si">{</span><span class="n">course_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">node_name</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="si">{</span><span class="n">label</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">label</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="n">node_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
         <span class="n">shape</span><span class="o">=</span><span class="s2">&quot;box&quot;</span><span class="p">,</span>
         <span class="n">image</span><span class="o">=</span><span class="n">image_path</span><span class="p">,</span>
         <span class="n">labelloc</span><span class="o">=</span><span class="s2">&quot;b&quot;</span><span class="p">,</span>           <span class="c1"># optional: label below the image</span>

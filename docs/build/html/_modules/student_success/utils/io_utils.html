@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,12 +78,72 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.utils.io_utils</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">io_utils.py</span>
+
+<span class="sd">Utilities for loading, concatenating, and renaming data files in the</span>
+<span class="sd">student_success package.</span>
+
+<span class="sd">This module provides functions that:</span>
+<span class="sd">- Concatenate multiple CSVs into one DataFrame.</span>
+<span class="sd">- Prompt users interactively to load a CSV of grades.</span>
+<span class="sd">- Rename DataFrame columns in bulk based on an external Excel mapping file.</span>
+<span class="sd">- Extract and flatten column mapping dictionaries from Excel codebooks.</span>
+
+<span class="sd">Institutional Customization</span>
+<span class="sd">---------------------------</span>
+<span class="sd">Each institution has unique data exports and column naming conventions.</span>
+<span class="sd">These utilities let you standardize your raw data to match the expected</span>
+<span class="sd">column names used across the package.</span>
+
+<span class="sd">- Column mapping:</span>
+<span class="sd">  The Excel codebook (default sheet name: &quot;codebook&quot;) must contain at least</span>
+<span class="sd">  `variable_name_project` (standardized name) and `variable_name_institution`</span>
+<span class="sd">  (your institution’s export names).</span>
+<span class="sd">  Update or expand this file to align with your SIS exports.</span>
+<span class="sd">- File handling:</span>
+<span class="sd">  Paths to CSV and Excel files must be accessible from your environment.</span>
+<span class="sd">  If using interactive `load_grades()`, ensure Tkinter is available.</span>
+
+<span class="sd">Pitfalls</span>
+<span class="sd">--------</span>
+<span class="sd">- `load_grades()` uses a Tkinter dialog; this may not work in headless</span>
+<span class="sd">  environments (e.g., servers, notebooks without GUI). In those cases,</span>
+<span class="sd">  load CSVs directly with `pandas.read_csv()`.</span>
+<span class="sd">- Duplicates in the Excel column mapping can create ambiguous renaming.</span>
+<span class="sd">  Check the flattened dictionary output carefully.</span>
+<span class="sd">- If the Excel codebook format changes (sheet name, column names),</span>
+<span class="sd">  `extract_column_mapping()` will need updates.</span>
+
+<span class="sd">Contents</span>
+<span class="sd">--------</span>
+<span class="sd">- concatenate_csv_files(filenames, low_memory=False) :</span>
+<span class="sd">  Read and combine multiple CSV files into a single DataFrame.</span>
+<span class="sd">- load_grades() :</span>
+<span class="sd">  Open a file dialog to select and load a grades CSV; returns DataFrame.</span>
+<span class="sd">- rename_columns_in_bulk(df, column_mapping_filepath) :</span>
+<span class="sd">  Rename DataFrame columns using a flattened mapping from an Excel file.</span>
+<span class="sd">- extract_column_mapping(file_path) :</span>
+<span class="sd">  Read an Excel sheet and return nested dictionary mapping</span>
+<span class="sd">  project → [institution names].</span>
+<span class="sd">- flatten_column_mapping(column_mapping) :</span>
+<span class="sd">  Convert a nested column mapping into a flat dictionary for renaming</span>
+<span class="sd">  (institution name → project name).</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- These utilities are designed to be run early in preprocessing so that</span>
+<span class="sd">  column names match expected inputs for hazard, Sankey, or Markov analyses.</span>
+<span class="sd">- Requires `openpyxl` for Excel parsing.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="n">filedialog</span> <span class="k">as</span> <span class="n">fd</span>
-<span class="kn">import</span> <span class="nn">openpyxl</span> <span class="c1"># necessary for importing the Excel column naming file; placing here so it isn&#39;t missed in requirements_essential.txt</span>
+<span class="kn">import</span> <span class="nn">openpyxl</span>  <span class="c1"># necessary for importing the Excel column naming file; placing here so it isn&#39;t missed in requirements_essential.txt</span>
+
 
 <div class="viewcode-block" id="concatenate_csv_files">
-<a class="viewcode-back" href="../../../student_success.utils.io_utils.html#student_success.utils.io_utils.concatenate_csv_files">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/io_utils.html#student_success.utils.io_utils.concatenate_csv_files">[docs]</a>
 <span class="k">def</span> <span class="nf">concatenate_csv_files</span><span class="p">(</span><span class="n">filenames</span><span class="p">,</span> <span class="n">low_memory</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="c1"># Create an empty list to hold each dataframe</span>
     <span class="n">dataframes</span> <span class="o">=</span> <span class="p">[]</span>
@@ -95,9 +161,9 @@
 
 
 
-<span class="c1">#Utility function: gets user input on which CSV grades reports files to load and returns as a pandas dataframe</span>
+<span class="c1"># Utility function: gets user input on which CSV grades reports files to load and returns as a pandas dataframe</span>
 <div class="viewcode-block" id="load_grades">
-<a class="viewcode-back" href="../../../student_success.utils.io_utils.html#student_success.utils.io_utils.load_grades">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/io_utils.html#student_success.utils.io_utils.load_grades">[docs]</a>
 <span class="k">def</span> <span class="nf">load_grades</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Load a CSV grades report file selected by the user and return it as a pandas DataFrame.</span>
@@ -113,7 +179,7 @@
 <span class="sd">    and returns the DataFrame.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">csv_filename</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askopenfilename</span><span class="p">(</span><span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;Please select the grades file&#39;</span><span class="p">)</span> <span class="c1"># show an &quot;Open&quot; dialog box and return the path to the selected file</span>
+    <span class="n">csv_filename</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askopenfilename</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Please select the grades file&#39;</span><span class="p">)</span>  <span class="c1"># show an &quot;Open&quot; dialog box and return the path to the selected file</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">csv_filename</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No file selected.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>  <span class="c1"># or raise an Exception or return None</span>
@@ -122,8 +188,10 @@
     <span class="n">grades_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">csv_filename</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">grades_df</span></div>
 
+
+
 <div class="viewcode-block" id="rename_columns_in_bulk">
-<a class="viewcode-back" href="../../../student_success.utils.io_utils.html#student_success.utils.io_utils.rename_columns_in_bulk">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/io_utils.html#student_success.utils.io_utils.rename_columns_in_bulk">[docs]</a>
 <span class="k">def</span> <span class="nf">rename_columns_in_bulk</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">column_mapping_filepath</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Rename columns in a DataFrame in bulk based on a column mapping extracted from an Excel file.</span>
@@ -167,8 +235,9 @@
     <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">column_mapping_str</span><span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="extract_column_mapping">
-<a class="viewcode-back" href="../../../student_success.utils.io_utils.html#student_success.utils.io_utils.extract_column_mapping">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/io_utils.html#student_success.utils.io_utils.extract_column_mapping">[docs]</a>
 <span class="k">def</span> <span class="nf">extract_column_mapping</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Extract column mapping from an Excel file (.xlsx or .xls)</span>
@@ -184,7 +253,7 @@
 <span class="sd">        A dictionary where keys are variable_name_project values and values are lists of variable_name_institution values.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">column_mapping</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">sheet_name</span> <span class="o">=</span> <span class="s1">&#39;codebook&#39;</span><span class="p">,</span> <span class="n">engine</span> <span class="o">=</span> <span class="s1">&#39;openpyxl&#39;</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_excel</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">sheet_name</span><span class="o">=</span><span class="s1">&#39;codebook&#39;</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;openpyxl&#39;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
         <span class="n">project_name</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;variable_name_project&#39;</span><span class="p">]</span>
         <span class="n">institution_names</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;variable_name_institution&#39;</span><span class="p">])</span>
@@ -200,7 +269,7 @@
 
 
 <div class="viewcode-block" id="flatten_column_mapping">
-<a class="viewcode-back" href="../../../student_success.utils.io_utils.html#student_success.utils.io_utils.flatten_column_mapping">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/io_utils.html#student_success.utils.io_utils.flatten_column_mapping">[docs]</a>
 <span class="k">def</span> <span class="nf">flatten_column_mapping</span><span class="p">(</span><span class="n">column_mapping</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Flatten column mapping from a nested dictionary to a single-level dictionary.</span>

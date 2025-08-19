@@ -41,10 +41,17 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,9 +79,39 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.markov_diagrams.preprocess</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">The ``preprocess`` module provides standardized cleaning utilities for</span>
+<span class="sd">course attempt data used in Markov diagram analysis. These functions</span>
+<span class="sd">prepare student-level course sequences by constraining attempts and</span>
+<span class="sd">removing redundant data, ensuring that downstream visualizations</span>
+<span class="sd">reflect meaningful academic pathways.</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">- limit_attempts :</span>
+<span class="sd">    Restricts the number of course attempts per student to a specified</span>
+<span class="sd">    maximum (default: two attempts).</span>
+<span class="sd">- exclude_unnecessary_subsequent_attempts :</span>
+<span class="sd">    Removes later attempts if a student successfully passed on the</span>
+<span class="sd">    first attempt, preventing artificial inflation of repeat patterns.</span>
+<span class="sd">- prepare_course_attempts :</span>
+<span class="sd">    Applies the standard cleaning pipeline (limit attempts + drop</span>
+<span class="sd">    unnecessary repeats) to produce a streamlined dataset ready for</span>
+<span class="sd">    Markov diagram construction.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- These preprocessing functions should be applied after filtering to</span>
+<span class="sd">  valid letter grades via</span>
+<span class="sd">  ``utils.grade_utils.filter_valid_letter_grades()``.</span>
+<span class="sd">- Output is designed to integrate directly with the graph construction</span>
+<span class="sd">  utilities in ``markov_diagrams.graph_builder``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
 <div class="viewcode-block" id="limit_attempts">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.preprocess.html#student_success.markov_diagrams.preprocess.limit_attempts">[docs]</a>
-<span></span><span class="k">def</span> <span class="nf">limit_attempts</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">max_attempts</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/preprocess.html#student_success.markov_diagrams.preprocess.limit_attempts">[docs]</a>
+<span class="k">def</span> <span class="nf">limit_attempts</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">max_attempts</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Limit each student&#39;s data to at most `max_attempts` rows.</span>
 
@@ -97,8 +134,8 @@
 
 
 <div class="viewcode-block" id="exclude_unnecessary_subsequent_attempts">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.preprocess.html#student_success.markov_diagrams.preprocess.exclude_unnecessary_subsequent_attempts">[docs]</a>
-<span class="k">def</span> <span class="nf">exclude_unnecessary_subsequent_attempts</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">grade_col</span><span class="o">=</span><span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">,</span> <span class="n">passing_grades</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">]):</span>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/preprocess.html#student_success.markov_diagrams.preprocess.exclude_unnecessary_subsequent_attempts">[docs]</a>
+<span class="k">def</span> <span class="nf">exclude_unnecessary_subsequent_attempts</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">grade_col</span><span class="o">=</span><span class="s1">&#39;course_grade_letter_simp&#39;</span><span class="p">,</span> <span class="n">passing_grades</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">,</span> <span class="s1">&#39;C&#39;</span><span class="p">)):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Drop all subsequent attempts for students who passed the course on their first attempt.</span>
 
@@ -108,8 +145,8 @@
 <span class="sd">        DataFrame of course attempts, sorted by &#39;student_ID&#39; and &#39;course_term&#39;.</span>
 <span class="sd">    grade_col : str, optional</span>
 <span class="sd">        Column name containing the simplified letter grades. Default is &#39;course_grade_letter_simp&#39;.</span>
-<span class="sd">    passing_grades : list, optional</span>
-<span class="sd">        List of grades considered passing. Default is [&#39;A&#39;, &#39;B&#39;, &#39;C&#39;].</span>
+<span class="sd">    passing_grades : tuple, optional</span>
+<span class="sd">        tuple of grades considered passing. Default is [&#39;A&#39;, &#39;B&#39;, &#39;C&#39;].</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -128,8 +165,9 @@
     <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">to_drop</span><span class="p">)</span></div>
 
 
+
 <div class="viewcode-block" id="prepare_course_attempts">
-<a class="viewcode-back" href="../../../student_success.markov_diagrams.preprocess.html#student_success.markov_diagrams.preprocess.prepare_course_attempts">[docs]</a>
+<a class="viewcode-back" href="../../../modules/markov_diagrams/preprocess.html#student_success.markov_diagrams.preprocess.prepare_course_attempts">[docs]</a>
 <span class="k">def</span> <span class="nf">prepare_course_attempts</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Apply a standardized cleaning pipeline to prepare course attempt data.</span>

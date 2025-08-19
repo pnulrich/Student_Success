@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -73,19 +79,111 @@
              
   <h1>Source code for student_success.utils.matriculation_utils</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">student_success.utils.validation</span> <span class="kn">import</span> <span class="n">validate_columns</span>
 
-<span class="c1">#  CAUTION: BANNER may not reliably report &#39;matriculation_term&#39; do to wide variations in timing and programs in an institution</span>
-<span class="c1">#  If you are using matriculation term values derived from BANNER, ensure that values match what you expect. Be diligent</span>
-<span class="c1">#  about clarifying if any matriculation terms or dates are associated with the program of interest. It may be best to</span>
-<span class="c1">#  create a new column in your dataset representing term_earliest (for a specific program). This can be done by using the</span>
-<span class="c1">#  earliest term a student took classes. The benefit of this is avoiding situations where a student matriculates in an earlier</span>
-<span class="c1">#  semester than they begin taking classes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">matriculation_utils.py</span>
+
+<span class="sd">(DEPRECATED) Utilities for handling matriculation term fields in Banner</span>
+<span class="sd">or similar student information systems.</span>
+
+<span class="sd">These functions attempt to clean, adjust, and validate matriculation</span>
+<span class="sd">term values, but institutional data often makes them unreliable.  </span>
+<span class="sd">In particular, Banner may not report `matriculation_term` consistently</span>
+<span class="sd">due to program-level timing differences, back-dated entries, or</span>
+<span class="sd">misalignment with the first actual course term.  </span>
+
+<span class="sd">**Recommendation:**  </span>
+<span class="sd">Instead of relying on Banner’s `matriculation_term`, create a program-</span>
+<span class="sd">specific `term_earliest` column using the earliest term a student</span>
+<span class="sd">actually enrolled in courses. This avoids the pitfalls that motivated</span>
+<span class="sd">these utilities to be retired.</span>
+
+<span class="sd">Institutional Customization</span>
+<span class="sd">---------------------------</span>
+<span class="sd">If you do use these functions:</span>
+<span class="sd">- Confirm that your SIS codes `matriculation_term` consistently with</span>
+<span class="sd">  the program of interest.</span>
+<span class="sd">- Use `demographics_term` or other enrollment-based fields as a</span>
+<span class="sd">  fallback when no matching demographics exist for a student’s</span>
+<span class="sd">  official matriculation term.</span>
+
+<span class="sd">Pitfalls</span>
+<span class="sd">--------</span>
+<span class="sd">- Students may have multiple distinct `matriculation_term` values.</span>
+<span class="sd">  Filtering logic must decide whether to exclude or include them.</span>
+<span class="sd">- Demographic datasets covering a limited range may miss records for</span>
+<span class="sd">  the true matriculation term, causing misalignment.</span>
+<span class="sd">- Graduation-level parsing assumes consistent use of codes</span>
+<span class="sd">  (e.g., `&#39;B&#39;` for bachelor’s).</span>
+
+<span class="sd">Contents</span>
+<span class="sd">--------</span>
+<span class="sd">- extract_bachelors_graduation_date(df) :</span>
+<span class="sd">  Add `graduation_date_bachelors` column, containing the earliest</span>
+<span class="sd">  awarded bachelor’s graduation date per student.</span>
+<span class="sd">- filter_by_valid_matriculation_term(df, student_id_col=&#39;student_ID&#39;,</span>
+<span class="sd">  term_col=&#39;matriculation_term&#39;, demo_term_col=&#39;demographics_term&#39;) :</span>
+<span class="sd">  Retain only students where `demographics_term` matches their minimum</span>
+<span class="sd">  matriculation term.</span>
+<span class="sd">- clean_and_adjust_matriculation(df, ..., include_multiple_matriculations=0,</span>
+<span class="sd">  demographics_range_min=None) :</span>
+<span class="sd">  Compute adjusted matriculation term (`matriculation_term_adjusted`) by</span>
+<span class="sd">  aligning Banner values with the earliest available demographics term,</span>
+<span class="sd">  optionally excluding students with multiple matriculation terms.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- These functions are retained for legacy compatibility but are not</span>
+<span class="sd">  recommended for new analyses.</span>
+<span class="sd">- Prefer constructing a robust `term_earliest` column based on actual</span>
+<span class="sd">  enrollment activity.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="extract_bachelors_graduation_date">
+<a class="viewcode-back" href="../../../modules/utils/matriculation_utils.html#student_success.utils.matriculation_utils.extract_bachelors_graduation_date">[docs]</a>
+<span class="k">def</span> <span class="nf">extract_bachelors_graduation_date</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function accepts a dataframe with at least &#39;graduation_level&#39;, &#39;graduation_date&#39;, and &#39;graduation_status&#39; columns.</span>
+<span class="sd">    It returns the dataframe with a new column &#39;graduation_date_bachelors&#39;, which holds the earliest</span>
+<span class="sd">    bachelor&#39;s graduation date (&#39;B&#39;) for students with a corresponding &#39;Awarded&#39; status.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">get_earliest_bachelors_date</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">dates</span><span class="p">,</span> <span class="n">statuses</span><span class="p">):</span>
+        <span class="c1"># Ensure the tuples are iterable and contain non-null values</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;B&#39;</span> <span class="ow">in</span> <span class="n">levels</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Get all indices of bachelor&#39;s level (&#39;B&#39;)</span>
+                <span class="n">indices_of_b</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">level</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">levels</span><span class="p">)</span> <span class="k">if</span> <span class="n">level</span> <span class="o">==</span> <span class="s1">&#39;B&#39;</span><span class="p">]</span>
+                <span class="c1"># Check if any of the corresponding statuses are &#39;Awarded&#39;</span>
+                <span class="n">awarded_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices_of_b</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">statuses</span><span class="p">)</span> <span class="ow">and</span> <span class="n">statuses</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;Awarded&#39;</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">awarded_indices</span><span class="p">:</span>
+                    <span class="c1"># Get the corresponding graduation dates for all &#39;Awarded&#39; &#39;B&#39; and return the earliest one</span>
+                    <span class="n">corresponding_dates</span> <span class="o">=</span> <span class="p">[</span><span class="n">dates</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">awarded_indices</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">dates</span><span class="p">)]</span>
+                    <span class="c1"># Convert dates to datetime to find the earliest one</span>
+                    <span class="n">corresponding_dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">corresponding_dates</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">corresponding_dates</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>  <span class="c1"># Return the earliest date</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>  <span class="c1"># In case of any errors, return NaN</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>  <span class="c1"># No &#39;B&#39; found or invalid tuple</span>
+
+    <span class="c1"># Apply the function to each row and create a new column &#39;graduation_date_bachelors&#39;</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;graduation_date_bachelors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">get_earliest_bachelors_date</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;graduation_level&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;graduation_date&#39;</span><span class="p">],</span>
+                                                <span class="n">row</span><span class="p">[</span><span class="s1">&#39;graduation_status&#39;</span><span class="p">]),</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
 
 <div class="viewcode-block" id="filter_by_valid_matriculation_term">
-<a class="viewcode-back" href="../../../student_success.utils.matriculation_utils.html#student_success.utils.matriculation_utils.filter_by_valid_matriculation_term">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/matriculation_utils.html#student_success.utils.matriculation_utils.filter_by_valid_matriculation_term">[docs]</a>
 <span class="k">def</span> <span class="nf">filter_by_valid_matriculation_term</span><span class="p">(</span><span class="n">demographics_df</span><span class="p">,</span> <span class="n">student_id_col</span><span class="o">=</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="n">term_col</span><span class="o">=</span><span class="s1">&#39;matriculation_term&#39;</span><span class="p">,</span>
-                             <span class="n">demo_term_col</span><span class="o">=</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">):</span>
+                                       <span class="n">demo_term_col</span><span class="o">=</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Cleans the DataFrame by identifying and keeping only rows for student_ID&#39;s that have a</span>
 <span class="sd">    demographics term associated with the minimum matriculation term. This avoids issues</span>
@@ -124,8 +222,9 @@
     <span class="k">return</span> <span class="n">cleaned_df</span></div>
 
 
+
 <div class="viewcode-block" id="clean_and_adjust_matriculation">
-<a class="viewcode-back" href="../../../student_success.utils.matriculation_utils.html#student_success.utils.matriculation_utils.clean_and_adjust_matriculation">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/matriculation_utils.html#student_success.utils.matriculation_utils.clean_and_adjust_matriculation">[docs]</a>
 <span class="k">def</span> <span class="nf">clean_and_adjust_matriculation</span><span class="p">(</span><span class="n">demographics_df</span><span class="p">,</span> <span class="n">student_id_col</span><span class="o">=</span><span class="s1">&#39;student_ID&#39;</span><span class="p">,</span> <span class="n">matriculation_term_col</span><span class="o">=</span><span class="s1">&#39;matriculation_term&#39;</span><span class="p">,</span>
                                    <span class="n">demo_term_col</span><span class="o">=</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">,</span> <span class="n">include_multiple_matriculations</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                                    <span class="n">demographics_range_min</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>

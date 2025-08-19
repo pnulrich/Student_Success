@@ -26,8 +26,17 @@ import os, sys
 sys.path.insert(0, os.path.abspath('../..'))
 
 templates_path = ['_templates']
-exclude_patterns = ['**/deprecated*']
 
+exclude_patterns = [
+    "_build",
+    '**/deprecated*',
+    "Thumbs.db",
+    ".DS_Store",
+    "student_success.WVU*",
+    "student_success.deprecated*",
+    "student_success.entropy*",
+    "student_success.demographics_grad_combine*",
+]
 add_module_names = False
 autosummary_generate = True
 

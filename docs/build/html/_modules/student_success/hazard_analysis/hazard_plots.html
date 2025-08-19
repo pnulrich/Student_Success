@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,7 +78,56 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.hazard_analysis.hazard_plots</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Visualization utilities for hazard analysis of student progression.</span>
+
+<span class="sd">This module provides functions to create plots and heatmaps that complement</span>
+<span class="sd">the hazard modeling pipeline. Plots show hazard ratios, cumulative probabilities,</span>
+<span class="sd">and course-taking patterns over time, using both matplotlib and Bokeh.</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">- plot_hazard_ratio :</span>
+<span class="sd">    Plot hazard ratios for student outcomes across semesters, with active</span>
+<span class="sd">    student counts as background bars.</span>
+<span class="sd">- prepare_course_heatmap_data :</span>
+<span class="sd">    Transform filtered student-course data into frequency and proportion</span>
+<span class="sd">    tables for heatmap visualization.</span>
+<span class="sd">- plot_course_heatmap :</span>
+<span class="sd">    Generate an interactive Bokeh heatmap of top courses taken per semester</span>
+<span class="sd">    by active students in a target major.</span>
+<span class="sd">- plot_cumulative_probability :</span>
+<span class="sd">    Plot cumulative probabilities of outcomes across semesters, overlaid</span>
+<span class="sd">    with bar charts of average course load or credit hours.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- Outcome indicators (1–4) are expected from hazard_utils calculations:</span>
+<span class="sd">    - 1 : Left institution</span>
+<span class="sd">    - 2 : Graduated in target major</span>
+<span class="sd">    - 3 : Graduated in other major</span>
+<span class="sd">    - 4 : Changed major</span>
+<span class="sd">- Course heatmaps rely on `course_list` data prepared via</span>
+<span class="sd">  `hazard_utils.prepare_and_process_data()`.</span>
+<span class="sd">- Plots are designed for exploratory analysis and presentation of hazard</span>
+<span class="sd">  modeling results, not for raw statistical inference.</span>
+
+<span class="sd">Quick Example</span>
+<span class="sd">-------------</span>
+<span class="sd">&gt;&gt;&gt; from student_success.hazard_analysis import hazard_utils, hazard_plots</span>
+<span class="sd">&gt;&gt;&gt; # Prepare data for a target major (e.g., Biology)</span>
+<span class="sd">&gt;&gt;&gt; processed_df, course_list = hazard_utils.prepare_and_process_data(df, target_major=&quot;BIO&quot;)</span>
+<span class="sd">&gt;&gt;&gt; probs = hazard_utils.calculate_probabilities(processed_df)</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; # Plot hazard ratios across semesters</span>
+<span class="sd">&gt;&gt;&gt; hazard_plots.plot_hazard_ratio(probs, title=&quot;Hazard Ratios for BIO Majors&quot;)</span>
+<span class="sd">&gt;&gt;&gt;</span>
+<span class="sd">&gt;&gt;&gt; # Plot cumulative probabilities of outcomes</span>
+<span class="sd">&gt;&gt;&gt; hazard_plots.plot_cumulative_probability(probs, title=&quot;Cumulative Outcomes&quot;)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">from</span> <span class="nn">bokeh.plotting</span> <span class="kn">import</span> <span class="n">figure</span><span class="p">,</span> <span class="n">show</span>
 <span class="kn">from</span> <span class="nn">bokeh.models</span> <span class="kn">import</span> <span class="n">ColumnDataSource</span><span class="p">,</span> <span class="n">ColorBar</span>
 <span class="kn">from</span> <span class="nn">bokeh.transform</span> <span class="kn">import</span> <span class="n">linear_cmap</span>
@@ -80,7 +135,7 @@
 
 
 <div class="viewcode-block" id="plot_hazard_ratio">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_plots.html#student_success.hazard_analysis.hazard_plots.plot_hazard_ratio">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/hazard_plots.html#student_success.hazard_analysis.hazard_plots.plot_hazard_ratio">[docs]</a>
 <span class="k">def</span> <span class="nf">plot_hazard_ratio</span><span class="p">(</span>
         <span class="n">proportions_df</span><span class="p">,</span>
         <span class="n">active_student_counts</span><span class="p">,</span>
@@ -183,7 +238,7 @@
 
 
 <div class="viewcode-block" id="prepare_course_heatmap_data">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_plots.html#student_success.hazard_analysis.hazard_plots.prepare_course_heatmap_data">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/hazard_plots.html#student_success.hazard_analysis.hazard_plots.prepare_course_heatmap_data">[docs]</a>
 <span class="k">def</span> <span class="nf">prepare_course_heatmap_data</span><span class="p">(</span><span class="n">filtered_df</span><span class="p">,</span> <span class="n">target_major</span><span class="p">,</span> <span class="n">min_academic_year</span><span class="p">,</span> <span class="n">max_academic_year</span><span class="p">,</span> <span class="n">number_top_courses</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
                                 <span class="n">minimum_student_number</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">minimum_proportion_active_students</span><span class="o">=</span><span class="mf">0.02</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -283,7 +338,7 @@
 
 
 <div class="viewcode-block" id="plot_course_heatmap">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_plots.html#student_success.hazard_analysis.hazard_plots.plot_course_heatmap">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/hazard_plots.html#student_success.hazard_analysis.hazard_plots.plot_course_heatmap">[docs]</a>
 <span class="k">def</span> <span class="nf">plot_course_heatmap</span><span class="p">(</span>
         <span class="n">filtered_df</span><span class="p">,</span>
         <span class="n">target_major</span><span class="p">,</span>
@@ -377,7 +432,7 @@
 
 
 <div class="viewcode-block" id="plot_cumulative_probability">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.hazard_plots.html#student_success.hazard_analysis.hazard_plots.plot_cumulative_probability">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/hazard_plots.html#student_success.hazard_analysis.hazard_plots.plot_cumulative_probability">[docs]</a>
 <span class="k">def</span> <span class="nf">plot_cumulative_probability</span><span class="p">(</span>
         <span class="n">cumulative_df</span><span class="p">,</span>
         <span class="n">target_major</span><span class="p">,</span>

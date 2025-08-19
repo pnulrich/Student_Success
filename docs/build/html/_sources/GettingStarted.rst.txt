@@ -1,5 +1,11 @@
 Getting Started
 ===============
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents
+
+
+
 
 Ready to start using the Student Success tools? This guide walks you through cloning the project, installing Python and required modules, setting environment variables, and importing your first dataset.
 

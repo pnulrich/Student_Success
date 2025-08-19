@@ -3,7 +3,7 @@ program_utils.py
 ================
 
 Utility functions for handling major abbreviations, full names, and discipline
-classifications within the student success framework.
+classifications.
 
 This module centralizes common operations for translating and standardizing
 academic program codes. Functions include:

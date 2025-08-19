@@ -1,15 +1,12 @@
 """
-preprocess
-==========
-
 The ``preprocess`` module provides standardized cleaning utilities for
 course attempt data used in Markov diagram analysis. These functions
 prepare student-level course sequences by constraining attempts and
 removing redundant data, ensuring that downstream visualizations
 reflect meaningful academic pathways.
 
-Core functionality
-------------------
+Functions
+---------
 - limit_attempts :
     Restricts the number of course attempts per student to a specified
     maximum (default: two attempts).

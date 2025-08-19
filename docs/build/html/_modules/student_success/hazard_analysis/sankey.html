@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,7 +78,61 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.hazard_analysis.sankey</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Sankey diagram utilities for visualizing student progression across majors and outcomes.</span>
+
+<span class="sd">This module supports generating longitudinal flow diagrams that show how students</span>
+<span class="sd">in a target major persist, switch disciplines, graduate, or leave the university.</span>
+<span class="sd">Flows are aggregated at the discipline level and rendered using Plotly’s Sankey plots.</span>
+
+<span class="sd">Main Features</span>
+<span class="sd">-------------</span>
+<span class="sd">- **Color Handling**:</span>
+<span class="sd">  - `hex_to_rgba`: Convert hex colors to RGBA strings with alpha transparency.</span>
+<span class="sd">- **Plot Formatting**:</span>
+<span class="sd">  - `wrap_plot_title`: Insert line breaks into long plot titles for readability.</span>
+<span class="sd">- **Flow Classification**:</span>
+<span class="sd">  - `classify_sankey_discipline`: Map a major abbreviation into Sankey discipline groups,</span>
+<span class="sd">    highlighting the target major.</span>
+<span class="sd">  - `assign_sankey_end_status`: Determine each student’s final outcome (graduated in major,</span>
+<span class="sd">    graduated other, left college, or still active).</span>
+<span class="sd">  - `extract_node_label`: Parse clean labels from Sankey node strings.</span>
+<span class="sd">- **Visualization**:</span>
+<span class="sd">  - `create_sankey_plot`: Build a Sankey diagram showing how students flow across disciplines</span>
+<span class="sd">    and into terminal outcomes.</span>
+
+<span class="sd">Color and Grouping</span>
+<span class="sd">------------------</span>
+<span class="sd">- Disciplines are grouped using `SANKEY_DISCIPLINE_GROUPS` from `utils.constants`.</span>
+<span class="sd">- Nodes and flows are colored using `SANKEY_DISCIPLINE_COLOR_MAP`, with overrides for</span>
+<span class="sd">  terminal statuses such as &quot;Graduated Target Major&quot;, &quot;Graduated Other&quot;, and &quot;Left College&quot;.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- Input data should be term-level student records with required fields such as</span>
+<span class="sd">  `student_ID`, `demographics_term`, `major_term`, `semester_number`,</span>
+<span class="sd">  `major_graduation`, and `graduation_status`.</span>
+<span class="sd">- The module assumes term codes are in `YYYYMM` format or standardized using</span>
+<span class="sd">  `time_utils.standardize_to_term_code`.</span>
+
+<span class="sd">Quick Example</span>
+<span class="sd">-------------</span>
+<span class="sd">&gt;&gt;&gt; from student_success.hazard_analysis import sankey</span>
+<span class="sd">&gt;&gt;&gt; # Assume `df` is a student-term DataFrame with majors and outcomes</span>
+<span class="sd">&gt;&gt;&gt; df[&#39;discipline&#39;] = df[&#39;major_term&#39;].apply(</span>
+<span class="sd">...     lambda m: sankey.classify_sankey_discipline(m, target_major=&quot;BIO&quot;)</span>
+<span class="sd">... )</span>
+<span class="sd">&gt;&gt;&gt; df = sankey.assign_sankey_end_status(df, target_major=&quot;BIO&quot;)</span>
+<span class="sd">&gt;&gt;&gt; sankey.create_sankey_plot(</span>
+<span class="sd">...     data=df,</span>
+<span class="sd">...     target_major=&quot;BIO&quot;,</span>
+<span class="sd">...     plot_title=&quot;Student Flows for Biology Majors&quot;,</span>
+<span class="sd">...     output_filename=&quot;bio_sankey.html&quot;</span>
+<span class="sd">... )</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">plotly.graph_objects</span> <span class="k">as</span> <span class="nn">go</span>
 <span class="kn">import</span> <span class="nn">matplotlib.colors</span> <span class="k">as</span> <span class="nn">mcolors</span>
@@ -89,7 +149,7 @@
 
 
 <div class="viewcode-block" id="hex_to_rgba">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.sankey.html#student_success.hazard_analysis.sankey.hex_to_rgba">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/sankey.html#student_success.hazard_analysis.sankey.hex_to_rgba">[docs]</a>
 <span class="k">def</span> <span class="nf">hex_to_rgba</span><span class="p">(</span><span class="n">hex_color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.4</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts a hex color string to an RGBA string with the specified alpha transparency.</span>
@@ -113,7 +173,7 @@
 
 
 <div class="viewcode-block" id="wrap_plot_title">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.sankey.html#student_success.hazard_analysis.sankey.wrap_plot_title">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/sankey.html#student_success.hazard_analysis.sankey.wrap_plot_title">[docs]</a>
 <span class="k">def</span> <span class="nf">wrap_plot_title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">75</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Wraps long plot titles by inserting a &lt;br&gt; at the nearest space before the max_length.</span>
@@ -141,7 +201,7 @@
 
 
 <div class="viewcode-block" id="create_sankey_plot">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.sankey.html#student_success.hazard_analysis.sankey.create_sankey_plot">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/sankey.html#student_success.hazard_analysis.sankey.create_sankey_plot">[docs]</a>
 <span class="k">def</span> <span class="nf">create_sankey_plot</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target_major</span><span class="p">,</span> <span class="n">plot_title</span><span class="p">,</span> <span class="n">output_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target_major_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Generates a Sankey diagram showing longitudinal student flows by discipline and final outcome.</span>
@@ -204,12 +264,13 @@
     <span class="n">end_status_colors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;#332288&quot;</span><span class="p">,</span> <span class="s2">&quot;#882255&quot;</span><span class="p">,</span> <span class="s2">&quot;#CC6677&quot;</span><span class="p">]</span>
 
     <span class="n">unique_disciplines</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;discipline&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
-    <span class="n">nodes</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;Graduated </span><span class="si">{</span><span class="n">target_major</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;Graduated Other&quot;</span><span class="p">,</span> <span class="s2">&quot;Left College&quot;</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">sem</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;semester_number&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">():</span>
+    <span class="n">nodes</span> <span class="o">=</span> <span class="n">end_statuses</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">sem</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;semester_number&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()):</span>
         <span class="k">for</span> <span class="n">disc</span> <span class="ow">in</span> <span class="n">unique_disciplines</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">disc</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
                 <span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">disc</span><span class="si">}</span><span class="s2"> - Sem </span><span class="si">{</span><span class="n">sem</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
+    <span class="c1"># Build flow links</span>
     <span class="n">links</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;target&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;students&#39;</span><span class="p">:</span> <span class="p">[]}</span>
     <span class="n">students_reaching_final_status</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
@@ -259,8 +320,11 @@
                 <span class="k">if</span> <span class="n">target_discipline</span> <span class="ow">in</span> <span class="n">end_statuses</span><span class="p">:</span>
                     <span class="n">students_reaching_final_status</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">student</span><span class="p">)</span>
 
+    <span class="c1"># Aggregate link values</span>
     <span class="n">links_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">links</span><span class="p">)</span>
     <span class="n">grouped_links</span> <span class="o">=</span> <span class="n">links_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;source&#39;</span><span class="p">,</span> <span class="s1">&#39;target&#39;</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">agg</span><span class="p">({</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="s1">&#39;sum&#39;</span><span class="p">})</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="c1"># Node hover values</span>
     <span class="n">node_value_map</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;discipline&#39;</span><span class="p">,</span> <span class="s1">&#39;semester_number&#39;</span><span class="p">])[</span><span class="s1">&#39;student_ID&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
     <span class="n">node_labels_with_values</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">node_value_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;0&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> students&quot;</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">]</span>
     <span class="n">grouped_links</span><span class="p">[</span><span class="s1">&#39;custom_source_label&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">nodes</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">grouped_links</span><span class="p">[</span><span class="s1">&#39;source&#39;</span><span class="p">]]</span>
@@ -298,14 +362,14 @@
                                      <span class="n">name</span><span class="o">=</span><span class="n">SANKEY_DISCIPLINE_GROUPS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">discipline</span><span class="p">,</span> <span class="n">discipline</span><span class="p">)))</span>
 
     <span class="n">fig</span><span class="o">.</span><span class="n">update_layout</span><span class="p">(</span>
-        <span class="n">title</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">title</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
             <span class="n">text</span><span class="o">=</span><span class="n">wrap_plot_title</span><span class="p">(</span><span class="n">plot_title</span><span class="p">),</span>
-            <span class="n">x</span> <span class="o">=</span> <span class="mf">0.45</span><span class="p">,</span>
-            <span class="n">xanchor</span> <span class="o">=</span> <span class="s1">&#39;center&#39;</span><span class="p">,</span>
-            <span class="n">font</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+            <span class="n">x</span><span class="o">=</span><span class="mf">0.45</span><span class="p">,</span>
+            <span class="n">xanchor</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span>
+            <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
         <span class="p">),</span>
         <span class="n">height</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-        <span class="n">width</span> <span class="o">=</span><span class="mi">1200</span><span class="p">,</span>
+        <span class="n">width</span><span class="o">=</span><span class="mi">1200</span><span class="p">,</span>
         <span class="n">showlegend</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">legend</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
             <span class="n">orientation</span><span class="o">=</span><span class="s2">&quot;v&quot;</span><span class="p">,</span>
@@ -316,9 +380,31 @@
             <span class="n">font</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
         <span class="p">),</span>
         <span class="n">yaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">showticklabels</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
-            <span class="n">xaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">showticklabels</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
-            <span class="n">annotations</span><span class="o">=</span><span class="p">[]</span>
+        <span class="n">xaxis</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">showticklabels</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+        <span class="n">annotations</span><span class="o">=</span><span class="p">[]</span>
     <span class="p">)</span>
+
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    # kaleido set up appears to hang the kernel in output, but retaining as a record    </span>
+<span class="sd">    if output_filename:</span>
+<span class="sd">        ext = os.path.splitext(output_filename)[1].lower()</span>
+<span class="sd">    </span>
+<span class="sd">        if ext == &quot;.html&quot;:</span>
+<span class="sd">            fig.write_html(output_filename)</span>
+<span class="sd">        elif ext in [&quot;.png&quot;, &quot;.jpg&quot;, &quot;.jpeg&quot;, &quot;.svg&quot;, &quot;.pdf&quot;, &quot;.eps&quot;, &quot;.webp&quot;]:</span>
+<span class="sd">            try:</span>
+<span class="sd">                import kaleido  # Ensure kaleido is available</span>
+<span class="sd">                fig.write_image(output_filename, engine = &quot;kaleido&quot;)</span>
+<span class="sd">            except ImportError:</span>
+<span class="sd">                raise ImportError(</span>
+<span class="sd">                    f&quot;Kaleido is required for exporting to {ext} format. Install it using:\n\n    pip install -U kaleido&quot;</span>
+<span class="sd">                )</span>
+<span class="sd">        else:</span>
+<span class="sd">            raise ValueError(</span>
+<span class="sd">                f&quot;Unsupported file format: {ext}. Supported formats are: .html, .png, .jpg, .jpeg, .svg, .pdf, .eps, .webp&quot;</span>
+<span class="sd">            )</span>
+<span class="sd">  </span>
+<span class="sd">    &#39;&#39;&#39;</span>
 
     <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">output_filename</span><span class="p">:</span>
@@ -328,7 +414,7 @@
 
 <span class="c1"># refactoring on 2025-06-05</span>
 <div class="viewcode-block" id="assign_sankey_end_status">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.sankey.html#student_success.hazard_analysis.sankey.assign_sankey_end_status">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/sankey.html#student_success.hazard_analysis.sankey.assign_sankey_end_status">[docs]</a>
 <span class="k">def</span> <span class="nf">assign_sankey_end_status</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">target_major</span><span class="p">,</span> <span class="n">max_term</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inactivity_gap</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Assigns an &#39;end_status&#39; column for use in Sankey plots, marking the final state of each student.</span>
@@ -350,7 +436,7 @@
 <span class="sd">        - major_graduation</span>
 
 <span class="sd">    target_major : str</span>
-<span class="sd">        The abbreviation of the target major (e.g., &#39;BIO&#39;).</span>
+<span class="sd">        Abbreviation or code of the target major (e.g., &#39;7&#39;).</span>
 
 <span class="sd">    max_term : int, optional</span>
 <span class="sd">        The maximum term (YYYYMM format) used to evaluate inactivity. Defaults to max(df[&#39;demographics_term&#39;]).</span>
@@ -384,18 +470,19 @@
         <span class="p">)</span>
 
     <span class="c1"># Standardize terms</span>
-    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;standard_term&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">standardize_to_term_code</span><span class="p">)</span>
+    <span class="c1"># df[&#39;standard_term&#39;] = df[&#39;demographics_term&#39;].apply(standardize_to_term_code)</span>
 
     <span class="k">if</span> <span class="n">max_term</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">max_term</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-    <span class="n">max_term_standard</span> <span class="o">=</span> <span class="n">standardize_to_term_code</span><span class="p">(</span><span class="n">max_term</span><span class="p">)</span>
+    <span class="c1"># max_term_standard = standardize_to_term_code(max_term)</span>
 
     <span class="c1"># Graduation flags</span>
     <span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_graduation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">classify_graduation_status</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
     <span class="n">df</span><span class="p">[</span><span class="s1">&#39;flag_graduation_in_major&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">classify_graduation_in_major</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">target_major</span><span class="o">=</span><span class="n">target_major</span><span class="p">)</span>
 
     <span class="c1"># Get last standardized term and discipline by student</span>
-    <span class="n">last_term_by_student</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;student_ID&#39;</span><span class="p">)[</span><span class="s1">&#39;standard_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="c1"># last_term_by_student = df.groupby(&#39;student_ID&#39;)[&#39;standard_term&#39;].max()</span>
+    <span class="n">last_term_by_student</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;student_ID&#39;</span><span class="p">)[</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
     <span class="n">discipline_by_student</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;student_ID&#39;</span><span class="p">)[</span><span class="s1">&#39;discipline&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">last</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">classify</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
@@ -403,7 +490,8 @@
         <span class="n">last_term</span> <span class="o">=</span> <span class="n">last_term_by_student</span><span class="p">[</span><span class="n">sid</span><span class="p">]</span>
         <span class="n">discipline</span> <span class="o">=</span> <span class="n">discipline_by_student</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sid</span><span class="p">,</span> <span class="s1">&#39;Unknown Discipline&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;standard_term&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">last_term</span><span class="p">:</span>
+        <span class="c1"># if row[&#39;standard_term&#39;] != last_term:</span>
+        <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;demographics_term&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">last_term</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># Only classify in last term</span>
 
         <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;flag_graduation&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
@@ -414,7 +502,8 @@
 
         <span class="k">elif</span> <span class="n">calculate_semester_interval</span><span class="p">(</span>
             <span class="n">semester_A</span><span class="o">=</span><span class="n">last_term</span><span class="p">,</span>
-            <span class="n">semester_B</span><span class="o">=</span><span class="n">max_term_standard</span>
+            <span class="c1"># semester_B=max_term_standard</span>
+            <span class="n">semester_B</span><span class="o">=</span><span class="n">max_term</span>
         <span class="p">)</span> <span class="o">&gt;</span> <span class="n">inactivity_gap</span><span class="p">:</span>
             <span class="k">return</span> <span class="s1">&#39;Left College&#39;</span>
 
@@ -427,7 +516,7 @@
 
 
 <div class="viewcode-block" id="classify_sankey_discipline">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.sankey.html#student_success.hazard_analysis.sankey.classify_sankey_discipline">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/sankey.html#student_success.hazard_analysis.sankey.classify_sankey_discipline">[docs]</a>
 <span class="k">def</span> <span class="nf">classify_sankey_discipline</span><span class="p">(</span><span class="n">major_abbrev</span><span class="p">,</span> <span class="n">target_major</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Maps a major code to its Sankey discipline group, treating the target major as &#39;Target Major&#39;.</span>
@@ -457,7 +546,7 @@
 
 
 <div class="viewcode-block" id="extract_node_label">
-<a class="viewcode-back" href="../../../student_success.hazard_analysis.sankey.html#student_success.hazard_analysis.sankey.extract_node_label">[docs]</a>
+<a class="viewcode-back" href="../../../modules/hazard_analysis/sankey.html#student_success.hazard_analysis.sankey.extract_node_label">[docs]</a>
 <span class="k">def</span> <span class="nf">extract_node_label</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Extracts the discipline label from a Sankey node string.</span>

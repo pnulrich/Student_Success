@@ -41,10 +41,16 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../student_success.html">student_success package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/workflows.html">Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/examples.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html">student_success API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/index.html#indices-and-tables">Indices and tables</a></li>
 </ul>
 
         </div>
@@ -72,10 +78,56 @@
            <div itemprop="articleBody">
              
   <h1>Source code for student_success.utils.scrambler</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">scrambler.py</span>
+<span class="sd">============</span>
+
+<span class="sd">Utility functions for scrambling and unscrambling student IDs using a</span>
+<span class="sd">digit-to-character cipher.</span>
+
+<span class="sd">This module provides functions to anonymize student identifiers for</span>
+<span class="sd">research and reporting by replacing numeric digits (0–9) with characters</span>
+<span class="sd">from a user-defined cipher. IDs can be scrambled or unscrambled either</span>
+<span class="sd">individually (as strings) or in bulk (for pandas DataFrames with a</span>
+<span class="sd">`student_ID` column).</span>
+
+<span class="sd">Functions</span>
+<span class="sd">---------</span>
+<span class="sd">- scramble_ID : Scramble student IDs using a 10-character cipher.</span>
+<span class="sd">- unscramble_ID : Unscramble student IDs back to their original digits</span>
+<span class="sd">  using the same cipher.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">- The cipher must be a string of exactly 10 characters, mapping each digit</span>
+<span class="sd">  (0–9) to a substitute character.</span>
+<span class="sd">- Scrambling removes leading zeros from IDs before applying the cipher.</span>
+<span class="sd">- Never share or publish your cipher string; treat it as confidential data.</span>
+<span class="sd">- The scrambled IDs are deterministic: the same input and cipher will always</span>
+<span class="sd">  produce the same output.</span>
+<span class="sd">- If `input_data` is a DataFrame, the column `student_ID` must be present.</span>
+
+<span class="sd">Examples</span>
+<span class="sd">--------</span>
+<span class="sd">Scramble a single ID:</span>
+<span class="sd">&gt;&gt;&gt; scramble_ID(&quot;012345&quot;, &quot;abcdefghij&quot;)</span>
+<span class="sd">&#39;abcdefgh&#39;</span>
+
+<span class="sd">Scramble a DataFrame:</span>
+<span class="sd">&gt;&gt;&gt; scramble_ID(df, &quot;abcdefghij&quot;)</span>
+<span class="sd">DataFrame with scrambled student_ID column</span>
+
+<span class="sd">Unscramble back:</span>
+<span class="sd">&gt;&gt;&gt; unscramble_ID(&quot;abcdefgh&quot;, &quot;abcdefghij&quot;)</span>
+<span class="sd">&#39;012345&#39;</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
 
 <div class="viewcode-block" id="scramble_ID">
-<a class="viewcode-back" href="../../../student_success.utils.scrambler.html#student_success.utils.scrambler.scramble_ID">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/scrambler.html#student_success.utils.scrambler.scramble_ID">[docs]</a>
 <span class="k">def</span> <span class="nf">scramble_ID</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">cipher</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Scramble student IDs based on a digit-character cipher.</span>
@@ -114,7 +166,7 @@
 <span class="sd">    DataFrame with scrambled student_ID column</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cipher</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">10</span><span class="p">:</span> <span class="c1">#if student IDs at your institution have different # of unique characters, then adjust accordingly</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cipher</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">10</span><span class="p">:</span>  <span class="c1"># if student IDs at your institution have different # of unique characters, then adjust accordingly</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The cipher must have 10 characters!&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">None</span>
     <span class="k">else</span><span class="p">:</span>
@@ -153,7 +205,7 @@
 
 
 <div class="viewcode-block" id="unscramble_ID">
-<a class="viewcode-back" href="../../../student_success.utils.scrambler.html#student_success.utils.scrambler.unscramble_ID">[docs]</a>
+<a class="viewcode-back" href="../../../modules/utils/scrambler.html#student_success.utils.scrambler.unscramble_ID">[docs]</a>
 <span class="k">def</span> <span class="nf">unscramble_ID</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">cipher</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Unscramble student IDs that were scrambled using a digit-character cipher.</span>
