@@ -1,0 +1,26 @@
+name: studentsuccess-essentials
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Pin a broadly compatible Python (request earlier was 3.10.x)
+  - python=3.10
+  # Conda packages
+  - python-dotenv
+  - openpyxl
+  - aiohttp=3.8.5
+  - bokeh=3.6.0
+  - matplotlib=3.10.1
+  - numpy=1.26.4
+  - pandas=2.2.3
+  - plotly=6.0.1
+  - pydot=1.4.2
+  - pytest=6.2.5
+  - scipy=1.15.2
+  # (Optional) If your Markov diagrams need the DOT binary, uncomment:
+  - graphviz
+  # Pip fallback for packages not reliably available on conda
+  - pip
+  - pip:
+      - census==0.8.21
