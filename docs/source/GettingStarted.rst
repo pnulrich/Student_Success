@@ -4,181 +4,219 @@ Getting Started
    :maxdepth: 2
    :caption: Contents
 
+Ready to start using the Student Success tools?
+This guide will walk you through four things:
 
-
-
-Ready to start using the Student Success tools? This guide walks you through cloning the project, installing Python and required modules, setting environment variables, and importing your first dataset.
+1. Downloading the project
+2. Installing the software you need (using Miniconda)
+3. Setting up your project “environment”
+4. (optional) Opening the tools in JupyterLab
 
 Cloning the Project from GitHub
 -------------------------------
 
-To begin, clone the repository to your local machine:
+First, download the project to your computer.
+If you are comfortable with GitHub, you can clone the repository:
 
 .. code-block:: bash
 
    git clone https://github.com/pnulrich/HHMI_Student_Success.git
    cd HHMI_Student_Success
 
-Installing Python
------------------
+If you are not using GitHub, you can also download the project as a ZIP
+file from the GitHub page and unzip it to a folder on your computer.
+
+Installing Miniconda
+--------------------
+
+This project uses **Miniconda** to manage all the software you need.
+Think of Miniconda as a manager that installs the correct version of
+Python along with all the add-ons the project requires.
 
 .. admonition:: On Windows
 
-    1. **Download and install Python**:
-       - Go to the `https://www.python.org/downloads/`
-       - Download the latest version for Windows.
-       - Run the installer. **Ensure** the checkbox **“Add Python to PATH”** is selected.
+   1. Download Miniconda from: https://www.anaconda.com/download. You need a (free) account to access the download.
+   2. Choose the 64-bit installer for *All Users* (this puts it in ``C:\ProgramData\miniconda3``).
+   3. After installation, open **Anaconda Prompt** (installed with Miniconda).
 
-    2. **Verify installation**:
-       - Open Command Prompt (`Win + R`, then type `cmd`)
-       - Run:
+.. admonition:: On macOS
 
-    .. code-block:: bash
+   1. Download Miniconda from: https://www.anaconda.com/download. You need a (free) account to access the download.
+   2. Install into your home directory (default is ``~/miniconda3``).
+   3. Open **Terminal**.
 
-       python --version
+Update Miniconda to the latest version:
 
-.. admonition:: On Mac
+.. code-block:: bash
 
-   1. **Install Homebrew (if not already installed)**:
+   conda update -n base -c defaults conda
+
+Creating the Environment
+------------------------
+
+The Student Success tools run inside a **Conda environment**.
+An environment is a self-contained folder that holds everything this
+project needs to run: Python itself plus all the add-ons the code uses.
+This keeps the project separate from anything else on your computer.
+
+We split the setup into **two steps**:
+
+- ``environment_essential.yml``
+  Installs the core parts of Python needed for analysis.
+- ``environment_dev.yml``
+  Adds extras like JupyterLab, testing tools, and documentation support.
+  These are required if you want to open notebooks or contribute code.
+
+**Step 1: Essentials**
+
+.. code-block:: bash
+
+   conda env create -n student_success_dev -f environment_essential.yml
+
+**Step 2: Extended toolkit**
+
+.. code-block:: bash
+
+   conda env update -n student_success_dev -f environment_dev.yml
+
+
+Activating the Environment
+--------------------------
+
+Before you run anything, you need to **activate** the environment.
+Activating simply means “turn on the project setup” so Python uses the
+correct version and the right add-ons.
+
+.. code-block:: bash
+
+   conda activate student_success_dev
+
+You only need to do this once per session. After activation, you are
+inside the project environment.
+
+Check that everything is working:
+
+.. code-block:: bash
+
+   python -c "import pandas, dotenv; print('OK:', pandas.__version__)"
+
+You should see something like: ``OK: 2.2.x``.
+
+Troubleshooting
+---------------
+
+- **Command not found: conda**
+  On macOS, ensure Miniconda is installed in ``~/miniconda3`` (default),
+  or edit ``start_studentsuccess.sh`` and update ``CONDA_INIT`` to the
+  location of your installation.
+
+- **Windows can’t find activate.bat**
+  Switch the ``CONDA_ACTIVATE`` setting in the batch script to the correct path:
+  ``C:\ProgramData\miniconda3\Scripts\activate.bat`` (all users) or
+  ``%UserProfile%\miniconda3\Scripts\activate.bat`` (per-user).
+
+- **Spaces in Windows paths** → If Miniconda is installed under a path with spaces (e.g. ``C:\Users\My User Name``), you may see warnings.
+  These can usually be ignored, but for stability it is best to install Miniconda in a path without spaces (e.g. ``C:\miniconda3``).
+
+- **Notebook extension errors** → Notebook extension errors → This project supports Notebook 7 and JupyterLab 4.
+  Legacy Notebook 6 extensions (e.g. jupyter_contrib_nbextensions) are not compatible and should not be installed.
+
+
+Optional Research and Developmental Resources
+---------------------------------------------
+
+JupyterLab
+++++++++++
+
+Part of the developer setup installs **JupyterLab**, which is a great workspace for you
+to begin using the Student Success toolkit. JupyterLab is an interactive
+environment that you can think of like a laboratory notebook where you can
+record your process, run code, store results,view figures, and provide commentary.
+JupyterLab documents are called *notebook* files (``.ipynb``).
+
+As a convenience, we provide instructions for setting up and launching
+JupyterLab. Because of the diversity in configurations and operating systems,
+setup may require you to do some trouble-shooting to get started, but it's worth
+it!
+
+.. note::
+
+   JupyterLab is part of the **developer requirements**. You must
+   complete both steps (essentials + dev) before this will work.
+
+
+
+Launching JupyterLab
+^^^^^^^^^^^^^^^^^^^^
+To open JupyterLab in the notebooks folder:
+
+.. code-block:: bash
+
+   cd jupyter_notebooks
+   jupyter lab
+
+Starting JupyterLab the Easy Way
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+We provide simple launch scripts that open a terminal, activate the
+project environment, and start JupyterLab in the notebooks folder.
+
+Windows
+~~~~~~~
+
+1. Double-click ``start_studentsuccess.bat`` inside the project folder.
+2. A terminal window opens, the environment is activated, and JupyterLab launches.
+
+.. note::
+
+   If Miniconda was installed per-user (not all users), you may need to edit
+   the first lines of ``start_studentsuccess.bat`` and set:
+
+   ``set CONDA_ACTIVATE="%UserProfile%\miniconda3\Scripts\activate.bat"``
+
+macOS
+~~~~~
+
+1. Open **Terminal** and navigate to the project folder where
+   ``start_studentsuccess.sh`` is located.
+
+2. The first time only, make the script executable:
 
    .. code-block:: bash
 
-      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+      chmod +x start_studentsuccess.sh
 
-   2. **Install Python using Homebrew**:
+   This tells macOS that the file can be run as a program.
 
-   .. code-block:: bash
-
-      brew install python
-
-   3. **Verify installation**:
+3. Launch JupyterLab by running:
 
    .. code-block:: bash
 
-      python --version
+      ./start_studentsuccess.sh
 
-Setting up a Virtual Environment and Installing Required Python Modules
-----------------------------------
+4. JupyterLab will open in your browser and the terminal will stay active
+   for this session.
 
-I recommend that you work within a Python virtual environmnent.
+.. note::
 
-1. **Ensure you're in a virtual environment** (optional but recommended):
-
-   .. code-block:: bash
-
-      python -m venv venv
-      source venv/bin/activate   # On Windows use: venv\Scripts\activate
-
-2. **Navigate to the student_success subfolder and install essential packages requirements_essential.txt**:
-
-   .. code-block:: bash
-
-      pip install -r requirements_essential.txt
-
-3. **Test module import**:
-
-   .. code-block:: python
-
-      import pandas
-      import numpy
-      import student_success
-
-Setting Up the Cipher Environment Variable
-------------------------------------------
-
-1. **Student ID's frequently need to be anonymized to protect identity, and a tool is provided to help you handle this.
-This will rely on a cipher that *only* you know. It can be stored on your local workstation as an environmental variable
-('STUDENT_SUCCESS_CIPHER`) and should *not* be hard-coded or posted anywhere.
-
-.. admonition:: Windows Environment Variable Setup
-
-    1. Control Panel → System and Security → System
-    2. Click *Advanced system settings*
-    3. Under *System Variables*, click **New**
-        - Name: `STUDENT_SUCCESS_CIPHER`
-        - Value: (an alphanumeric cipher the same length as your student IDs)
-
-.. admonition:: Mac and Linus Environment Variable Setup
-
-    1. Open .bash_profile
-
-    .. code-block:: bash
-
-       nano ~/.bash_profile
-
-    2. Add this line:
-
-    .. code-block:: bash
-
-       export STUDENT_SUCCESS_CIPHER="your_cipher_here"
-
-    3. Then run:
-
-    .. code-block:: bash
-
-       source ~/.bash_profile
-
-Importing and Preparing Your Data
----------------------------------
-Institutions use different conventions for naming of variables and codes for different categories. You will need to align
-your column names and category codes to variable names used with the Student Success package. We provide tools to rapidly
-rename your columns and codes.
+   If you see an error like ``conda: command not found``, edit the script and
+   check the ``CONDA_INIT`` setting points to your Miniconda installation.
+   The default is ``~/miniconda3/etc/profile.d/conda.sh``.
 
 
-1. **Update your variable name mappings**:
-    - Open `HHMI_IE3_codebook.xlsx`
-    - Update `variable_name_institution` values with the column names from your dataset.
+PyCharm
++++++++
 
-2. **Update categorical codes in the python dictionaries in utils.constants.py**:
-    - Open student_success/utils/constants.py
-    - There are many different categories, lists, and maps in constants.py, not all of which may be relevant to your analyses.
-These include demographics, major codes, major names, and color maps for various visualization tools. As a starting place,
-I suggest working with the dictionaries for lookup of sex and PEER status to become familiar with how they are used. Adjust
-used in your institution by changing the number or character associated with that variable name.
+PyCharm is an integrated development environment (IDE) like VSCode. IDEs are indispensable tools for development because
+they provide a one-stop shop for coding, finding errors, and version control. Academic users should consider the free
+licensing options available to them.
 
-2. **Open a python terminal, load some data, and rename your columns and anonymize student_ID's**:
+If you are using PyCharm, you can use your conda environment as follows:
 
-   .. code-block:: python
+1. Go to **File > Settings > Project > Python Interpreter**.
+2. Select **Add Interpreter > Conda Environment > Existing**.
+3. Browse to the Python program inside your new environment:
 
-      import os
+   - **Windows**: ``C:\Users\<your username>\.conda\envs\student_success_dev\python.exe``
+   - **macOS**: ``~/miniconda3/envs/student_success_dev/bin/python``
 
-      import pandas as pd
-      import sys
-
-      # Make sure your path is such that Python knows where to find the student_success packages
-      sys.path.append("..") # this path works if you launched your python terminal from HHMI_student_success/student_success
-      # if you opened your python terminal from HHMI_student_success, then delete the line above and uncomment the one below
-      # sys.path.append(".")
-
-      from student_success.utils.io_utils import rename_columns_in_bulk
-      from student_success.utils.scrambler import scramble_ID
-
-      column_mapping_filepath = "HHMI_IE3_codebook.xlsx"
-      data_filepath = "path_to_your_data.csv" # replace this with the path for your local datafile
-
-      dataset_df = pd.read_csv(data_filepath)
-      print(f"The columns in your dataset are {dataset_df.columns}")
-
-      dataset_df = rename_columns_in_bulk(df = dataset_df, column_mapping_filepath=column_mapping_filepath)
-      dataset_df = scramble_ID(dataset_df, cipher=os.environ['STUDENT_SUCCESS_CIPHER'])
-
-3. **Check that column names were changed**:
-
-   .. code-block:: python
-
-      print(list(dataset_df))
-
-Next Steps
-----------
-
-You are now ready to explore the modules within `student_success`, including:
-
-- `metrics` for graduation and retention flags
-- `hazard_analysis` for modeling time-based transitions
-- `markov_diagrams` for visualizing course flows
-- `utils` for I/O, time, and demographic utilities
-
-Troubleshooting and Questions
------------------------------
-
-Errors are a normal part of setup. For help, reach out to us on GitHub and definitely consider using ChatGPT for debugging errors!
