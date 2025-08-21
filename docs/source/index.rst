@@ -23,7 +23,7 @@ We encourage you to begin by exploring our User Guide for guidance on installati
    :maxdepth: 2
    :caption: User Guide
 
-   GettingStarted
+   user_guide/GettingStarted
    user_guide/workflows
    user_guide/examples
 

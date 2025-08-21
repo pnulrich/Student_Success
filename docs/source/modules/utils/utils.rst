@@ -9,10 +9,11 @@ of time values, grade processing, and general helper routines across the package
    :maxdepth: 1
    :caption: Modules
 
-   Constants        <constants>
-   Grade Utilities  <grade_utils>
-   Input/Output     <io_utils>
-   Matriculation    <matriculation_utils>
-   Deidentification <scrambler>
-   Time Utilities   <time_utils>
-   Validation       <validation>
+   Constants                <constants>
+   Demographics Utilities   <demographics_utils>
+   Grade Utilities          <grade_utils>
+   Input/Output             <io_utils>
+   Matriculation            <matriculation_utils>
+   Deidentification         <scrambler>
+   Time Utilities           <time_utils>
+   Validation               <validation>
