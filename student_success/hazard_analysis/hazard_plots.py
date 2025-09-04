@@ -48,7 +48,7 @@ Quick Example
 
 
 import matplotlib.pyplot as plt
-from bokeh.plotting import figure, show
+from bokeh.plotting import figure, show, save, output_file
 from bokeh.models import ColumnDataSource, ColorBar
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Viridis256
@@ -270,9 +270,8 @@ def plot_course_heatmap(
         number_top_courses=5,
         minimum_student_number=100,
         minimum_proportion_active_students=0.02,
-        save_file: bool = False, # not yet implemented; saving bokeh figures requires selenium and a headless browser driven via geckodriver or chromedrive
-        file_name: str | None = None,
-        dpi: int = 300):
+        save_file: bool = False, # export to PNG or SVG not yet implemented; saving bokeh figures requires selenium and a headless browser driven via geckodriver or chromedrive
+        file_name: str | None = None):
     """
     Plot a heatmap of the proportion of active students enrolled in top courses over time.
 
@@ -350,8 +349,14 @@ def plot_course_heatmap(
     color_bar = ColorBar(color_mapper=color_mapper['transform'], width=8, location=(0, 0))
     p.add_layout(color_bar, 'right')
 
-    show(p)
-
+    if save_file:
+        if file_name.endswith(".html"):
+            # Save as interactive HTML
+            save(p, filename=file_name)
+        else:
+            raise ValueError("Only export to .html is supported")
+    else:
+        show(p)
 
 
 def plot_cumulative_probability(
