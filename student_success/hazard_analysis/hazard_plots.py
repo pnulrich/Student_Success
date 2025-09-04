@@ -60,8 +60,10 @@ def plot_hazard_ratio(
         target_major,
         min_academic_year,
         max_academic_year,
-        max_semester_number=None
-):
+        max_semester_number=None,
+        save_file: bool = False,
+        file_name: str | None = None,
+        dpi: int = 300):
     """
     Plot hazard ratios for student outcomes by semester (lines) with active student counts (bars).
 
@@ -151,7 +153,14 @@ def plot_hazard_ratio(
                fontsize=12)
 
     plt.tight_layout()
-    plt.show()
+
+    if save_file:
+        if file_name is None:
+            file_name = f"hazard_{target_major}.png"
+        plt.savefig(file_name, dpi=dpi, bbox_inches="tight")
+        plt.show()
+    else:
+        plt.show()
 
 
 def prepare_course_heatmap_data(filtered_df, target_major, min_academic_year, max_academic_year, number_top_courses=5,
@@ -261,7 +270,9 @@ def plot_course_heatmap(
         number_top_courses=5,
         minimum_student_number=100,
         minimum_proportion_active_students=0.02,
-):
+        save_file: bool = False, # not yet implemented; saving bokeh figures requires selenium and a headless browser driven via geckodriver or chromedrive
+        file_name: str | None = None,
+        dpi: int = 300):
     """
     Plot a heatmap of the proportion of active students enrolled in top courses over time.
 
@@ -342,6 +353,7 @@ def plot_course_heatmap(
     show(p)
 
 
+
 def plot_cumulative_probability(
         cumulative_df,
         target_major,
@@ -351,8 +363,10 @@ def plot_cumulative_probability(
         max_semester_number,
         bar_chart_metric="avg_semester_courses_target_major",
         bar_chart_label=None,
-        y_label="Cumulative Probability"
-):
+        y_label="Cumulative Probability",
+        save_file: bool = False,
+        file_name: str | None = None,
+        dpi: int = 300):
     """
     Plot cumulative probabilities of student outcomes by semester with an accompanying bar chart.
     This function visualizes cumulative probabilities of outcomes (e.g., leaving, graduating)
@@ -472,4 +486,10 @@ def plot_cumulative_probability(
                fontsize=12)
 
     plt.tight_layout()
-    plt.show()
+    if save_file:
+        if file_name is None:
+            file_name = f"cumulative_probability_{target_major}.png"
+        plt.savefig(file_name, dpi=dpi, bbox_inches="tight")
+        plt.show()
+    else:
+        plt.show()
