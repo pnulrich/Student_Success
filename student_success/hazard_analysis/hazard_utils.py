@@ -123,8 +123,6 @@ def prepare_hazard_data(df,
     ...     df, "BIO", transfer_credit_max=30, transfer_credit_min=10,
     ...     fall_start=1, academic_year_min=2010, academic_year_max=2024
     ... )
-    [INFO] 100 students started in BIO with 10–30 transfer credits.
-    [INFO] 75 students began in Fall terms.
     """
 
     # Confirm that essential fields are present in the input dataframe
@@ -391,8 +389,6 @@ def prepare_and_process_data(student_major_data_df,
         academic_year_min=academic_year_min,
         academic_year_max=academic_year_max
     )
-
-    print(filtered_df['major_term'].unique())
 
     # Normalize major_graduation to parsed tuples
     filtered_df['major_graduation'] = filtered_df['major_graduation'].apply(safe_parse_tuple)
