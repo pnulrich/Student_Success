@@ -20,12 +20,12 @@ Four subpackages constitute the core of the ``student_success`` package.
 We encourage you to begin by exploring our User Guide for guidance on installation and use cases.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: User Guide
 
    user_guide/GettingStarted
    user_guide/workflows
-   user_guide/examples
+   user_guide/examples/index
 
 .. toctree::
    :maxdepth: 2

@@ -1,5 +1,5 @@
 student_success API
-=============
+===================
 
 The `student_success` package is organized into subpackages for hazard analysis,
 Markov diagram generation, metrics, and general utilities.
