@@ -318,8 +318,8 @@ RETENTION_OUTCOME_LABEL_DICT = {v: k for k, v in RETENTION_OUTCOME_CODE_DICT.ite
 # Keys: Major abbreviations – safe to adjust to include additional majors.
 # Values: Simplified grouping labels – safe to customize.
 SANKEY_DISCIPLINE_GROUPS = {
-    'BIO': 'Target Major',
-    'NEUR': 'STEM-Related',
+    'BIO': 'Other STEM',
+    'NEUR': 'Other STEM',
     'CHM': 'Other STEM',
     'CSC': 'STEM-Related',
     'PSY': 'Non-STEM',
