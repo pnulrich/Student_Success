@@ -211,7 +211,7 @@ def get_earliest_major(df):
 def course_sequence_analysis(course_sequence, df, major_matriculation_column='major_term_earliest',
                              target_major_code=None, node_pie=False, demographics_flag_col=None):
     """
-    Generates a flow diagram showing student progression through a sequence of courses.
+    Generates a flow diagram showing student progression through one or more courses in a sequence.
 
     The diagram includes labeled nodes and edges representing outcomes and transitions,
     with optional pie chart embeddings to visualize demographic breakdowns.
@@ -219,7 +219,7 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column='ma
     Parameters
     ----------
     course_sequence : list of str
-        Ordered list of course titles to include in the sequence.
+        Ordered list of one or more course titles to include in the sequence.
     df : pandas.DataFrame
         Dataset containing course attempts, grades, and demographics.
     major_matriculation_column : str, optional
@@ -272,7 +272,31 @@ def course_sequence_analysis(course_sequence, df, major_matriculation_column='ma
 
         print(f"Index: {index}, is_last: {is_last}, is_first: {is_first}")
 
-        if is_first and not is_last:
+        if is_first and is_last:
+            # --- Single course only ---
+            descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=node_pie))
+            pie_data = None
+            if node_pie:
+                pie_data = {
+                    "course": descriptives.get("first_attempt_demographic_proportions"),
+                    "DFW": descriptives.get("first_DFW_demographic_proportions")
+                }
+
+            nodes = create_course_nodes(
+                course_name,
+                include_did_not_take_next=include_did_not_take,  # could be set explicitly to False, but redundant because already evaluated to False earlier
+                node_pie=node_pie,
+                pie_data=pie_data,
+                graph=graph
+            )
+            for node in nodes.values():
+                graph.add_node(node)
+
+            # add_course_edges(graph, nodes, descriptives, include_did_not_take_next=False)
+            # previous_pass_node = nodes['pass']
+
+        elif is_first and not is_last:
+            # this case occurs when there are more than one course, and we are dealing with the first in the sequence
             if node_pie:
                 descriptives = analyze_course(course_name, df, **filter_kwargs(include_node_pie=True))
                 pie_data = {
