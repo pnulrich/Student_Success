@@ -46,13 +46,13 @@ Quick Example
 >>> hazard_plots.plot_cumulative_probability(probs, title="Cumulative Outcomes")
 """
 
-
+import os
 import matplotlib.pyplot as plt
 from bokeh.plotting import figure, show, save, output_file
 from bokeh.models import ColumnDataSource, ColorBar
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Viridis256
-
+from bokeh.resources import CDN
 
 def plot_hazard_ratio(
         proportions_df,
@@ -352,7 +352,12 @@ def plot_course_heatmap(
     if save_file:
         if file_name.endswith(".html"):
             # Save as interactive HTML
-            save(p, filename=file_name)
+            save(
+                p,
+                filename=file_name,
+                title='Course Heatmap',
+                resources=CDN) # loads bokeh JS and CSS from https//cdn.bokeh.org
+            print(f"[INFO] Saved heatmap to: {os.path.abspath(file_name)}")
         else:
             raise ValueError("Only export to .html is supported")
     else:
