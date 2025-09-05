@@ -420,7 +420,7 @@ def classify_graduation_in_major(df, major_col='major_graduation', target_major=
     return df.apply(flag_graduated_in_target, axis=1).astype(int)
 
 
-def classify_graduation_in_first_major(df, major_col='major_graduation', reference_col='major_term_earliest_bachelors',
+def classify_graduation_in_first_major(df, major_col='major_graduation', reference_col=None,
                                        pre_major_conversion = False):
     """
     Flags students whose graduation includes their originally declared major.
@@ -433,6 +433,19 @@ def classify_graduation_in_first_major(df, major_col='major_graduation', referen
     Returns:
         pd.Series: Binary flag (1 = graduated in first major, 0 = otherwise)
     """
+
+    # Auto-select the reference column if not explicitly provided
+    if reference_col is None:
+        if 'major_term_earliest_bachelors' in df.columns:
+            reference_col = 'major_term_earliest_bachelors'
+        elif 'major_term_earliest' in df.columns:
+            reference_col = 'major_term_earliest'
+        else:
+            raise ValueError(
+                "No earliest-major reference column found. "
+                "Expected one of: 'major_term_earliest_bachelors' or 'major_term_earliest', "
+                "or pass `reference_col=` explicitly."
+            )
     def flag_graduated_in_first_major(row):
         if pre_major_conversion:
             graduation_majors = safe_parse_tuple(row[major_col])
