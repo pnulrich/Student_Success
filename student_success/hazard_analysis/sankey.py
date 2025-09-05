@@ -38,10 +38,6 @@ Notes
 Quick Example
 -------------
 >>> from student_success.hazard_analysis import sankey
->>> # Assume `df` is a student-term DataFrame with majors and outcomes
->>> df['discipline'] = df['major_term'].apply(
-...     lambda m: sankey.classify_sankey_discipline(m, target_major="BIO")
-... )
 >>> df = sankey.assign_sankey_end_status(df, target_major="BIO")
 >>> sankey.create_sankey_plot(
 ...     data=df,
@@ -114,7 +110,13 @@ def wrap_plot_title(title, max_length=75):
     return title[:break_index] + "<br>" + title[break_index+1:]
 
 
-def create_sankey_plot(data, target_major, plot_title, output_filename=None, target_major_name=None):
+def create_sankey_plot(
+        data,
+        target_major,
+        plot_title,
+        output_filename=None,
+        target_major_name=None
+):
     """
     Generates a Sankey diagram showing longitudinal student flows by discipline and final outcome.
 
@@ -181,6 +183,13 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
         for disc in unique_disciplines:
             if disc not in nodes:
                 nodes.append(f"{disc} - Sem {sem}")
+
+    # ensure that all end status options are given nodes
+    discipline_end_statuses = set(data['end_status'].dropna()) - set(end_statuses)
+    for status in discipline_end_statuses:
+        if status not in nodes:
+            nodes.append(status)
+
 
     # Build flow links
     links = {'source': [], 'target': [], 'value': [], 'color': [], 'students': []}
@@ -320,7 +329,7 @@ def create_sankey_plot(data, target_major, plot_title, output_filename=None, tar
 
     fig.show()
     if output_filename:
-        fig.write_html(output_filename)
+        fig.write_html(output_filename, include_plotlyjs="cdn")
 
 
 # refactoring on 2025-06-05
@@ -445,6 +454,8 @@ def classify_sankey_discipline(major_abbrev, target_major):
     Mapping is based on SANKEY_DISCIPLINE_GROUPS defined in utils.constants.
     """
 
+    # SANKEY_DISCIPLINE_GROUPS does not contain a target major value. This is intentional and
+    # enforces separation of concerns.
     if major_abbrev == target_major:
         return 'Target Major'
     return SANKEY_DISCIPLINE_GROUPS.get(major_abbrev, 'Unknown')
