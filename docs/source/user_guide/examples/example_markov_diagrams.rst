@@ -1,6 +1,3 @@
-Examples
-========
-
 Creating Markov Diagrams
 ------------------------
 This example shows how to generate a two–course Markov diagram using a fake dataset included with the documentation.
@@ -100,6 +97,38 @@ We will use set_up_demographic_flags() from utils.demographics_utils to do this.
 We're read to build our Markov diagram! We will focus on chemistry majors, and our final graph will display the sex proportions
 at key nodes. (Don't want pie charts included? Set node_pie to False.) You can export your figures to png as desired.
 
+First, let's limit the graph to biology majors taking the first course in the chemistry sequence. The connections between
+nodes are called edges. Edge labels indicate proportion of students moving through the path, and absolute numbers are
+given in parenthesis. In this graph, note that 14% of students had grades of DFW in their first attempt. This represents 41
+of the original 292 students in the course. The pie charts represent the proportion of females (green) and males (blue)
+in nodes. Pie chart colors can be customized in ``utils.constants.DEMOGRAPHIC_COLOR_MAPS``.
+
+.. code-block:: python
+
+    target_major = "BIO"
+
+    sequence = [
+        "Introductory Chemistry I"
+    ]
+
+    graph = course_sequence_analysis(
+        course_sequence=sequence,
+        df=chem1_chem2_attempts_df,
+        major_matriculation_column="major_term_earliest",
+        target_major_code=target_major,
+        node_pie=True,
+        demographics_flag_col="flag_sex",
+    )
+
+
+.. image:: /_static/figures/example_markov_one_course.png
+   :alt: single course, markov diagram example
+   :align: center
+   :width: 600px
+
+You can expand to two or more courses by adding subsequent courses to the sequence list. The order in the sequence
+is important and should be listed  in order they must be taken by students.
+
 .. code-block:: python
 
    target_major = "CHM"
@@ -118,7 +147,7 @@ at key nodes. (Don't want pie charts included? Set node_pie to False.) You can e
      demographics_flag_col="flag_sex",
    )
 
-.. image:: /_static/figures/markov_example.png
-   :alt: Example Markov diagram
+.. image:: /_static/figures/example_markov_two_courses.png
+   :alt: multi-course, markov example
    :align: center
    :width: 600px
