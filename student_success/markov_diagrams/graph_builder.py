@@ -1,7 +1,4 @@
 """
-graph_builder.py
-================
-
 Graph construction utilities for visualizing course sequences and student outcomes.
 
 This module provides helper functions to generate flow diagrams of course progression
@@ -9,8 +6,8 @@ using ``pydot`` and ``matplotlib``. Nodes represent courses and outcomes (Pass, 
 and edges are labeled with performance statistics. Optional demographic pie charts can be
 embedded within nodes to show subgroup composition.
 
-Functions include:
-------------------
+Functions
+---------
 - ``create_course_nodes`` :
     Build course and outcome nodes, optionally embedding demographic pie charts.
 - ``add_course_edges`` :

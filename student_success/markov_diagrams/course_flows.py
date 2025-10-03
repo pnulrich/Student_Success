@@ -1,7 +1,4 @@
 """
-course_flows.py
-===============
-
 Analysis utilities for course progression, repeat patterns, and prerequisite pathways.
 
 This module provides functions to quantify how students flow through key gateway courses,
@@ -9,8 +6,8 @@ including repeat attempts, success/failure rates, progression to sequenced cours
 alternate entry points. Designed for use in building course-flow visualizations and
 informing curriculum analysis.
 
-Functions include:
-------------------
+Functions
+---------
 - ``analyze_course`` :
     Summarize first/second attempt outcomes, repeat rates, and (optionally) demographic
     breakdowns for a single course.

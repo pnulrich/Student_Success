@@ -1,7 +1,4 @@
 """
-validation.py
-=============
-
 Utility functions for validating DataFrame structure and safely parsing
 tuple-like values in the student success framework.
 

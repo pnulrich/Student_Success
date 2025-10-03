@@ -1,6 +1,4 @@
 """
-demographics_utils.py
-
 Utilities for creating standardized demographic flags and extracting
 first-term demographic records in the student_success package.
 

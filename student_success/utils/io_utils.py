@@ -1,6 +1,4 @@
 """
-io_utils.py
-
 Utilities for loading, concatenating, and renaming data files in the
 student_success package.
 

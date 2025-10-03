@@ -1,7 +1,4 @@
 """
-time_utils.py
-=============
-
 Utility functions for handling academic term codes, semester intervals, and
 chronological ordering of student records.
 

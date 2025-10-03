@@ -1,6 +1,4 @@
 """
-constants.py
-
 Centralized definitions for classification, labeling, and visualization
 in the student_success package.
 

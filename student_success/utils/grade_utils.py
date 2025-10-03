@@ -1,6 +1,4 @@
 """
-grade_utils.py
-
 Utilities for cleaning, simplifying, converting, and filtering course grades
 in the student_success package.
 

@@ -1,6 +1,4 @@
 """
-scrambler.py
-============
 
 Utility functions for scrambling and unscrambling student IDs using a
 digit-to-character cipher.

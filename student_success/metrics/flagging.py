@@ -1,7 +1,4 @@
 """
-flagging.py
-===========
-
 Functions to assign categorical flags for student retention, dropout, and
 graduation status. These utilities provide a consistent framework for
 deriving binary and categorical indicators that support longitudinal

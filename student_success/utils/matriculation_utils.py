@@ -3,8 +3,6 @@ import numpy as np
 from student_success.utils.validation import validate_columns
 
 """
-matriculation_utils.py
-
 (DEPRECATED) Utilities for handling matriculation term fields in Banner
 or similar student information systems.
 
