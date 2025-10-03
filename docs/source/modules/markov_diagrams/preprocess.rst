@@ -4,24 +4,15 @@ Markov Preprocessing Module
 Data preparation functions for cleaning course attempt records,
 limiting attempts, and excluding unnecessary repeats.
 
-.. automodule:: student_success.markov_diagrams.preprocess
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. currentmodule:: student_success.markov_diagrams.preprocess
 
-Contents
---------
+.. autosummary:: student_success.markov_diagrams.preprocess
+   :nosignatures:
 
-.. autosummary::
-     :toctree: generated/
-     :recursive:
-
-    student_success.markov_diagrams.preprocess.limit_attempts
-    student_success.markov_diagrams.preprocess.exclude_unnecessary_subsequent_attempts
-    student_success.markov_diagrams.preprocess.prepare_course_attempts
-
-API Documentation
------------------
+   # no :toctree: → generates no sidebar children
+   exclude_unnecesary_subsequent_attempts
+   limit_attempts
+   prepare_course_attempts
 
 .. automodule:: student_success.markov_diagrams.preprocess
    :members:

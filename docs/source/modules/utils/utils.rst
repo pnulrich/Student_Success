@@ -12,6 +12,7 @@ of time values, grade processing, and general helper routines across the package
    Constants                <constants>
    Demographics Utilities   <demographics_utils>
    Grade Utilities          <grade_utils>
+   Program Utilities        <program_utils>
    Input/Output             <io_utils>
    Matriculation            <matriculation_utils>
    Deidentification         <scrambler>

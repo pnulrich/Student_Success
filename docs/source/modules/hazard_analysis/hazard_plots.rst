@@ -1,30 +1,16 @@
 Hazard Plots Module
 ===================
 
-Functions for visualizing hazard analysis results, including hazard ratios,
-cumulative probabilities, and course enrollment heatmaps.
-
-.. automodule:: student_success.hazard_analysis.hazard_plots
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Contents
-________
+.. currentmodule:: student_success.hazard_analysis.hazard_plots
 
 .. autosummary::
-    :toctree: generated/
-    :recursive:
+   :nosignatures:
 
-   student_success.hazard_analysis.hazard_plots.plot_hazard_ratio
-   student_success.hazard_analysis.hazard_plots.plot_cumulative_probability
-   student_success.hazard_analysis.hazard_plots.plot_course_heatmap
-   student_success.hazard_analysis.hazard_plots.prepare_course_heatmap_data
-
-API Documentation
-_________________
+   # no :toctree: → generates no sidebar children
+   plot_hazard_ratio
+   plot_cumulative_probability
+   plot_course_heatmap
+   prepare_course_heatmap_data
 
 .. automodule:: student_success.hazard_analysis.hazard_plots
-   :members:
-   :undoc-members:
-   :show-inheritance:
+

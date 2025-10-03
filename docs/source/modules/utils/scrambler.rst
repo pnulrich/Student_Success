@@ -1,5 +1,5 @@
-Deidentification Module
-=======================
+Deidentication Module
+=====================
 
 Utility functions for anonymizing student identifiers via scrambling.
 

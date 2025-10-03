@@ -1,10 +1,14 @@
-Creating Markov Diagrams
-------------------------
+.. toctree::
+   :hidden:
+   :maxdepth: 1
+
+Markov Diagram Walkthrough
+--------------------------
 This example shows how to generate a two–course Markov diagram using a fake dataset included with the documentation.
 The data file is located at ``examples/data/demonstration_datafile_markov.csv``
 
-Walkthrough
-^^^^^^^^^^^
+Loading Libraries and Sample Data
++++++++++++++++++++++++++++++++++
 
 Import various packages and load the demo datafile into a pandas dataframe. Make sure your current working directory is
 root directory of the student_success project.
@@ -19,6 +23,9 @@ root directory of the student_success project.
    # Load demonstration dataset
    demo_path = "docs/examples/data/demonstration_datafile_markov.csv"
    demo_df = pd.read_csv(demo_path)
+
+Data Processing
++++++++++++++++
 
 The datafile contains several different classes, but we are only interested in the introductory chemistry sequence. In our dataset,
 these course numbers are CHEM1211 and CHEM1212. Filter demo_df to create a dataframe for each course.
@@ -41,6 +48,7 @@ these course numbers are CHEM1211 and CHEM1212. Filter demo_df to create a dataf
    # graphing functions expect the term column to be named 'course_term'
    chem1_df = chem1_df.rename({'demographics_term': 'course_term'}, axis=1)
    chem2_df = chem2_df.rename({'demographics_term': 'course_term'}, axis=1)
+
 Some pre-processing should be performed prior to creating the diagram. By giving descriptive titles to the courses, our diagrams will be labeled well.
 The example dataset uses +/- grading scales so we use the letter_grade_simplify() utility to strip these.
 
@@ -94,6 +102,10 @@ We will use set_up_demographic_flags() from utils.demographics_utils to do this.
 
    chem1_chem2_attempts_df = set_up_demographic_flags(df = chem1_chem2_attempts_df, peer = True, sex = True)
 
+
+Plotting
+++++++++
+
 We're read to build our Markov diagram! We will focus on chemistry majors, and our final graph will display the sex proportions
 at key nodes. (Don't want pie charts included? Set node_pie to False.) You can export your figures to png as desired.
 
@@ -124,7 +136,7 @@ in nodes. Pie chart colors can be customized in ``utils.constants.DEMOGRAPHIC_CO
 .. image:: /_static/figures/example_markov_one_course.png
    :alt: single course, markov diagram example
    :align: center
-   :width: 600px
+   :width: 450px
 
 You can expand to two or more courses by adding subsequent courses to the sequence list. The order in the sequence
 is important and should be listed  in order they must be taken by students.
