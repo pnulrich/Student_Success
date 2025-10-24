@@ -1,7 +1,4 @@
 """
-program_utils.py
-================
-
 Utility functions for handling major abbreviations, full names, and discipline
 classifications.
 
@@ -16,6 +13,7 @@ academic program codes. Functions include:
   and their mature equivalents are treated consistently.
 
 The mappings used here are defined in ``student_success.utils.constants``:
+
 - ``MAJOR_ABBREV_TO_LABEL`` provides human-readable names for major abbreviations.
 - ``MAJOR_TO_DISCIPLINE_DICT`` maps abbreviations to discipline categories.
 - ``PREMAJOR_TO_MAJOR_DICT`` defines how premajors are converted to their
@@ -76,6 +74,7 @@ def lookup_major_name(major, pre_major_conversion=False):
     full name of the major using a predefined dictionary `majors_dict`. If the
     abbreviation is not found in the dictionary, the function returns 'Other'.
     If the input is missing (NaN), it returns NaN.
+
     Parameters:
     -----------
     major : str or NaN
@@ -87,6 +86,7 @@ def lookup_major_name(major, pre_major_conversion=False):
         The full name of the major corresponding to the abbreviation. Possible
         return values include the full names like 'Biology', 'Computer Science',
         'Psychology', 'Other', or NaN (for missing values).
+
     Notes:
     --------
     Full names are determined by the `MAJOR_ABBREV_LABEL` dictionary.
@@ -112,6 +112,7 @@ def replace_premajor_abbreviations(major):
     abbreviation of the "mature" major using a predefined dictionary `PREMAJOR_TO_MAJOR_DICT`. If the
     abbreviation is not found in the dictionary, the function returns major.
     If the input is missing (NaN), it returns NaN.
+
     Parameters:
     -----------
     major : str or NaN
