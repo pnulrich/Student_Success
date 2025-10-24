@@ -289,8 +289,9 @@ def create_sankey_plot(
             xanchor='center',
             font=dict(size=20)
         ),
-        height=1000,
-        width=1200,
+        # height=1000,
+        # width=1200,
+        autosize=True,
         showlegend=True,
         legend=dict(
             orientation="v",
@@ -329,7 +330,12 @@ def create_sankey_plot(
 
     fig.show()
     if output_filename:
-        fig.write_html(output_filename, include_plotlyjs="cdn")
+        fig.write_html(
+            output_filename,
+            include_plotlyjs="cdn",
+            full_html=True,
+            config={"responsive":True}
+        )
 
 
 # refactoring on 2025-06-05
