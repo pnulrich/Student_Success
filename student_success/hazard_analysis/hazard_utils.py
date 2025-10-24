@@ -55,7 +55,7 @@ def prepare_hazard_data(df,
                         target_major,
                         transfer_credit_max=30,
                         transfer_credit_min=0,
-                        fall_start=1,
+                        fall_start=False,
                         academic_year_min=None,
                         academic_year_max=None):
     """
@@ -87,9 +87,9 @@ def prepare_hazard_data(df,
         The minimum number of transfer credit hours a student must have to be included.
         Default is 0.
 
-    fall_start : int, optional
-        If set to 1, filters students to those whose earliest term ends with `8`,
-        indicating a fall start term. If set to 0, all terms are included. Default is 1.
+    fall_start : bool, optional
+        If set to True, filters students to those whose earliest term ends with `8`,
+        indicating a fall start term. If set to False, all terms are included. Default is 1.
 
     academic_year_min : int, optional
         The minimum academic year to include in the filtered dataset. If None, no
@@ -107,7 +107,7 @@ def prepare_hazard_data(df,
     Prints
     ------
     - The number of unique students meeting the transfer credit and target major criteria.
-    - If `fall_start` is set to 1, the number of unique students who also started
+    - If `fall_start` is set to True, the number of unique students who also started
       in a fall term.
 
     Notes
@@ -121,7 +121,7 @@ def prepare_hazard_data(df,
     --------
     >>> filtered_df = prepare_hazard_data(
     ...     df, "BIO", transfer_credit_max=30, transfer_credit_min=10,
-    ...     fall_start=1, academic_year_min=2010, academic_year_max=2024
+    ...     fall_start=True, academic_year_min=2010, academic_year_max=2024
     ... )
     """
 
@@ -152,7 +152,7 @@ def prepare_hazard_data(df,
     return filtered_df
 
 
-def assign_outcome_indicators(student_df, max_demographics_term):
+def assign_outcome_indicators(student_df, max_demographics_term, inactivity_gap_threshold: int = 2):
     """
     Process a student's academic data and assign outcome indicators.
 
@@ -176,6 +176,11 @@ def assign_outcome_indicators(student_df, max_demographics_term):
     max_demographics_term : int
         The maximum term in the dataset. Used to assess potential dropouts
         based on enrollment gaps.
+
+    inactivity_gap_threshold : int, default 2
+        Minimum number of *missing* terms after the student's last observed term (relative to `max_demographics_term`
+        for the entire dataset) to code outcome 1 = left college. This is a conservative treatment of right-censoring.
+        Gaps "internal" to a student's overall record are not treated as left college, regardless of length.
 
     Returns
     -------
@@ -243,7 +248,7 @@ def assign_outcome_indicators(student_df, max_demographics_term):
     major_change_already_occurred = False
 
     for i, row in student_df.iterrows():
-        current_sem = row['semester_number']
+        # current_sem = row['semester_number']
         current_major = row['major_term']
         graduated = row['flag_graduation_term'] == 1
         graduated_in_first_major = row['flag_graduated_in_first_major'] == 1
@@ -252,7 +257,7 @@ def assign_outcome_indicators(student_df, max_demographics_term):
         if is_last:
             if graduated:
                 indicators.append(2 if graduated_in_first_major else 3)
-            elif calculate_semester_interval(row['demographics_term'], max_demographics_term) >= 2:
+            elif calculate_semester_interval(row['demographics_term'], max_demographics_term) >= inactivity_gap_threshold:
                 indicators.append(1)
             else:
                 indicators.append(-1)
@@ -273,8 +278,10 @@ def prepare_and_process_data(student_major_data_df,
                              transfer_credit_min,
                              transfer_credit_max,
                              target_major_course_prefix,
+                             fall_start=False,
                              academic_year_min=None,
-                             academic_year_max=None):
+                             academic_year_max=None,
+                             inactivity_gap_threshold: int = 2):
     """
     Prepares and processes data for hazard analysis.
 
@@ -316,6 +323,9 @@ def prepare_and_process_data(student_major_data_df,
     target_major_course_prefix : str
         The course prefix associated with the target major (e.g., 'BIOL').
 
+    fall_start: bool, optional
+        If True, then students filtered to those whose first semester was fall term.
+
     academic_year_min : int, optional (e.g., 2018, YYYY)
         The minimum academic year to include in the analysis. If None, no
         lower limit is applied.
@@ -323,6 +333,10 @@ def prepare_and_process_data(student_major_data_df,
     academic_year_max : int, optional (e.g., 2018, YYYY)
         The maximum academic year to include in the analysis. If None, no
         upper limit is applied.
+
+    inactivity_gap_threshold : int, default 2
+        Passed to `assign_outcome_indicators()`. Controls when outcome 1 (left college)
+        is assigned based on the number of semester gap between attending.
 
     Returns
     -------
@@ -385,7 +399,7 @@ def prepare_and_process_data(student_major_data_df,
         target_major=target_major,
         transfer_credit_min=transfer_credit_min,
         transfer_credit_max=transfer_credit_max,
-        fall_start=1,  # Include only students who started in fall terms
+        fall_start=fall_start,  # defaults to False
         academic_year_min=academic_year_min,
         academic_year_max=academic_year_max
     )
@@ -405,7 +419,11 @@ def prepare_and_process_data(student_major_data_df,
     filtered_df = (
         filtered_df.groupby('student_ID', group_keys=False)
         .apply(lambda x: x.assign(
-            outcome_indicator=assign_outcome_indicators(x.sort_values('semester_number'), max_demographics_term)
+            outcome_indicator=assign_outcome_indicators(
+                x.sort_values('semester_number'),
+                max_demographics_term=max_demographics_term,
+                inactivity_gap_threshold=inactivity_gap_threshold
+            )
         ))
     )
 
@@ -496,10 +514,12 @@ def calculate_probabilities(input_df):
 
     This function computes:
     1. Proportions of students by `outcome_indicator` for each semester using a hazard-based method.
+
        - Outcome 4 (Changed Major) is modeled as a forward-looking risk:
          students are flagged if they change majors in the *next* semester,
          and the probability is normalized to the number of students *active in the current semester*.
        - Outcomes 1, 2, 3, and -1 are normalized to the active student population in the *current* semester.
+
     2. Cumulative probabilities for each outcome, assuming students begin fully active (100%).
     3. Total active student counts per semester.
     4. A filtered DataFrame excluding rows with `outcome_indicator == -1` to focus on terminal or transition outcomes.
@@ -510,11 +530,13 @@ def calculate_probabilities(input_df):
         DataFrame containing student-level outcome data. Required columns:
         - 'semester_number': Integer identifier for the term of enrollment.
         - 'outcome_indicator': Coded outcome for the semester. Expected values:
+
             - -1 = Active (no terminal or transition outcome yet)
             -  1 = Left College
             -  2 = Graduated in Target Major
             -  3 = Graduated in Other Major
             -  4 = Changed Major
+
         - 'student_ID': Unique student identifier.
 
     Returns
