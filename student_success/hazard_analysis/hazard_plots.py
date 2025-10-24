@@ -54,6 +54,7 @@ from bokeh.transform import linear_cmap
 from bokeh.palettes import Viridis256
 from bokeh.resources import CDN
 
+
 def plot_hazard_ratio(
         proportions_df,
         active_student_counts,
@@ -82,13 +83,16 @@ def plot_hazard_ratio(
         The name of the target major being analyzed (e.g., 'BIO').
 
     min_academic_year : int
-        The earliest academic year in the cohort.
+        Used for figure labeling to indicate the earliest academic year in the cohort.
 
     max_academic_year : int
-        The latest academic year in the cohort.
+        Used for figure labeling to indicate the  latest academic year in the cohort.
 
     max_semester_number : int, optional
         The maximum semester to display on the x-axis. If None, uses data max.
+
+    dpi : int, optional
+        Resolution for a saved figure in dots per inch
 
     Returns
     -------
@@ -270,7 +274,7 @@ def plot_course_heatmap(
         number_top_courses=5,
         minimum_student_number=100,
         minimum_proportion_active_students=0.02,
-        save_file: bool = False, # export to PNG or SVG not yet implemented; saving bokeh figures requires selenium and a headless browser driven via geckodriver or chromedrive
+        save_file: bool = False,  # export to PNG or SVG not yet implemented; saving bokeh figures requires selenium and a headless browser driven via geckodriver or chromedrive
         file_name: str | None = None):
     """
     Plot a heatmap of the proportion of active students enrolled in top courses over time.
@@ -356,7 +360,7 @@ def plot_course_heatmap(
                 p,
                 filename=file_name,
                 title='Course Heatmap',
-                resources=CDN) # loads bokeh JS and CSS from https//cdn.bokeh.org
+                resources=CDN)  # loads bokeh JS and CSS from https//cdn.bokeh.org
             print(f"[INFO] Saved heatmap to: {os.path.abspath(file_name)}")
         else:
             raise ValueError("Only export to .html is supported")
@@ -392,10 +396,10 @@ def plot_cumulative_probability(
         Target major being analyzed (e.g., 'BIO').
 
     min_academic_year : int
-        Earliest academic year in the cohort.
+        Used for figure labeling to indicate the earliest academic year in the cohort.
 
     max_academic_year : int
-        Latest academic year in the cohort.
+        Used for figure labeling to indicate the latest academic year in the cohort.
 
     target_major_courseload_df : pandas.DataFrame
         DataFrame with average course load or credit info per semester.
