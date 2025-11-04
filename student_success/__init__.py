@@ -38,7 +38,10 @@ and reproducible analytics for student success initiatives.
 """
 
 
+
 from . import hazard_analysis
 from . import markov_diagrams
 from . import metrics
 from . import utils
+from ._version import __version__
+__all__ = ["_version.py"]

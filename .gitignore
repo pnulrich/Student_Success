@@ -1,0 +1,57 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+*.log
+*.tmp
+*.sqlite3
+build/
+dist/
+
+# -------------------------
+# Jupyter / notebooks
+# -------------------------
+.ipynb_checkpoints/
+
+# -------------------------
+# Sphinx / docs
+# -------------------------
+docs/_build/
+docs/build/
+docs/.doctrees/
+docs/.cache/
+
+# -------------------------
+# Environments
+# -------------------------
+.env
+.venv/
+venv/
+env/
+
+# -------------------------
+# IDE / OS files
+# -------------------------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Private or local data
+# -------------------------
+/Results/
+/R_Scripts/
+/main.py
+
+# -------------------------
+# Generated project artifacts
+# -------------------------
+*.pdf
+*.rtc
+*.stylelog

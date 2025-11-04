@@ -6,10 +6,17 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import pathlib, re
+
 project = 'student_success'
 copyright = '2025, Paul Ulrich'
 author = 'Paul Ulrich'
-release = '1.0'
+author_handle = 'pnulrich'
+
+version_file = pathlib.Path(__file__).parents[2] / "student_success" / "_version.py"
+m = re.search(r'__version__\s*=\s*"([^"]+)"', version_file.read_text())
+release = version = m.group(1) if m else "0.0.0"
+html_baseurl = f'https://github.com/{author_handle}/{project}'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

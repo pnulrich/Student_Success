@@ -1,0 +1,36 @@
+cff-version: 1.0.0
+message: "If you use this software, please cite it as below."
+title: "Student_Success: analytics and visualization for student retention"
+version: "1.0.0"
+date-released: "2025-11-04"
+
+authors:
+  - family-names: Ulrich
+    given-names: Paul
+    affiliation: Georgia State University
+    orcid:  https://orcid.org/0000-0002-2290-6327
+  - family-names: Stewart
+    given-names: John
+    affiliation: West Virginia University
+
+repository-code: "https://github.com/pnulrich/student_success"
+license: BSD-3-Clause
+keywords:
+  - student success
+  - retention analysis
+  - higher education analytics
+  - hazard modeling
+  - visualization
+
+preferred-citation:
+  type: software
+  title: "student_success"
+  version: "1.0.0"
+  authors:
+    - family-names: Ulrich
+      given-names: Paul
+    - family-names: Stewart
+      given-names: John
+  institution: "Georgia State University and West Virginia University"
+  year: 2025
+  url: "https://github.com/pnulrich/student_success"
