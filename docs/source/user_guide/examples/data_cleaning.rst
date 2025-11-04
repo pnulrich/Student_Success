@@ -4,7 +4,6 @@
 
 Data Cleaning Walkthrough
 -------------------------
-
 Institutional datasets must be curated and pre-processed before analysis. This is an intensive
 process that requires careful attention to details, variable naming conventions, and variation in
 patterns that emerge in student data. This guide will familiarize you with common
