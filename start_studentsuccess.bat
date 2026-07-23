@@ -1,14 +1,23 @@
 @echo off
 REM === StudentSuccess Jupyter launcher (Windows) ===
 
-REM ---- Settings (change if needed) ----
 set ENV_NAME=student_success_dev
-set NOTEBOOK_DIR=%~dp0jupyter_notebooks
-REM If Miniconda/Anaconda is globally installed, adjust this path if different:
-set CONDA_ACTIVATE="C:\ProgramData\miniconda3\Scripts\activate.bat"
-REM If installed per-user, try: "%UserProfile%\miniconda3\Scripts\activate.bat"
-REM -------------------------------------
+set PROJECT_ROOT=C:\Research\Research Projects\GSU\HHMI_IE3
+set NOTEBOOK_DIR=%PROJECT_ROOT%\Analyses\jupyter_notebooks
+set CONDA_ACTIVATE=C:\Users\pulrich\AppData\Local\anaconda3\Scripts\activate.bat
 
-REM Launch a new Command Prompt window:
-start "StudentSuccess" cmd /K ^
-  %CONDA_ACTIVATE% %ENV_NAME% ^&^& cd /d "%NOTEBOOK_DIR%" ^&^& jupyter lab
+if not exist "%CONDA_ACTIVATE%" (
+    echo ERROR: Conda activation script not found:
+    echo %CONDA_ACTIVATE%
+    pause
+    exit /b 1
+)
+
+if not exist "%NOTEBOOK_DIR%" (
+    echo ERROR: Notebook directory not found:
+    echo %NOTEBOOK_DIR%
+    pause
+    exit /b 1
+)
+
+start "StudentSuccess" cmd /K call "%CONDA_ACTIVATE%" %ENV_NAME% ^&^& cd /d "%NOTEBOOK_DIR%" ^&^& jupyter lab

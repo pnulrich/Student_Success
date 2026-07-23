@@ -1,25 +1,29 @@
 # -------------------------
-# Python
+# Python packages and build artifacts
 # -------------------------
 __pycache__/
 *.py[cod]
-*.pyo
 *.pyd
-*.egg-info/
 *.egg
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# -------------------------
+# Temporary and runtime files
+# -------------------------
 *.log
 *.tmp
 *.sqlite3
-build/
-dist/
 
 # -------------------------
-# Jupyter / notebooks
+# Jupyter
 # -------------------------
 .ipynb_checkpoints/
 
 # -------------------------
-# Sphinx / docs
+# Sphinx documentation builds
 # -------------------------
 docs/_build/
 docs/build/
@@ -27,15 +31,16 @@ docs/.doctrees/
 docs/.cache/
 
 # -------------------------
-# Environments
+# Environments and secrets
 # -------------------------
 .env
 .venv/
 venv/
+venv_old/
 env/
 
 # -------------------------
-# IDE / OS files
+# IDE and operating-system files
 # -------------------------
 .idea/
 .vscode/
@@ -43,15 +48,38 @@ env/
 Thumbs.db
 
 # -------------------------
-# Private or local data
+# Institutional and analysis data
 # -------------------------
-/Results/
-/R_Scripts/
+institutionaldata/
+jupyter_notebooks/
+ScratchBucket/
+Results/
+R Scripts/
+R_Scripts/
+
+*.csv
+*.dta
+*.sav
+*.xlsx
+*.xls
+*.parquet
+*.feather
+
+# -------------------------
+# Local-only project files
+# -------------------------
 /main.py
 
 # -------------------------
 # Generated project artifacts
 # -------------------------
-*.pdf
 *.rtc
 *.stylelog
+
+# Add *.pdf here only if all PDFs are generated:
+# *.pdf
+
+# -------------------------
+# Archives
+# -------------------------
+*.zip
