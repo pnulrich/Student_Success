@@ -30,7 +30,7 @@ Notes
 See Also
 --------
 student_success.utils.io_utils : Updated utilities for file handling
-student_success.metrics.flagging : Standardized classification tools
+student_success.metrics.flagging : Standardized classification scripts
 """
 
 
