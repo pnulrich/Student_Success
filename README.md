@@ -36,7 +36,7 @@ Download from https://docs.conda.io/en/latest/miniconda.html and follow the plat
 ### Create the conda environment
 ```bash
 conda env create -f environment_essential.yml
-conda env create -f environment_dev.yml # recommended developer tools
+conda env create -f environment_dev.yml # recommended developer scripts
 ```
 
 ### Activate the environment
