@@ -1,5 +1,5 @@
 """
-Hazard analysis tools for modeling student persistence, graduation, and attrition.
+Hazard analysis scripts for modeling student persistence, graduation, and attrition.
 
 The `hazard_analysis` subpackage provides methods for studying academic progression
 using hazard-based approaches. It supports filtering and preparing student data,

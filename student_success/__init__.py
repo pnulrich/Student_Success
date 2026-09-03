@@ -2,14 +2,14 @@
 Student Success Analysis Toolkit
 
 The `student_success` package provides a modular framework for analyzing student
-progression, retention, attrition, and academic outcomes. It includes tools for
+progression, retention, attrition, and academic outcomes. It includes scripts for
 hazard-based survival analysis, course-sequence visualization, metrics for
 classifying outcomes, and general utilities for working with institutional data.
 
 Subpackages
 -----------
 - hazard_analysis :
-    Hazard models and visualization tools for analyzing persistence,
+    Hazard models and visualization scripts for analyzing persistence,
     attrition, graduation, and major-specific outcomes.
 
 - markov_diagrams :

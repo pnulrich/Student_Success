@@ -25,7 +25,7 @@ Notes
 -----
 - These functions rely on standardized term codes (YYYYTT) and the
   discipline/major mappings defined in ``utils.constants``.
-- Output is intended to integrate with visualization and modeling tools
+- Output is intended to integrate with visualization and modeling scripts
   in ``hazard_analysis`` and ``markov_diagrams``.
 """
 

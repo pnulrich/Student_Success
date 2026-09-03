@@ -1,5 +1,5 @@
 """
-The `markov_diagrams` subpackage provides tools for building course progression
+The `markov_diagrams` subpackage provides scripts for building course progression
 diagrams using Markov-style flows.
 
 This package integrates preprocessing, flow analysis, and graph construction

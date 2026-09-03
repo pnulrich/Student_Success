@@ -4,7 +4,7 @@ utils
 
 General-purpose utility functions and constants for data wrangling, cleaning,
 and processing in the ``student_success`` package. The subpackage consolidates
-common tools used across analysis modules, ensuring consistency in
+common scripts used across analysis modules, ensuring consistency in
 preprocessing and interpretation of student success data.
 
 Included components
