@@ -29,6 +29,7 @@ docs/_build/
 docs/build/
 docs/.doctrees/
 docs/.cache/
+docs/source/modules/*/generated/
 
 # -------------------------
 # Environments and secrets
@@ -56,6 +57,8 @@ ScratchBucket/
 Results/
 R Scripts/
 R_Scripts/
+
+student_success/hazard_analysis/WVUmodules/
 
 *.csv
 *.dta
