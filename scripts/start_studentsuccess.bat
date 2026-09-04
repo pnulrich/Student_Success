@@ -51,8 +51,8 @@ if not exist "%STUDENT_SUCCESS_NOTEBOOK_DIR%" (
 
 
 REM ---- Locate Conda ----------------------------------------------------------
-REM Do not assume Conda is available on PATH. Search common per-user Anaconda
-REM and Miniconda installation locations instead.
+REM Do not assume Conda is available on PATH. Search common per-user and
+REM system-wide Anaconda and Miniconda installation locations instead.
 set "CONDA_ACTIVATE="
 
 REM Anaconda installed under the user's local application-data directory.
@@ -75,14 +75,6 @@ if not defined CONDA_ACTIVATE if exist "%USERPROFILE%\miniconda3\Scripts\activat
     set "CONDA_ACTIVATE=%USERPROFILE%\miniconda3\Scripts\activate.bat"
 )
 
-REM Stop with a useful message if no supported Conda installation was found.
-if not defined CONDA_ACTIVATE (
-    echo ERROR: Could not locate an Anaconda or Miniconda installation.
-    echo Checked common locations under LOCALAPPDATA and USERPROFILE.
-    pause
-    exit /b 1
-)
-
 REM Anaconda installed system-wide.
 if not defined CONDA_ACTIVATE if exist "%ProgramData%\anaconda3\Scripts\activate.bat" (
     set "CONDA_ACTIVATE=%ProgramData%\anaconda3\Scripts\activate.bat"
@@ -92,6 +84,16 @@ REM Miniconda installed system-wide.
 if not defined CONDA_ACTIVATE if exist "%ProgramData%\miniconda3\Scripts\activate.bat" (
     set "CONDA_ACTIVATE=%ProgramData%\miniconda3\Scripts\activate.bat"
 )
+
+
+REM Stop with a useful message if no supported Conda installation was found.
+if not defined CONDA_ACTIVATE (
+    echo ERROR: Could not locate an Anaconda or Miniconda installation.
+    echo Checked common locations under LOCALAPPDATA and USERPROFILE.
+    pause
+    exit /b 1
+)
+
 
 
 REM ---- Activate StudentSuccess environment -----------------------------------

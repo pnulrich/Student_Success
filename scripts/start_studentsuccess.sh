@@ -25,8 +25,8 @@ set -euo pipefail
 #   Example:
 #       export STUDENT_SUCCESS_NOTEBOOK_DIR="$HOME/Research/HHMI_IE3/Analyses/jupyter_notebooks"
 #
-#   The script automatically searches common Anaconda/Miniconda installation
-#   locations. Conda does not need to already be initialized in the shell.
+#   The script automatically searches common per-user and system-wide
+#   Anaconda/Miniconda installation locations.
 # ============================================================================
 
 
@@ -59,27 +59,30 @@ fi
 
 
 # ---- Locate Conda -----------------------------------------------------------
-# Search common per-user Anaconda and Miniconda installation locations.
-# Sourcing conda.sh enables "conda activate" within this shell script.
+# Search common per-user and system-wide Anaconda and Miniconda installation
+# locations. Sourcing conda.sh enables "conda activate" within this shell script.
 CONDA_INIT=""
 
 if [[ -f "${HOME}/anaconda3/etc/profile.d/conda.sh" ]]; then
     CONDA_INIT="${HOME}/anaconda3/etc/profile.d/conda.sh"
 elif [[ -f "${HOME}/miniconda3/etc/profile.d/conda.sh" ]]; then
     CONDA_INIT="${HOME}/miniconda3/etc/profile.d/conda.sh"
-elif [[ -f "${HOME}/opt/anaconda3/etc/profile.d/conda.sh" ]]; then
-    CONDA_INIT="${HOME}/opt/anaconda3/etc/profile.d/conda.sh"
-elif [[ -f "${HOME}/opt/miniconda3/etc/profile.d/conda.sh" ]]; then
-    CONDA_INIT="${HOME}/opt/miniconda3/etc/profile.d/conda.sh"
+elif [[ -f "/opt/anaconda3/etc/profile.d/conda.sh" ]]; then
+    CONDA_INIT="/opt/anaconda3/etc/profile.d/conda.sh"
+elif [[ -f "/opt/miniconda3/etc/profile.d/conda.sh" ]]; then
+    CONDA_INIT="/opt/miniconda3/etc/profile.d/conda.sh"
+elif [[ -f "/usr/local/anaconda3/etc/profile.d/conda.sh" ]]; then
+    CONDA_INIT="/usr/local/anaconda3/etc/profile.d/conda.sh"
+elif [[ -f "/usr/local/miniconda3/etc/profile.d/conda.sh" ]]; then
+    CONDA_INIT="/usr/local/miniconda3/etc/profile.d/conda.sh"
 fi
 
-# Stop with a useful message if no supported Conda installation was found.
 if [[ -z "${CONDA_INIT}" ]]; then
     echo "ERROR: Could not locate an Anaconda or Miniconda installation."
-    echo "Checked common locations under your home directory."
+    echo "Checked common per-user and system-wide installation locations."
     echo
-    echo "If Conda is installed elsewhere, update this script or initialize"
-    echo "Conda for your shell before launching StudentSuccess."
+    echo "If Conda is installed elsewhere, update this script with the"
+    echo "location of etc/profile.d/conda.sh."
     exit 1
 fi
 

@@ -10,7 +10,7 @@ This guide will walk you through four things:
 
 1. Downloading the project
 2. Installing the software you need (using Miniconda)
-3. Setting up your project “environment”
+3. Setting up your project environment
 4. (optional) Opening the tools in JupyterLab
 
 
@@ -59,7 +59,10 @@ The Student Success tools run inside a **Conda environment**.
 An environment is a self-contained folder that holds everything this
 project needs to run: Python itself plus all the add-ons the code uses.
 This isolates the project's software dependencies from other Python installations on your system.
-We suggest organization of file directories as follows:
+
+
+We recommend keeping package development, research data, notebooks, and
+analysis outputs separate:
 
 Suggested directory organization::
 
@@ -70,6 +73,12 @@ Suggested directory organization::
         ├── institutionaldata/
         ├── jupyter_notebooks/
         └── Results/
+
+
+The ``development/student_success`` directory contains the Git repository and
+package source. The ``analyses`` directory is outside the repository.
+Institutional datasets, research notebooks, and generated analysis results
+therefore remain separate from version-controlled package code.
 
 Two Conda environment specification files are provided:
 
@@ -91,6 +100,7 @@ Two Conda environment specification files are provided:
 The second command updates the existing ``student_success_dev`` environment
 with the additional development dependencies.
 
+
 Activating the Environment and Installing the Student Success Package
 ---------------------------------------------------------------------
 
@@ -99,19 +109,6 @@ Activating simply means "turn on the project setup" so Python uses the
 correct version and the right add-ons. Activate the environment whenever you
 work with the ``student_success`` package from a terminal. The JupyterLab
 launcher scripts described below activate the environment automatically.
-
-.. code-block:: bash
-
-   conda activate student_success_dev
-   python -m pip install -e .
-
-The editable installation allows any changes made to the package source code to become immediately available without
-reinstalling the package.
-
-Activating the Environment and Installing the Student Success Package
----------------------------------------------------------------------
-
-Activate the environment:
 
 .. code-block:: bash
 
@@ -156,12 +153,17 @@ The printed path should point to your cloned repository rather than the Conda in
 Project Configuration
 ---------------------
 
-Some Student Success utilities require local configuration values, such as
-the cipher used to anonymize student identifiers or the locations of
-institutional datasets. These values are stored in a project-specific
-``.env`` file rather than being hard-coded into notebooks or source code.
+Student Success uses local configuration values to locate institutional
+datasets and analysis results and to provide the cipher used for
+de-identification. These settings are kept outside the source code so that
+notebooks and package modules do not contain machine-specific paths or
+confidential configuration values.
 
-Institutional datasets should remain outside the Git repository and should never be committed to the repository!
+Configuration is managed by ``student_success.config``. The module reads
+environment variables and, when available, loads values from the project's
+``.env`` file. The ``.env`` file is located relative to the package source,
+so configuration works consistently when code is run from Jupyter notebooks,
+PyCharm, or other directories.
 
 Create a file named ``.env`` in the root directory of the repository:
 
@@ -169,30 +171,89 @@ Create a file named ``.env`` in the root directory of the repository:
 
    student_success/
    ├── .env
+   ├── .env.example
    ├── pyproject.toml
    ├── environments/
    ├── student_success/
    └── ...
 
-A template file named ``.env.example`` is provided. Copy it to ``.env`` and
-fill in the required values.
+A template named ``.env.example`` is provided. Copy it to ``.env`` and
+replace the example values with the appropriate values for your computer.
 
-Example:
+For example:
 
 .. code-block:: text
 
    STUDENT_SUCCESS_CIPHER=your_secret_cipher
-   STUDENT_SUCCESS_DATA_ROOT=C:\Research Projects\Analyses\institutionaldata
-   STUDENT_SUCCESS_RESULTS=C:\Research Projects\Analyses\results
+   STUDENT_SUCCESS_DATA_ROOT=C:\Research\analyses\institutionaldata
+   STUDENT_SUCCESS_RESULTS=C:\Research\analyses\Results
 
-These paths should point to your local analysis workspace and may differ from those used by other developers.
-
-The ``.env`` file is ignored by Git and should never be committed to the
+``STUDENT_SUCCESS_DATA_ROOT`` should point to the directory containing
+institutional research datasets. Institutional and confidential datasets
+must remain outside the Git repository and must never be committed to the
 repository.
 
-The Student Success package uses these values to configure local resources such as anonymization and
-institutional data locations. Some notebooks may explicitly call ``load_dotenv()`` until configuration
-loading is fully centralized within the package.
+``STUDENT_SUCCESS_RESULTS`` should point to the directory used for generated
+analysis results.
+
+``STUDENT_SUCCESS_CIPHER`` contains the secret value used by Student Success
+utilities for reproducible scrambling or de-identification of student
+identifiers.
+
+The ``.env`` file is ignored by Git and must not be committed to the
+repository. The ``.env.example`` file contains only example values and is
+tracked in Git so that the required configuration is documented.
+
+You can verify that the configuration is being loaded correctly with:
+
+.. code-block:: bash
+
+   python -c "from student_success.config import DATA_ROOT, RESULTS_ROOT; print(DATA_ROOT); print(RESULTS_ROOT)"
+
+The printed paths should match the directories configured in your ``.env``
+file.
+
+Using Configuration in Python
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Do not hard-code institutional-data paths in notebooks or package code.
+Import the configured paths from ``student_success.config`` instead:
+
+.. code-block:: python
+
+   from student_success.config import DATA_ROOT, RESULTS_ROOT, get_cipher
+
+``DATA_ROOT`` and ``RESULTS_ROOT`` are ``pathlib.Path`` objects. Build paths
+to individual files using the ``/`` operator:
+
+.. code-block:: python
+
+   data_file = DATA_ROOT / "dataset_directory" / "student_data.csv"
+
+For example, a dataset can be loaded directly with pandas:
+
+.. code-block:: python
+
+   import pandas as pd
+
+   from student_success.config import DATA_ROOT
+
+   data_file = DATA_ROOT / "dataset_directory" / "student_data.csv"
+   df = pd.read_csv(data_file)
+
+Retrieve the cipher only when it is required:
+
+.. code-block:: python
+
+   from student_success.config import get_cipher
+
+   cipher = get_cipher()
+
+If ``STUDENT_SUCCESS_CIPHER`` is not configured, ``get_cipher()`` raises an
+error rather than silently returning a missing value.
+
+Environment variables that are already defined take precedence over values
+in the ``.env`` file.
 
 Optional Research and Developmental Resources
 ---------------------------------------------
@@ -253,6 +314,12 @@ variable to determine where your Jupyter notebooks are stored. This allows
 notebooks to remain outside the Git repository and avoids storing
 machine-specific paths in the launcher scripts.
 
+.. note::
+
+   ``STUDENT_SUCCESS_NOTEBOOK_DIR`` is a launcher setting and is separate
+   from the project configuration stored in ``.env``. It tells the launcher
+   where to start JupyterLab; it is not used by ``student_success.config``.
+
 Set this variable once on each computer where you use Student Success.
 
 **Windows**
@@ -297,9 +364,9 @@ From the repository root, run:
 You may also launch ``start_studentsuccess.bat`` directly from Windows
 Explorer.
 
-The Windows launcher searches common per-user Anaconda and Miniconda
-installation locations automatically. Conda therefore does not need to be
-added to the Windows ``PATH``.
+The Windows launcher searches common per-user and system-wide Anaconda and
+Miniconda installation locations automatically. Conda therefore does not need
+to be added to the Windows ``PATH``.
 
 The launcher will stop with an explanatory error if:
 
