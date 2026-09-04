@@ -83,6 +83,16 @@ if not defined CONDA_ACTIVATE (
     exit /b 1
 )
 
+REM Anaconda installed system-wide.
+if not defined CONDA_ACTIVATE if exist "%ProgramData%\anaconda3\Scripts\activate.bat" (
+    set "CONDA_ACTIVATE=%ProgramData%\anaconda3\Scripts\activate.bat"
+)
+
+REM Miniconda installed system-wide.
+if not defined CONDA_ACTIVATE if exist "%ProgramData%\miniconda3\Scripts\activate.bat" (
+    set "CONDA_ACTIVATE=%ProgramData%\miniconda3\Scripts\activate.bat"
+)
+
 
 REM ---- Activate StudentSuccess environment -----------------------------------
 call "%CONDA_ACTIVATE%" "%ENV_NAME%"
