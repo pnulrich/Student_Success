@@ -28,6 +28,33 @@ We encourage you to begin by exploring our User Guide for guidance on installati
    user_guide/workflows
    user_guide/examples/index
 
+Project Information
+===================
+
+The source code, release history, and development resources for
+``student_success`` are available in the `Student Success GitHub repository
+<https://github.com/pnulrich/Student_Success>`_.
+
+Citation
+--------
+
+If you use ``student_success`` in research, please cite the software using the
+`citation information
+<https://github.com/pnulrich/Student_Success/blob/master/CITATION.cff>`_
+provided with the project.
+
+Licensing
+---------
+
+The ``student_success`` source code is distributed under the
+`BSD 3-Clause License
+<https://github.com/pnulrich/Student_Success/blob/master/LICENSE>`_.
+
+Documentation and example text are distributed under the
+`Creative Commons Attribution 4.0 International License
+<https://github.com/pnulrich/Student_Success/blob/master/docs/LICENSE>`_.
+
+
 .. toctree::
    :maxdepth: 2
    :caption: API Reference
