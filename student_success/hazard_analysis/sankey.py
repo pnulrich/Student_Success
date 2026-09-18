@@ -8,16 +8,23 @@ Flows are aggregated at the discipline level and rendered using Plotly’s Sanke
 Main Features
 -------------
 - **Color Handling**:
+
   - `hex_to_rgba`: Convert hex colors to RGBA strings with alpha transparency.
+
 - **Plot Formatting**:
+
   - `wrap_plot_title`: Insert line breaks into long plot titles for readability.
+
 - **Flow Classification**:
+
   - `classify_sankey_discipline`: Map a major abbreviation into Sankey discipline groups,
     highlighting the target major.
   - `assign_sankey_end_status`: Determine each student’s final outcome (graduated in major,
     graduated other, left college, or still active).
   - `extract_node_label`: Parse clean labels from Sankey node strings.
+
 - **Visualization**:
+
   - `create_sankey_plot`: Build a Sankey diagram showing how students flow across disciplines
     and into terminal outcomes.
 

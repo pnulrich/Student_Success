@@ -9,7 +9,7 @@
 import pathlib, re
 
 project = 'student_success'
-copyright = '2025, Paul Ulrich'
+copyright = '2026, Paul Ulrich'
 author = 'Paul Ulrich'
 author_handle = 'pnulrich'
 
@@ -26,7 +26,8 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',  # supports Google and numpy docstrings
     'sphinx.ext.viewcode',  # include links to source code
-    'sphinx.ext.githubpages'
+    'sphinx.ext.githubpages',
+    'sphinx.ext.todo'
 ]
 
 import os, sys

@@ -104,12 +104,14 @@ def filter_by_valid_matriculation_term(demographics_df, student_id_col='student_
     back far enough in time to get demographics associated with their first term.
 
     Parameters:
+
     - demographics_df (pd.DataFrame): DataFrame containing course and student information.
     - student_id_col (str): Column name for student ID.
     - term_col (str): Column name for the term of matriculation.
     - demo_term_col (str): Column name for the demographics term.
 
     Returns:
+
     - pd.DataFrame: A cleaned DataFrame containing only the rows where the demographics term
       matches the minimum term of matriculation for each student and at least one valid match exists.
     """

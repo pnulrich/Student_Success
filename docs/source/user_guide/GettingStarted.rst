@@ -259,7 +259,7 @@ Optional Research and Developmental Resources
 ---------------------------------------------
 
 JupyterLab
-++++++++++
+^^^^^^^^^^
 
 JupyterLab is an interactive environment that you can think of like a laboratory notebook
 where you can record your process, run code, store results, view figures, and provide commentary.
@@ -303,7 +303,7 @@ Second, navigate to your notebook directory and start JupyterLab:
    jupyter lab
 
 Using a Launcher Script
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 If you use the launcher scripts described below, you do not need to activate
 the Conda environment manually. The launcher activates ``student_success_dev``
@@ -422,8 +422,9 @@ If you are using PyCharm, you can use your conda environment as follows:
 
 1. Go to **File > Settings > Project > Python Interpreter**.
 2. Select **Add Interpreter > Conda Environment > Existing**.
-3. Browse to the Python program inside your new environment. Select the existing environment rather than creating a new
-virtual environment. To locate the environment on any platform, run:
+3. Browse to the Python program inside your new environment. Select the existing environment
+    rather than creating a new virtual environment. To locate the environment on any platform, run:
+
 
 .. code-block:: bash
 

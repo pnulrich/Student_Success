@@ -3,9 +3,9 @@ Utilities for creating standardized demographic flags and extracting
 first-term demographic records in the student_success package.
 
 This module provides functions that:
+
 - Add binary demographic flags (PEER, Hispanic, Pell, first-generation, sex).
-- Extract each student’s first-term demographic record, with optional filtering
-  by transfer status.
+- Extract each student’s first-term demographic record, with optional filtering by transfer status.
 
 Institutional Customization
 ---------------------------
@@ -28,6 +28,7 @@ local codes align with the dictionaries in `constants.py`.
 
 Pitfalls
 --------
+
 - Missing columns will raise validation errors. Always check your input
   DataFrame against expected fields before calling these functions.
 - Ambiguous or unreported demographic values default to 0 or -1, which may
@@ -39,6 +40,7 @@ Pitfalls
 
 Contents
 --------
+
 - set_up_demographic_flags(df, peer=True, hispanic=True, pell=True,
   first_generation=True, sex=True) :
   Adds demographic flag columns (`flag_PEER`, `flag_hispanic`, `flag_PELL`,
@@ -49,11 +51,13 @@ Contents
 
 Notes
 -----
+
 - These utilities are designed for preprocessing and should be applied
   early in your workflow so flags are available for hazard, Sankey, and
   Markov analyses.
 - Relies on constants defined in `student_success.utils.constants` for
   demographic mappings.
+
 """
 
 import numpy as np

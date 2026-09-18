@@ -6,8 +6,8 @@ Markov diagram generation, metrics, and general utilities.
 This section provides a full API reference for each subpackage and its modules.
 
 .. toctree::
-    :maxdepth: 2
-    :caption: Subpackages
+   :maxdepth: 2
+   :caption: Subpackages
 
    hazard_analysis/hazard_analysis
    markov_diagrams/markov_diagrams

@@ -528,6 +528,7 @@ def calculate_probabilities(input_df):
     ----------
     input_df : pandas.DataFrame
         DataFrame containing student-level outcome data. Required columns:
+
         - 'semester_number': Integer identifier for the term of enrollment.
         - 'outcome_indicator': Coded outcome for the semester. Expected values:
 
@@ -543,6 +544,7 @@ def calculate_probabilities(input_df):
     -------
     dict
         Dictionary containing:
+
         - "proportions_df": pandas.DataFrame
             Proportion of students with each outcome per semester.
         - "cumulative_df": pandas.DataFrame

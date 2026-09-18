@@ -5,6 +5,7 @@ deriving binary and categorical indicators that support longitudinal
 tracking, hazard modeling, and summary visualizations.
 
 This module consolidates logic for:
+
 - Retention outcomes, including major-specific and STEM field persistence.
 - Dropout identification based on enrollment gaps, program level changes,
   or lack of subsequent enrollment.
@@ -15,6 +16,7 @@ This module consolidates logic for:
 
 Notes
 -----
+
 - Many functions assume standardized academic term codes (YYYYTT) and
   normalized tuple-like data for majors and graduation fields. Use
   ``safe_parse_tuple`` (from ``utils.validation``) to prepare messy inputs.
@@ -26,10 +28,12 @@ Notes
 
 TODO
 ----
+
 - Expand dropout classification utilities to align with hazard modeling
   requirements (currently partially duplicated in ``hazard_utils``).
 - Consolidate logic for earliest-term handling (``term_earliest``) once
   standardized in ``time_utils``.
+
 """
 import pandas as pd
 import numpy as np
@@ -82,6 +86,7 @@ def classify_dropout_term(df, term_col='demographics_term', student_col='student
                           graduation_level_col='graduation_level', graduation_status_col='graduation_status'):
     """
     Flags the final term of a student's enrollment as a dropout point under the following conditions:
+
     - The student has not graduated at the specified level, AND
     - EITHER they do not re-enroll for more than `threshold` terms,
       OR they transition from the target student level (e.g., bachelor's 'US') to a lower level (e.g., associate 'AS').

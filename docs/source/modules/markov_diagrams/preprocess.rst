@@ -10,7 +10,7 @@ limiting attempts, and excluding unnecessary repeats.
    :nosignatures:
 
    # no :toctree: → generates no sidebar children
-   exclude_unnecesary_subsequent_attempts
+   exclude_unnecessary_subsequent_attempts
    limit_attempts
    prepare_course_attempts
 

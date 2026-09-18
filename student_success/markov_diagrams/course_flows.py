@@ -31,6 +31,7 @@ Notes
 
 TODO
 ----
+
 - Externalize demographic proportion logic into ``utils.demographics_utils`` to avoid
   duplication.
 - Expand progression logic to account for time-to-next-course (not just ever/never).
@@ -67,6 +68,7 @@ def analyze_course(course_name, df, major_matriculation_column='major_term_earli
     -------
     dict or None
         A dictionary with course performance and (optional) demographic breakdowns:
+
             - 'first_pass_number': Count of students passing on first attempt.
             - 'first_pass_proportion': Proportion passing on first attempt.
             - 'first_DFW_number': Count receiving D, F, or W on first attempt.
@@ -79,6 +81,7 @@ def analyze_course(course_name, df, major_matriculation_column='major_term_earli
             - 'second_DFW_proportion': Proportion with D/F/W on second attempt.
             - 'first_attempt_demographic_proportions': Optional dict of {color: proportion} for pie node.
             - 'second_attempt_demographic_proportions': Optional dict of {color: proportion} for pie node.
+
         Returns None if the course is not found in the dataset.
     """
 

@@ -32,10 +32,12 @@ Pitfalls
   Use `strip_grade_suffixes()` (called internally where needed) before analysis.
 - Category semantics:
   `num_grade_institutional()` returns:
+
     - GPA values for standard letters (e.g., 4.33 for A+, 2.00 for C),
     - `-1` for withdrawals (W, WF, PW),
     - `-2` for non‑graded/administrative statuses (e.g., WM, IP, I, AU),
     - `-3` for pass/fail categories (S/U).
+
   Downstream code should treat these negatives as flags, not numeric grades.
 - Ordering:
   If you need both simplified letters and numeric conversions, run
@@ -44,6 +46,7 @@ Pitfalls
 
 Contents
 --------
+
 - strip_grade_suffixes(grade)
   Remove institutional suffixes/prefixes from a single grade string
   (e.g., "^R", "%", "@", "#", "*", leading "-").
@@ -83,7 +86,7 @@ def strip_grade_suffixes(grade):
     Parameters
     ----------
     grade : str or any
-        The raw grade input. May be a string with suffixes (e.g., 'B^R', 'C*', 'A%') or a non-string (e.g., None, NaN).
+        The raw grade input. May be a string with suffixes (e.g., 'B^R', ``C*``, 'A%') or a non-string (e.g., None, NaN).
 
     Returns
     -------
@@ -94,7 +97,8 @@ def strip_grade_suffixes(grade):
     -----
     This function removes:
     - Repeat indicators (e.g., "^R")
-    - Transfer/dishonesty/renewal flags ("% @ # *")
+    - Transfer/dishonesty/renewal flags (``%`` ``@`` ``#`` ``*``)
+
     """
 
     if grade is None or pd.isna(grade):
@@ -265,8 +269,10 @@ def letter_grade_clean(dataframe):
     - Does not collapse grades (e.g., A- stays A-).
     - Removes suffixes like '*', '%', '@', '#', '^R'.
     - Intended for use before applying ordered grade logic (e.g., sorting or plotting).
-    - Developed 2024-12-06 by Paul Ulrich because grades were being missed in calculus analyses if a student did repeat to replace or had some other not grade distinction
-    listed. This was creating problems with ordered categories.
+    - Developed 2024-12-06 by Paul Ulrich because grades were being missed in
+      calculus analyses if a student did repeat to replace or had some other
+      non-grade distinction listed. This was creating problems with ordered
+      categories.
 
     Examples
     --------

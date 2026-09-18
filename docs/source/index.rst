@@ -12,6 +12,7 @@ variations in term structure, and data import. Among these are hazard analysis f
 among majors, timing of courses, and flow of students attempts of prerequisites and downstream courses.
 
 Four subpackages constitute the core of the ``student_success`` package.
+
 - **hazard_analysis**: hazard models and visualization.
 - **markov_diagrams**: course flow diagrams.
 - **metrics**: classification, retention, and graduation indicators.

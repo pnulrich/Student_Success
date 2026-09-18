@@ -9,7 +9,6 @@ and calculating cumulative probabilities and logistic features.
 .. autosummary::
    :nosignatures:
 
-   # no :toctree: → generates no sidebar children
    prepare_hazard_data
    assign_outcome_indicators
    calculate_probabilities
